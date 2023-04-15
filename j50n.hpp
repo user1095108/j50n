@@ -238,9 +238,7 @@ public:
 
   j50n operator[](auto&& k) const noexcept
   {
-    using U = std::remove_cvref_t<decltype(k)>;
-
-    if constexpr(std::is_convertible_v<U, std::string_view>)
+    if constexpr(std::is_convertible_v<decltype(k), std::string_view>)
     {
       return find(s_, std::forward<decltype(k)>(k));
     }
