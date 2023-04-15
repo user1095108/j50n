@@ -16,7 +16,7 @@ int main()
   std::cout << j["key"].raw() << std::endl;
   std::cout << j["obj"].raw() << std::endl;
   std::cout << j["array"].raw() << " " << j["array"].size() << std::endl;
-  std::cout << j["array"][0].raw() << " " << j["array"][2].raw() << std::endl;
+  std::cout << j.find("array", 0).get() << " " << j["array"][2].get() << std::endl;
 
   return 0;
 }
