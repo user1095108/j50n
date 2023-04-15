@@ -9,11 +9,13 @@ class j50n
 {
   std::string_view s_;
 
+  struct S
+  {
+
   static std::string_view find(std::string_view const& s,
     std::string_view const& k, std::size_t index = 1) noexcept
   {
     char const* val{};
-
     auto cur(s.begin()), start(cur);
 
     std::string_view r;
@@ -213,6 +215,8 @@ class j50n
     return {};
   }
 
+  };
+
 public:
   j50n() = default;
 
@@ -237,21 +241,28 @@ public:
     s_ = std::forward<decltype(u)>(u); return *this;
   }
 
+  //
   j50n operator[](auto&& k) const noexcept
   {
     if constexpr(std::is_convertible_v<decltype(k), std::string_view>)
     {
-      return find(s_, std::forward<decltype(k)>(k));
+      return S::find(s_, std::forward<decltype(k)>(k));
     }
     else
     {
-      return find(s_, {}, std::forward<decltype(k)>(k));
+      return S::find(s_, {}, std::forward<decltype(k)>(k));
     }
+  }
+
+  auto find(auto&& ...k) const noexcept requires(bool(sizeof...(k)))
+  {
+    auto r(*this);
+
+    return ((r = r[std::forward<decltype(k)>(k)]), ...);
   }
 
   //
   bool is_empty() const noexcept { return s_.empty(); }
-
   auto is_array() const noexcept { return !is_empty() && ('[' == s_.front()); }
   auto is_object() const noexcept { return !is_empty() && ('{' == s_.front());}
   auto is_string() const noexcept { return !is_empty() && ('"' == s_.front());}
