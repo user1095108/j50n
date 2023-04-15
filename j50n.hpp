@@ -10,9 +10,7 @@ class j50n
   static std::string_view find(std::string_view const& s,
     std::string_view const& k, std::size_t index = 1) noexcept
   {
-    std::string_view r;
-
-    const char* val{};
+    char const* val{};
     int depth{};
     int utf8_remain{};
 
@@ -26,6 +24,8 @@ class j50n
     } state{S_STRUCT};
 
     auto cur(s.begin()), start(cur);
+
+    std::string_view r;
 
     auto const cap([&](std::size_t const i) noexcept
       {
@@ -68,7 +68,7 @@ class j50n
       }
     );
 
-    for (auto const end(s.end()); cur != end; ++cur)
+    for (auto const end(s.end()); end != cur; ++cur)
     {
       again:
       switch (state)
@@ -233,7 +233,7 @@ public:
     s_ = std::forward<decltype(u)>(u); return *this;
   }
 
-  j50n operator[](auto&& k) const noexcept
+  auto operator[](auto&& k) const noexcept
   {
     using U = std::remove_cvref_t<decltype(k)>;
 
@@ -250,9 +250,9 @@ public:
   //
   bool is_valid() const noexcept { return s_.size(); }
 
-  bool is_array() const noexcept { return is_valid() && ('[' == s_.front()); }
-  bool is_object() const noexcept { return is_valid() && ('{' == s_.front()); }
-  bool is_string() const noexcept { return is_valid() && ('"' == s_.front()); }
+  auto is_array() const noexcept { return is_valid() && ('[' == s_.front()); }
+  auto is_object() const noexcept { return is_valid() && ('{' == s_.front()); }
+  auto is_string() const noexcept { return is_valid() && ('"' == s_.front()); }
 
   //
   auto size() const noexcept
