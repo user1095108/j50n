@@ -1,7 +1,9 @@
 #include <cassert>
-#include <cstring>
+#include <cstring> // std::strncmp()
+#include <iterator> // std::next()
 #include <string_view>
 #include <type_traits>
+#include <utility> // std::forward()
 
 class j50n
 {
@@ -244,16 +246,16 @@ public:
     }
     else
     {
-      return find(s_, {}, k);
+      return find(s_, {}, std::forward<decltype(k)>(k));
     }
   }
 
   //
-  bool is_valid() const noexcept { return !s_.empty(); }
+  bool is_empty() const noexcept { return s_.empty(); }
 
-  auto is_array() const noexcept { return is_valid() && ('[' == s_.front()); }
-  auto is_object() const noexcept { return is_valid() && ('{' == s_.front());}
-  auto is_string() const noexcept { return is_valid() && ('"' == s_.front());}
+  auto is_array() const noexcept { return !is_empty() && ('[' == s_.front()); }
+  auto is_object() const noexcept { return !is_empty() && ('{' == s_.front());}
+  auto is_string() const noexcept { return !is_empty() && ('"' == s_.front());}
 
   //
   auto size() const noexcept
