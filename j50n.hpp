@@ -262,7 +262,7 @@ public:
   {
     std::size_t i{};
 
-    if (is_array()) for (; (*this)[i].is_valid(); ++i);
+    if (is_array()) for (; !(*this)[i].is_empty(); ++i);
 
     return i;
   }
