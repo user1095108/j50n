@@ -254,11 +254,13 @@ public:
     }
   }
 
-  auto find(auto&& ...k) const noexcept requires(bool(sizeof...(k)))
+  auto find(auto&& k0, auto&& ...k) const noexcept
   {
-    auto r(*this);
+    auto r((*this)[std::forward<decltype(k0)>(k0)]);
 
-    return ((r = r[std::forward<decltype(k)>(k)]), ...);
+    ((r = r[std::forward<decltype(k)>(k)]), ...);
+
+    return r;
   }
 
   //
