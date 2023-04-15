@@ -38,7 +38,6 @@ class j50n
         else if (k.size() && start)
         {
           index = std::strncmp(start, k.begin(), cur - start) ? 2 : 0;
-
           start = {};
         }
 
