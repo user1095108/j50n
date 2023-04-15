@@ -11,17 +11,6 @@ class j50n
     std::string_view const& k, std::size_t index = 1) noexcept
   {
     char const* val{};
-    int depth{};
-    int utf8_remain{};
-
-    enum
-    {
-      S_STRUCT,
-      S_BARE,
-      S_STRING,
-      S_UTF8,
-      S_ESC,
-    } state{S_STRUCT};
 
     auto cur(s.begin()), start(cur);
 
@@ -68,7 +57,19 @@ class j50n
       }
     );
 
-    for (auto const end(s.end()); end != cur; ++cur)
+    int depth{};
+    int utf8_remain{};
+
+    enum
+    {
+      S_STRUCT,
+      S_BARE,
+      S_STRING,
+      S_UTF8,
+      S_ESC,
+    } state{S_STRUCT};
+
+    for (auto const end(s.end()); end != cur; cur = std::next(cur))
     {
       again:
       switch (state)
@@ -251,8 +252,8 @@ public:
   bool is_valid() const noexcept { return !s_.empty(); }
 
   auto is_array() const noexcept { return is_valid() && ('[' == s_.front()); }
-  auto is_object() const noexcept { return is_valid() && ('{' == s_.front()); }
-  auto is_string() const noexcept { return is_valid() && ('"' == s_.front()); }
+  auto is_object() const noexcept { return is_valid() && ('{' == s_.front());}
+  auto is_string() const noexcept { return is_valid() && ('"' == s_.front());}
 
   //
   auto size() const noexcept
