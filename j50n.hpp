@@ -69,7 +69,7 @@ class j50n
       S_ESC,
     } state{S_STRUCT};
 
-    for (auto const end(s.end()); end != cur; cur = std::next(cur))
+    for (auto const end(s.end()); end != cur; ++cur)
     {
       again:
       switch (state)
