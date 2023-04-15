@@ -1,3 +1,7 @@
+#ifndef J50N_HPP
+# define J50N_HPP
+# pragma once
+
 #include <cassert>
 #include <cstring> // std::strncmp()
 #include <iterator> // std::next()
@@ -287,3 +291,5 @@ public:
 
   auto& raw() const noexcept { return s_; }
 };
+
+#endif // J50N_HPP
