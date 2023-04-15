@@ -10,7 +10,7 @@ int main()
     (std::ostringstream() << std::ifstream("test.json").rdbuf()).str()
   );
 
-  j50n::j50n j(s);
+  j50n j(s);
 
   std::cout << j["test"].view() << std::endl;
   std::cout << j["key"].view() << std::endl;
