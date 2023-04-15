@@ -37,7 +37,8 @@ class j50n
         }
         else if (k.size() && start)
         {
-          index = std::strncmp(start, k.begin(), k.size()) ? 2 : 0;
+          index = std::strncmp(start, k.begin(), cur - start) ? 2 : 0;
+
           start = {};
         }
 
@@ -233,7 +234,7 @@ public:
     s_ = std::forward<decltype(u)>(u); return *this;
   }
 
-  auto operator[](auto&& k) const noexcept
+  j50n operator[](auto&& k) const noexcept
   {
     using U = std::remove_cvref_t<decltype(k)>;
 
@@ -248,7 +249,7 @@ public:
   }
 
   //
-  bool is_valid() const noexcept { return s_.size(); }
+  bool is_valid() const noexcept { return !s_.empty(); }
 
   auto is_array() const noexcept { return is_valid() && ('[' == s_.front()); }
   auto is_object() const noexcept { return is_valid() && ('{' == s_.front()); }
