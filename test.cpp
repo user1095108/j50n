@@ -12,11 +12,11 @@ int main()
 
   j50n j(s);
 
-  std::cout << j["test"].view() << std::endl;
-  std::cout << j["key"].view() << std::endl;
-  std::cout << j["obj"].view() << std::endl;
-  std::cout << j["array"].view() << " " << j["array"].size() << std::endl;
-  std::cout << j["array"][0].view() << " " << j["array"][2].view() << std::endl;
+  std::cout << j["test"].raw() << std::endl;
+  std::cout << j["key"].raw() << std::endl;
+  std::cout << j["obj"].raw() << std::endl;
+  std::cout << j["array"].raw() << " " << j["array"].size() << std::endl;
+  std::cout << j["array"][0].raw() << " " << j["array"][2].raw() << std::endl;
 
   return 0;
 }

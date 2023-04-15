@@ -271,5 +271,5 @@ public:
     return is_string() ? decltype(s_)(std::next(s_.begin()), s_.end()) : s_;
   }
 
-  auto& view() const noexcept { return s_; }
+  auto& raw() const noexcept { return s_; }
 };
