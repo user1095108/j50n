@@ -56,7 +56,7 @@ class j50n
         }
         else if (!index)
         {
-          val = cur;
+          val = cur + i; // + i
         }
         else
         {
@@ -268,7 +268,6 @@ public:
   bool is_empty() const noexcept { return s_.empty(); }
   auto is_array() const noexcept { return !is_empty() && ('[' == s_.front()); }
   auto is_object() const noexcept { return !is_empty() && ('{' == s_.front());}
-  auto is_string() const noexcept { return !is_empty() && ('"' == s_.front());}
 
   //
   auto size() const noexcept
@@ -281,12 +280,7 @@ public:
   }
 
   //
-  auto get() const noexcept
-  {
-    return is_string() ? decltype(s_)(std::next(s_.begin()), s_.end()) : s_;
-  }
-
-  auto& raw() const noexcept { return s_; }
+  auto& get() const noexcept { return s_; }
 };
 
 #endif // J50N_HPP
