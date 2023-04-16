@@ -245,6 +245,9 @@ public:
   }
 
   //
+  auto& get() const noexcept { return s_; }
+
+  //
   j50n operator[](auto&& k) const noexcept
   {
     if constexpr(std::is_convertible_v<decltype(k), std::string_view>)
@@ -263,9 +266,6 @@ public:
 
     return ((r = r[std::forward<decltype(k)>(k)]), ...), r;
   }
-
-  //
-  auto& get() const noexcept { return s_; }
 
   //
   bool is_empty() const noexcept { return s_.empty(); }
