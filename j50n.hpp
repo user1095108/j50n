@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <cstring> // std::strncmp()
+#include <charconv> // std::from_chars()
 #include <iterator> // std::next()
 #include <ostream> // operator<<()
 #include <string_view>
@@ -243,6 +244,16 @@ public:
 
   //
   auto& get() const noexcept { return s_; }
+
+  template <typename U>
+  auto get() noexcept requires(std::is_arithmetic_v<std::remove_cvref_t<U>>)
+  {
+    U r;
+    auto const end(s_.end());
+    auto const err(std::from_chars(s_.begin(), end, r).ptr != end);
+
+    return std::pair(r, err);
+  }
 
   //
   j50n operator[](auto&& a) const noexcept
