@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstring> // std::strncmp()
 #include <iterator> // std::next()
+#include <ostream> // operator<<()
 #include <string_view>
 #include <type_traits>
 #include <utility> // std::forward()
@@ -276,6 +277,12 @@ public:
     if (is_array()) for (; !(*this)[i].is_empty(); ++i);
 
     return i;
+  }
+
+  //
+  friend auto& operator<<(std::ostream& os, j50n const& j)
+  {
+    return os << j.get();
   }
 };
 
