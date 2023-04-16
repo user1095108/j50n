@@ -16,6 +16,11 @@ class j50n
   struct S
   {
 
+  static auto range(auto const x, decltype(x) s, decltype(x) e) noexcept
+  {
+    return (x >= s) && (x <= e);
+  }
+
   static std::string_view find(std::string_view const& s,
     std::string_view const& k, std::size_t index = 1) noexcept
   {
@@ -57,12 +62,6 @@ class j50n
         {
           --index;
         }
-      }
-    );
-
-    auto const range([](auto const x, decltype(x) s, decltype(x) e) noexcept
-      {
-        return (x >= s) && (x <= e);
       }
     );
 
@@ -262,9 +261,7 @@ public:
   {
     auto r((*this)[std::forward<decltype(k0)>(k0)]);
 
-    ((r = r[std::forward<decltype(k)>(k)]), ...);
-
-    return r;
+    return ((r = r[std::forward<decltype(k)>(k)]), ...), r;
   }
 
   //
