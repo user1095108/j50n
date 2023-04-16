@@ -33,10 +33,10 @@ class j50n
         { //r = {val, cur + i + 1};
           return true;
         }
-        else if (k.size() && start)
+        else if (auto const ks(k.size()); ks && start)
         {
-          index = (k.size() != std::size_t(cur - start)) ||
-            std::strncmp(start, k.begin(), k.size()) ? 2 : 0;
+          index = (ks != std::size_t(cur - start)) ||
+            std::strncmp(start, k.begin(), ks) ? 2 : 0;
           start = {};
         }
 
