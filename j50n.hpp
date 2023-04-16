@@ -27,14 +27,10 @@ class j50n
     char const* val{};
     auto cur(s.begin()), start(cur);
 
-    std::string_view r;
-
-    auto const cap([&](std::size_t const i) noexcept
+    auto const cap([&](std::size_t const) noexcept
       {
         if (val && !index)
-        {
-          r = {val, cur + i + 1};
-
+        { //r = {val, cur + i + 1};
           return true;
         }
         else if (k.size() && start)
@@ -190,7 +186,7 @@ class j50n
 
       l_down:
       --depth;
-      if ((1 == depth) && cap(0)) return r;
+      if ((1 == depth) && cap(0)) return {val, cur + 1};
       continue;
 
       l_qup:
@@ -199,7 +195,7 @@ class j50n
       continue;
 
       l_qdown:
-      if ((1 == depth) && cap(-1)) return r;
+      if ((1 == depth) && cap(-1)) return {val, cur};
       state = S_STRUCT;
       continue;
 
@@ -209,7 +205,7 @@ class j50n
       continue;
 
       l_unbare:
-      if ((1 == depth) && cap(-1)) return r;
+      if ((1 == depth) && cap(-1)) return {val, cur};
       state = S_STRUCT;
       goto again;
     }
