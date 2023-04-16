@@ -224,7 +224,7 @@ public:
 
   j50n(auto&& ...s)
     noexcept(noexcept(decltype(s_)(std::forward<decltype(s)>(s)...)))
-    requires(std::is_constructible_v<decltype(s_), decltype(s)&&...>):
+    requires(std::is_constructible_v<decltype(s_), decltype(s)...>):
     s_(std::forward<decltype(s)>(s)...)
   {
   }
@@ -235,7 +235,7 @@ public:
 
   j50n& operator=(auto&& u)
     noexcept(noexcept(s_ = std::forward<decltype(u)>(u)))
-    requires(std::is_assignable_v<decltype(s_), decltype(u)&&>)
+    requires(std::is_assignable_v<decltype(s_), decltype(u)>)
   {
     s_ = std::forward<decltype(u)>(u); return *this;
   }
