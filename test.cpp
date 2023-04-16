@@ -6,10 +6,7 @@
 
 int main()
 {
-  auto const s(
-    (std::ostringstream() << std::ifstream("test.json").rdbuf()).str()
-  );
-
+  auto const s((std::ostringstream() << std::ifstream("test.json").rdbuf()).str());
   j50n j(s);
 
   std::cout << j["bool"].get() << std::endl;
