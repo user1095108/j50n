@@ -245,23 +245,23 @@ public:
   auto& get() const noexcept { return s_; }
 
   //
-  j50n operator[](auto&& k) const noexcept
+  j50n operator[](auto&& a) const noexcept
   {
-    if constexpr(std::is_convertible_v<decltype(k), std::string_view>)
+    if constexpr(std::is_convertible_v<decltype(a), std::string_view>)
     {
-      return S::find(s_, std::forward<decltype(k)>(k));
+      return S::find(s_, std::forward<decltype(a)>(a));
     }
     else
     {
-      return S::find(s_, {}, std::forward<decltype(k)>(k));
+      return S::find(s_, {}, std::forward<decltype(a)>(a));
     }
   }
 
-  auto find(auto&& k0, auto&& ...k) const noexcept
+  auto find(auto&& a, auto&& ...b) const noexcept
   {
-    auto r((*this)[std::forward<decltype(k0)>(k0)]);
+    auto r((*this)[std::forward<decltype(a)>(a)]);
 
-    return ((r = r[std::forward<decltype(k)>(k)]), ...), r;
+    return ((r = r[std::forward<decltype(b)>(b)]), ...), r;
   }
 
   //
