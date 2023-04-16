@@ -265,6 +265,9 @@ public:
   }
 
   //
+  auto& get() const noexcept { return s_; }
+
+  //
   bool is_empty() const noexcept { return s_.empty(); }
   auto is_array() const noexcept { return !is_empty() && ('[' == s_.front()); }
   auto is_object() const noexcept { return !is_empty() && ('{' == s_.front());}
@@ -278,9 +281,6 @@ public:
 
     return i;
   }
-
-  //
-  auto& get() const noexcept { return s_; }
 };
 
 #endif // J50N_HPP
