@@ -13,10 +13,9 @@ int main()
   std::cout << j["foo"] << std::endl;
   std::cout << j["test"] << std::endl;
   std::cout << j["key"] << std::endl;
-  std::cout << j["obj"] << std::endl;
+  std::cout << j["obj"] << " " << j.find("obj", "true") << std::endl;
   std::cout << j["array"] << " " << j["array"].size() << std::endl;
   std::cout << j.find("array", 0) << " " << j["array"][2] << std::endl;
-  std::cout << j.find("obj", "true") << std::endl;
 
   return 0;
 }
