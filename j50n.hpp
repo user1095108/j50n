@@ -24,7 +24,6 @@ class j50n
   static std::string_view find(std::string_view const& s,
     std::string_view const& k, std::size_t index = 1) noexcept
   {
-    char const* val{};
     auto cur(s.begin()), start(cur);
 
     auto const cap([&]() noexcept
@@ -43,6 +42,8 @@ class j50n
         return false;
       }
     );
+
+    char const* val{};
 
     auto const push([&](std::size_t const i) noexcept
       {
