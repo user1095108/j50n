@@ -246,8 +246,7 @@ public:
   auto& get() const noexcept { return s_; }
 
   template <typename U>
-  auto get() const noexcept
-    requires(std::is_arithmetic_v<std::remove_cvref_t<U>>)
+  auto get() const noexcept requires(std::is_arithmetic_v<U>)
   {
     U r;
     auto const end(s_.end());
