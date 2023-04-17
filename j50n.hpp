@@ -246,7 +246,8 @@ public:
   auto& get() const noexcept { return s_; }
 
   template <typename U>
-  auto get() const noexcept requires(std::is_arithmetic_v<U>)
+  auto get() const noexcept
+    requires(std::is_arithmetic_v<U> && !std::is_same_v<bool, U>)
   {
     U r;
     auto const end(s_.end());
