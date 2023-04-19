@@ -243,20 +243,6 @@ public:
   }
 
   //
-  auto& get() const noexcept { return s_; }
-
-  template <typename U>
-  auto get() const noexcept
-    requires(std::is_arithmetic_v<U> && !std::is_same_v<bool, U>)
-  {
-    U r;
-    auto const end(s_.end());
-    auto const err(std::from_chars(s_.begin(), end, r).ptr != end);
-
-    return std::pair(r, err);
-  }
-
-  //
   j50n operator[](auto&& a) const noexcept
   {
     if constexpr(std::is_convertible_v<decltype(a), std::string_view>)
@@ -269,11 +255,28 @@ public:
     }
   }
 
-  auto find(auto&& a, auto&& ...b) const noexcept
+  auto& get() const noexcept { return s_; }
+
+  auto get(auto&& a, auto&& ...b) const noexcept
   {
     auto r((*this)[std::forward<decltype(a)>(a)]);
 
-    return ((r = r[std::forward<decltype(b)>(b)]), ...), r;
+    return ((r = r[std::forward<decltype(b)>(b)]), ...), r.s_;
+  }
+
+  template <typename U>
+  auto get(auto&& a, auto&& ...b) const noexcept
+    requires(std::is_arithmetic_v<U> && !std::is_same_v<bool, U>)
+  {
+    auto const s(
+      get(std::forward<decltype(a)>(a), std::forward<decltype(b)>(b)...)
+    );
+
+    U r;
+    auto const end(s.end());
+    auto const err(std::from_chars(s.begin(), end, r).ptr != end);
+
+    return std::pair(r, err);
   }
 
   //
