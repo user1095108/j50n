@@ -255,6 +255,12 @@ public:
     }
   }
 
+  //
+  bool is_empty() const noexcept { return s_.empty(); }
+  auto is_array() const noexcept { return !is_empty() && ('[' == s_.front()); }
+  auto is_object() const noexcept { return !is_empty() && ('{' == s_.front());}
+
+  //
   auto& get() const noexcept { return s_; }
 
   auto get(auto&& a, auto&& ...b) const noexcept
@@ -278,11 +284,6 @@ public:
 
     return std::pair(r, err);
   }
-
-  //
-  bool is_empty() const noexcept { return s_.empty(); }
-  auto is_array() const noexcept { return !is_empty() && ('[' == s_.front()); }
-  auto is_object() const noexcept { return !is_empty() && ('{' == s_.front());}
 
   //
   auto size() const noexcept
