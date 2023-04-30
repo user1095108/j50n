@@ -281,9 +281,8 @@ public:
     );
 
     U r;
-    auto const err(std::from_chars(s.begin(), s.end(), r).ec != ok);
 
-    return std::pair(r, err);
+    return std::pair(r, std::from_chars(s.begin(), s.end(), r).ec != ok);
   }
 
   //
