@@ -279,8 +279,8 @@ public:
     );
 
     U r;
-    auto const end(s.end());
-    auto const err(std::from_chars(s.begin(), end, r).ptr != end);
+    auto const e(s.end());
+    auto const err(s.empty() || std::from_chars(s.begin(), e, r).ptr != e);
 
     return std::pair(r, err);
   }
