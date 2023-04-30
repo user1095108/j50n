@@ -280,7 +280,7 @@ public:
 
     U r;
     auto const e(s.end());
-    auto const err(s.empty() || std::from_chars(s.begin(), e, r).ptr != e);
+    auto const err(std::from_chars(s.begin(), e, r).ec == std::errc());
 
     return std::pair(r, err);
   }
