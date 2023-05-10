@@ -271,14 +271,12 @@ public:
   }
 
   template <typename U>
-  auto get(auto&& a, auto&& ...b) const noexcept
+  auto get(auto&& ...a) const noexcept
     requires(std::is_arithmetic_v<U> && !std::is_same_v<bool, U>)
   {
     static constinit std::errc const ok{};
 
-    auto const s(
-      get(std::forward<decltype(a)>(a), std::forward<decltype(b)>(b)...)
-    );
+    auto const s(get(std::forward<decltype(a)>(a)...));
 
     U r;
 
@@ -293,6 +291,63 @@ public:
     if (is_array()) for (; !(*this)[i].is_empty(); ++i);
 
     return i;
+  }
+
+  //
+  void feach(auto f) const
+    noexcept(noexcept(f(std::declval<j50n const&>())))
+    requires(requires{f(std::declval<j50n const&>());})
+  {
+    if (is_array())
+    {
+      for (std::size_t i{};; ++i)
+      {
+        if (auto const e((*this)[i]); e.is_empty())
+        {
+          break;
+        }
+        else
+        {
+          if constexpr(std::is_same_v<bool,
+            decltype(f(std::declval<j50n const&>()))>)
+          {
+            if (f(e)) break;
+          }
+          else
+          {
+            f(e);
+          }
+        }
+      }
+    }
+  }
+
+  void feach(auto f) const
+    noexcept(noexcept(f(std::declval<j50n const&>(), {})))
+    requires(requires{f(std::declval<j50n const&>(), {});})
+  {
+    if (is_array())
+    {
+      for (std::size_t i{};; ++i)
+      {
+        if (auto const e((*this)[i]); e.is_empty())
+        {
+          break;
+        }
+        else
+        {
+          if constexpr(std::is_same_v<bool,
+            decltype(f(std::declval<j50n const&>(), {}))>)
+          {
+            if (f(e, i)) break;
+          }
+          else
+          {
+            f(e, i);
+          }
+        }
+      }
+    }
   }
 
   //
