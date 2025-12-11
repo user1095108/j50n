@@ -31,16 +31,12 @@ class j50n
 
     auto const cap([&]() noexcept
       {
-        if (val && !index)
-        { //r = {val, cur + i + 1};
+        if (val && !index) //r = {val, cur + i + 1};
           return true;
-        }
         else if (auto const ks(k.size()); ks && start)
-        {
           index = (ks != std::size_t(cur - start)) ||
-            std::strncmp(start, k.begin(), ks) ? 2 : 0;
+            std::strncmp(start, k.begin(), ks) ? 2 : 0,
           start = {};
-        }
 
         return false;
       }
@@ -49,17 +45,11 @@ class j50n
     auto const push([&](std::size_t const i) noexcept
       {
         if (k.size() && (1 == index))
-        {
           start = cur + i;
-        }
         else if (!index)
-        {
           val = cur + i; // + i
-        }
         else
-        {
           --index;
-        }
       }
     );
 
@@ -246,13 +236,9 @@ public:
   j50n operator[](auto&& a) const noexcept
   {
     if constexpr(std::is_convertible_v<decltype(a), std::string_view>)
-    {
       return S::find(s_, std::forward<decltype(a)>(a));
-    }
     else
-    {
       return S::find(s_, {}, std::forward<decltype(a)>(a));
-    }
   }
 
   //
@@ -299,27 +285,14 @@ public:
     requires(requires{f(std::declval<j50n const&>());})
   {
     if (is_array())
-    {
       for (std::size_t i{};; ++i)
-      {
         if (auto const e((*this)[i]); e.is_empty())
-        {
           break;
-        }
+        else if constexpr(std::is_same_v<bool,
+          decltype(f(std::declval<j50n const&>()))>)
+          if (f(e)) break;
         else
-        {
-          if constexpr(std::is_same_v<bool,
-            decltype(f(std::declval<j50n const&>()))>)
-          {
-            if (f(e)) break;
-          }
-          else
-          {
-            f(e);
-          }
-        }
-      }
-    }
+          f(e);
   }
 
   void feach(auto f) const
@@ -329,28 +302,15 @@ public:
       std::declval<std::size_t>());})
   {
     if (is_array())
-    {
       for (std::size_t i{};; ++i)
-      {
         if (auto const e((*this)[i]); e.is_empty())
-        {
           break;
-        }
+        else if constexpr(std::is_same_v<bool,
+          decltype(f(std::declval<j50n const&>(),
+            std::declval<std::size_t>()))>)
+          if (f(e, i)) break;
         else
-        {
-          if constexpr(std::is_same_v<bool,
-            decltype(f(std::declval<j50n const&>(),
-              std::declval<std::size_t>()))>)
-          {
-            if (f(e, i)) break;
-          }
-          else
-          {
-            f(e, i);
-          }
-        }
-      }
-    }
+          f(e, i);
   }
 
   //
