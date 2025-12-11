@@ -34,7 +34,7 @@ class j50n
         if (val && !index) //r = {val, cur + i + 1};
           return true;
         else if (auto const ks(k.size()); ks && start)
-          index = (ks != std::size_t(cur - start)) ||
+          index = (ks != std::string_view::size_type(cur - start)) ||
             std::strncmp(start, k.begin(), ks) ? 2 : 0,
           start = {};
 
