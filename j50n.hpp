@@ -291,6 +291,7 @@ public:
     requires(requires{f(std::declval<j50n const&>());})
   {
     if (is_array())
+    {
       for (std::size_t i{};; ++i)
         if (auto const e((*this)[i]); e.is_empty())
           break;
@@ -301,6 +302,7 @@ public:
         }
         else
           f(e);
+    }
   }
 
   void feach(auto f) const
@@ -310,6 +312,7 @@ public:
       std::declval<std::size_t>());})
   {
     if (is_array())
+    {
       for (std::size_t i{};; ++i)
         if (auto const e((*this)[i]); e.is_empty())
           break;
@@ -321,6 +324,7 @@ public:
         }
         else
           f(e, i);
+    }
   }
 
   //
