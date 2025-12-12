@@ -290,7 +290,9 @@ public:
           break;
         else if constexpr(std::is_same_v<bool,
           decltype(f(std::declval<j50n const&>()))>)
+        {
           if (f(e)) break;
+        }
         else
           f(e);
   }
@@ -308,7 +310,9 @@ public:
         else if constexpr(std::is_same_v<bool,
           decltype(f(std::declval<j50n const&>(),
             std::declval<std::size_t>()))>)
+        {
           if (f(e, i)) break;
+        }
         else
           f(e, i);
   }
