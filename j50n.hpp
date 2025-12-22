@@ -259,7 +259,7 @@ public:
   {
     auto r((*this)[std::forward<decltype(a)>(a)]);
 
-    return ((r = r[std::forward<decltype(b)>(b)]), ...), r.s_;
+    return ((r = r[std::forward<decltype(b)>(b)]), ...).s_;
   }
 
   template <typename U>
