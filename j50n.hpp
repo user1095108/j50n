@@ -168,7 +168,7 @@ class j50n
       }
       assert (0);
       l_bad:
-      assert(!"bad");
+      assert("bad");
       return {};
 
       l_up:
