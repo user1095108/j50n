@@ -214,6 +214,8 @@ public:
   j50n(j50n const&) = default;
   j50n(j50n&&) = default;
 
+  template <std::size_t N> j50n(char const(&a)[N]) noexcept: s_(a, N - 1) { }
+
   j50n(auto&& ...s)
     noexcept(noexcept(decltype(s_)(std::forward<decltype(s)>(s)...)))
     requires(std::is_constructible_v<decltype(s_), decltype(s)...>):
