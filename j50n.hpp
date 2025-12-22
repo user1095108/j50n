@@ -264,7 +264,8 @@ public:
 
   template <typename U>
   auto get(auto&& ...a) const noexcept
-    requires(std::is_arithmetic_v<U> && !std::is_same_v<bool, U>)
+    requires(!!sizeof...(a) && std::is_arithmetic_v<U> &&
+      !std::is_same_v<bool, U>)
   {
     auto const s(get(std::forward<decltype(a)>(a)...));
 
