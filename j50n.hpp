@@ -266,13 +266,13 @@ public:
   auto get(auto&& ...a) const noexcept
     requires(std::is_arithmetic_v<U> && !std::is_same_v<bool, U>)
   {
-    static constinit std::errc const ok{};
-
     auto const s(get(std::forward<decltype(a)>(a)...));
 
     U r;
 
-    return std::pair(r, std::from_chars(s.begin(), s.end(), r).ec != ok);
+    auto const q(std::from_chars(s.begin(), s.end(), r).ec != std::errc{});
+
+    return std::pair(r, q);
   }
 
   //
