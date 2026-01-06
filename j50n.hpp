@@ -227,6 +227,12 @@ public:
   j50n& operator=(j50n const&) = default;
   j50n& operator=(j50n&&) = default;
 
+  template <std::size_t N>
+  j50n& operator=(char const(&a)[N]) noexcept
+  {
+    s_ = {a, N - 1}; return *this;
+  }
+
   j50n& operator=(auto&& u)
     noexcept(noexcept(s_ = std::forward<decltype(u)>(u)))
     requires(std::is_assignable_v<decltype(s_), decltype(u)>)
