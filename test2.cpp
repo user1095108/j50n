@@ -33,7 +33,11 @@ int main()
 
     auto [p, perr] = root.get<double>("pi");
     std::cout << "pi double = " << p
-              << " (error=" << perr << ")\n\n";
+              << " (error=" << perr << ")\n";
+
+    auto [q, qerr] = root["pi"].get<double>();
+    std::cout << "pi double = " << q
+              << " (error=" << qerr << ")\n\n";
   }
 
   std::cout << "== Array access ==\n";
