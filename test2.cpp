@@ -55,7 +55,7 @@ int main()
   std::cout << "\n\n";
 
   std::cout << "== feach(element, index) ==\n";
-  numbers.feach([](j50n const& e, std::size_t i) {
+  numbers.feach([](j50n const& e, std::size_t const i) {
     std::cout << "[" << i << "]=" << e << " ";
   });
   std::cout << "\n\n";
@@ -63,7 +63,7 @@ int main()
   std::cout << "== Array of objects ==\n";
   j50n objects = root["objects"];
 
-  objects.feach([](j50n const& obj, std::size_t i) {
+  objects.feach([](j50n const& obj, std::size_t const i) {
     std::cout << "objects[" << i << "]: "
               << "id=" << obj["id"]
               << ", value=" << obj["value"]
