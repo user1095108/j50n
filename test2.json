@@ -1,0 +1,20 @@
+{
+  "name": "j50n-test",
+  "version": 1,
+  "pi": 3.14159,
+  "active": true,
+  "utf8": "héllø 🌍",
+  "numbers": [1, 2, 3, 4, 5],
+  "objects": [
+    { "id": 1, "value": 10 },
+    { "id": 2, "value": 20 },
+    { "id": 3, "value": 30 }
+  ],
+  "nested": {
+    "a": {
+      "b": {
+        "c": "deep"
+      }
+    }
+  }
+}
