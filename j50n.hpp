@@ -339,10 +339,8 @@ public:
 
 //////////////////////////////////////////////////////////////////////////////
 auto& operator<<(std::ostream& os, j50n const& j)
-{
-  if (std::ostream::sentry s(os); s) os << j.get();
-
-  return os;
+{ // !!!
+  return os << j.get();
 }
 
 #endif // J50N_HPP
