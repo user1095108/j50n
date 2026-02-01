@@ -335,12 +335,12 @@ public:
           f(e, i);
     }
   }
-
-  //
-  friend auto& operator<<(std::ostream& os, j50n const& j)
-  {
-    return os << j.get();
-  }
 };
+
+//////////////////////////////////////////////////////////////////////////////
+auto& operator<<(std::ostream& os, j50n const& j)
+{
+  if (std::ostream::sentry s(os); s) os << j.get(); return os;
+}
 
 #endif // J50N_HPP
