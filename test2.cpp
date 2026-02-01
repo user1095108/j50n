@@ -27,15 +27,15 @@ int main()
 
   std::cout << "== Numeric parsing ==\n";
   {
-    auto [v, err] = root.get<int>("version");
+    auto const [v, err] = root.get<int>("version");
     std::cout << "version int = " << v
               << " (error=" << err << ")\n";
 
-    auto [p, perr] = root.get<double>("pi");
+    auto const [p, perr] = root.get<double>("pi");
     std::cout << "pi double = " << p
               << " (error=" << perr << ")\n";
 
-    auto [q, qerr] = root["pi"].get<double>();
+    auto const [q, qerr] = root["pi"].get<double>();
     std::cout << "pi double = " << q
               << " (error=" << qerr << ")\n\n";
   }

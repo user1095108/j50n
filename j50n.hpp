@@ -216,10 +216,10 @@ public:
 
   template <std::size_t N> j50n(char const(&a)[N]) noexcept: s_(a, N - 1) { }
 
-  j50n(auto&& ...s)
-    noexcept(noexcept(decltype(s_)(std::forward<decltype(s)>(s)...)))
-    requires(std::is_constructible_v<decltype(s_), decltype(s)...>):
-    s_(std::forward<decltype(s)>(s)...)
+  j50n(auto&& ...a)
+    noexcept(noexcept(decltype(s_)(std::forward<decltype(a)>(a)...)))
+    requires std::is_constructible_v<decltype(s_), decltype(a)&&...>:
+    s_(std::forward<decltype(a)>(a)...)
   {
   }
 
@@ -233,11 +233,11 @@ public:
     s_ = {a, N - 1}; return *this;
   }
 
-  j50n& operator=(auto&& u)
-    noexcept(noexcept(s_ = std::forward<decltype(u)>(u)))
-    requires(std::is_assignable_v<decltype(s_), decltype(u)>)
+  j50n& operator=(auto&& a)
+    noexcept(noexcept(s_ = std::forward<decltype(a)>(a)))
+    requires std::is_assignable_v<decltype(s_), decltype(a)&&>
   {
-    s_ = std::forward<decltype(u)>(u); return *this;
+    s_ = std::forward<decltype(a)>(a); return *this;
   }
 
   //
