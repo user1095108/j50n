@@ -1,9 +1,8 @@
 # j50n
 
-A lightweight, header-only C++ JSON parser built on `std::string_view`. Zero allocations, zero dependencies beyond the standard library.
-This repository implements ideas related to the fantastic [js0n](https://github.com/quartzjer/js0n) library and its [fork](https://github.com/nigoroll/js0n/tree/pr_case).
+A lightweight, header-only C++ JSON parser built on `std::string_view`. Zero allocations, zero dependencies beyond the standard library. It implements ideas related to the fantastic [js0n](https://github.com/quartzjer/js0n) library and its [fork](https://github.com/nigoroll/js0n/tree/pr_case).
 
-The essence of js0n is its [FSM](https://en.wikipedia.org/wiki/Finite-state_machine)  implementation. This implementation could be improved, but, for now, we rely on the original.
+The essence of js0n is its [FSM](https://en.wikipedia.org/wiki/Finite-state_machine)  implementation. This FSM could be improved, but, for now, we rely on the original.
 
 ## Features
 
@@ -15,7 +14,7 @@ The essence of js0n is its [FSM](https://en.wikipedia.org/wiki/Finite-state_mach
 
 ## Requirements
 
-- C++20 compiler (GCC 10+, Clang 12+, MSVC 19.29+)
+- C++20 compiler
 
 ## Installation
 
