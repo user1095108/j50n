@@ -1,180 +1,100 @@
 # j50n
+
+A lightweight, header-only C++ JSON parser built on `std::string_view`. Zero allocations, zero dependencies beyond the standard library.
 This repository implements ideas related to the fantastic [js0n](https://github.com/quartzjer/js0n) library and its [fork](https://github.com/nigoroll/js0n/tree/pr_case).
 
 The essence of js0n is its [FSM](https://en.wikipedia.org/wiki/Finite-state_machine)  implementation. This implementation could be improved, but, for now, we rely on the original.
-# build instructions
-``g++ -std=c++20 test.cpp -o t``
 
-# j50n --- Minimal Zero-Allocation JSON View
+## Features
 
-## Overview
+- **Header-only** — drop `j50n.hpp` into your project and go
+- **Zero-copy** — operates entirely on `std::string_view`; no heap allocations
+- **Non-validating** — designed for speed and simplicity over strict RFC 8259 compliance
+- **UTF-8 aware** — handles multi-byte sequences inside strings
+- **C++20** — uses concepts, `std::from_chars`, and abbreviated function templates
 
-`j50n` is a lightweight, non-owning JSON accessor built on top of
-`std::string_view`.\
-It enables zero-allocation navigation and on-demand lookup within JSON
-text.
+## Requirements
 
-### Key Characteristics
+- C++20 compiler (GCC 10+, Clang 12+, MSVC 19.29+)
 
--   Zero dynamic memory allocation
--   Non-owning (`std::string_view`-based)
--   Depth-scanning structural lookup
--   Optional numeric extraction via `std::from_chars()`
--   Functional-style array iteration
+## Installation
 
-This is **not** a full JSON parser: - No DOM construction - No mutation
-support - No full validation - Assumes structurally valid JSON (enforced
-via `assert`)
-
-------------------------------------------------------------------------
-
-## Storage Model
-
-``` cpp
-std::string_view s_;
+Copy `j50n.hpp` into your include path. No build system integration required.
+```cpp
+#include "j50n.hpp"
 ```
 
-`j50n` stores only a view into externally owned memory.
+## Usage
 
-⚠ The underlying JSON buffer must outlive the `j50n` instance.
-
-------------------------------------------------------------------------
-
-## Construction
-
-### Default
-
-``` cpp
-j50n() = default;
+### Construction
+```cpp
+j50n j(R"({"name":"Alice","age":30,"scores":[10,20,30]})");
 ```
 
-### From String Literal
+`j50n` wraps any type constructible as a `std::string_view`, including string literals, `std::string`, and `std::string_view` itself.
 
-``` cpp
-template <std::size_t N>
-j50n(char const(&a)[N]) noexcept;
+### Accessing object fields
+```cpp
+auto name = j["name"];   // j50n wrapping "Alice"
+auto age  = j["age"];    // j50n wrapping 30
 ```
 
-### Generic Constructor
-
-``` cpp
-j50n(auto&& ...a);
+### Accessing array elements
+```cpp
+auto first = j["scores"][0];   // j50n wrapping 10
 ```
 
-Enabled when `std::string_view(std::forward<decltype(a)>(a)...)` is constructible.
-
-------------------------------------------------------------------------
-
-## Navigation
-
-### Object Member Lookup
-
-``` cpp
-j["key"]
+### Chained access
+```cpp
+auto sv = j.get("scores", 1);  // std::string_view "20"
 ```
 
-Returns a new `j50n` referencing the associated value.
-
-### Array Index Lookup
-
-``` cpp
-j[index]
+### Numeric extraction
+```cpp
+auto [value, error] = j.get<int>("age");
+// value == 30, error == false on success
 ```
 
-Returns the element at `index`.
+`get<U>()` uses `std::from_chars` internally and returns a `std::pair<U, bool>` where the second element is `true` on failure.
 
-### Chained Lookup
+### Iterating arrays
+```cpp
+// Without index
+j["scores"].feach([](j50n const& elem) {
+    std::cout << elem << '\n';
+});
 
-``` cpp
-auto result = j.get("a", "b", 0, "c");
+// With index
+j["scores"].feach([](j50n const& elem, std::size_t i) {
+    std::cout << i << ": " << elem << '\n';
+});
 ```
 
-Equivalent to:
-
-``` cpp
-auto result = j["a"]["b"][0]["c"].get();
+Both overloads support early termination by returning `bool`:
+```cpp
+j["scores"].feach([](j50n const& elem) -> bool {
+    if (elem.get() == "30") return true;  // stop
+    std::cout << elem << '\n';
+    return false;
+});
 ```
 
-------------------------------------------------------------------------
-
-## Type Introspection
-
-``` cpp
-bool is_empty() const noexcept;
-bool is_array() const noexcept;
-bool is_object() const noexcept;
+### Array size
+```cpp
+auto n = j["scores"].size();  // 3
 ```
 
--   `is_empty()` --- no value found
--   `is_array()` --- first character `'['`
--   `is_object()` --- first character `'{'`
-
-------------------------------------------------------------------------
-
-## Numeric Extraction
-
-``` cpp
-template <typename U>
-auto get(auto&& ...a) const noexcept;
+### Type checks
+```cpp
+j["scores"].is_array();    // true
+j["scores"].is_object();   // false
+j["name"].is_empty();      // false — empty means parse failed / key not found
 ```
 
-For arithmetic types (excluding `bool`).
-
-Example:
-
-``` cpp
-auto [value, error] = j.get<int>("a", "b");
+### Output
+```cpp
+std::cout << j["name"] << '\n';  // prints: Alice
 ```
-
-Returns:
-
-``` cpp
-std::pair<U, bool>
-```
-
-Uses `std::from_chars()` (no locale, no allocation).
-
-------------------------------------------------------------------------
-
-## Array Utilities
-
-### Size
-
-``` cpp
-auto size() const noexcept;
-```
-
-⚠ Worst-case complexity: O(n²)
-
-### Iteration
-
-``` cpp
-void feach(auto f) const;
-```
-
-Supports:
-
--   `f(element)`
--   `f(element, index)`
-
-Returning `true` stops iteration early.
-
-⚠ Worst-case complexity: O(n²)
-
-------------------------------------------------------------------------
-
-## Performance Notes
-
-| Operation | Complexity |
-| :--- | :--- |
-| Key lookup | O(n) |
-| Index lookup | O(n) |
-| size() | O(n²) |
-| feach() | O(n²) |
-
-Best suited for small, trusted JSON payloads.
-
-------------------------------------------------------------------------
 
 ## Example
 
@@ -203,19 +123,32 @@ int main()
     return 0;
 }
 ```
+## API Reference
 
-------------------------------------------------------------------------
+| Method | Description |
+|---|---|
+| `operator[](key)` | Access object field by string key |
+| `operator[](n)` | Access array element by zero-based index |
+| `get()` | Returns the underlying `std::string_view` |
+| `get(a, b, ...)` | Chained key/index access, returns `std::string_view` |
+| `get<U>(...)` | Numeric extraction via `std::from_chars`, returns `std::pair<U, bool>` |
+| `size()` | Number of elements in an array (O(n)) |
+| `is_empty()` | True if the view is empty (key not found or parse error) |
+| `is_array()` | True if the value starts with `[` |
+| `is_object()` | True if the value starts with `{` |
+| `feach(f)` | Iterate array elements; supports early exit via `bool` return |
+## Performance Notes
 
+| Operation | Time Complexity |
+| :--- | :--- |
+| Key lookup | O(n) |
+| Index lookup | O(n) |
+| size() | O(n²) |
+| feach() | O(n²) |
 ## Limitations
 
--   No mutation
--   No schema validation
--   No JSON generation
--   Relies on `assert` for structural correctness
-
-------------------------------------------------------------------------
-
-## Summary
-
-`j50n` is a compact, zero-allocation JSON view designed for minimal
-overhead and trusted input scenarios.
+- **Read-only** — no serialization or mutation
+- **Non-owning** — the source string must outlive any `j50n` instance derived from it
+- **Not strictly validating** — malformed JSON may produce unexpected results rather than errors
+- Duplicate keys: the first matching key is returned
+- No support for `null` as a distinct type — it parses as a bare value string `"null"`
