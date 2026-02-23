@@ -131,11 +131,11 @@ int main()
 | `get()` | Returns the underlying `std::string_view` |
 | `get(a, b, ...)` | Chained key/index access, returns `std::string_view` |
 | `get<U>(...)` | Numeric extraction via `std::from_chars`, returns `std::pair<U, bool>` |
-| `size()` | Number of elements in an array (O(n)) |
+| `size()` | Number of elements in an array (O(n²)) |
 | `is_empty()` | True if the view is empty (key not found or parse error) |
 | `is_array()` | True if the value starts with `[` |
 | `is_object()` | True if the value starts with `{` |
-| `feach(f)` | Iterate array elements; supports early exit via `bool` return |
+| `feach(f)` | Iterate array elements (O(n²)); supports early exit via `bool` return |
 ## Performance Notes
 
 | Operation | Time Complexity |
