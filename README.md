@@ -10,7 +10,6 @@ The essence of js0n is its [FSM](https://en.wikipedia.org/wiki/Finite-state_mach
 - **Zero-copy** — operates entirely on `std::string_view`; no heap allocations
 - **Non-validating** — designed for speed and simplicity over strict RFC 8259 compliance
 - **UTF-8 aware** — handles multi-byte sequences inside strings
-- **C++20** — uses concepts, `std::from_chars`, and abbreviated function templates
 
 ## Requirements
 
