@@ -25,30 +25,30 @@ Copy `j50n.hpp` into your include path. No build system integration required.
 ## Usage
 
 ### Construction
-```cpp
+```c++
 j50n j(R"({"name":"Alice","age":30,"scores":[10,20,30]})");
 ```
 
 `j50n` wraps any type constructible as a `std::string_view`, including string literals, `std::string`, and `std::string_view` itself.
 
 ### Accessing object fields
-```cpp
+```c++
 auto name = j["name"];   // j50n wrapping "Alice"
 auto age  = j["age"];    // j50n wrapping 30
 ```
 
 ### Accessing array elements
-```cpp
+```c++
 auto first = j["scores"][0];   // j50n wrapping 10
 ```
 
 ### Chained access
-```cpp
+```c++
 auto sv = j.get("scores", 1);  // std::string_view "20"
 ```
 
 ### Numeric extraction
-```cpp
+```c++
 auto [value, error] = j.get<int>("age");
 // value == 30, error == false on success
 ```
@@ -56,7 +56,7 @@ auto [value, error] = j.get<int>("age");
 `get<U>()` uses `std::from_chars` internally and returns a `std::pair<U, bool>` where the second element is `true` on failure.
 
 ### Iterating arrays
-```cpp
+```c++
 // Without index
 j["scores"].feach([](j50n const& elem) {
     std::cout << elem << '\n';
@@ -69,7 +69,7 @@ j["scores"].feach([](j50n const& elem, std::size_t i) {
 ```
 
 Both overloads support early termination by returning `bool`:
-```cpp
+```c++
 j["scores"].feach([](j50n const& elem) -> bool {
     if (elem.get() == "30") return true;  // stop
     std::cout << elem << '\n';
@@ -78,25 +78,25 @@ j["scores"].feach([](j50n const& elem) -> bool {
 ```
 
 ### Array size
-```cpp
+```c++
 auto n = j["scores"].size();  // 3
 ```
 
 ### Type checks
-```cpp
+```c++
 j["scores"].is_array();    // true
 j["scores"].is_object();   // false
 j["name"].is_empty();      // false — empty means parse failed / key not found
 ```
 
 ### Output
-```cpp
+```c++
 std::cout << j["name"] << '\n';  // prints: Alice
 ```
 
 ## Example
 
-``` cpp
+``` c++
 #include "j50n.hpp"
 #include <iostream>
 
