@@ -61,7 +61,7 @@ j50n(char const(&a)[N]) noexcept;
 j50n(auto&& ...a);
 ```
 
-Enabled when constructible as `std::string_view`.
+Enabled when `std::string_view(std::forward<decltype(a)>(a)...)` is constructible.
 
 ------------------------------------------------------------------------
 
