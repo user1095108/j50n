@@ -199,6 +199,8 @@ int main()
     j["values"].feach([](j50n const& e, std::size_t i){
         std::cout << i << ": " << e << "\n";
     });
+
+    return 0;
 }
 ```
 
