@@ -18,7 +18,7 @@ The essence of js0n is its [FSM](https://en.wikipedia.org/wiki/Finite-state_mach
 ## Installation
 
 Copy `j50n.hpp` into your include path. No build system integration required.
-```cpp
+```c++
 #include "j50n.hpp"
 ```
 

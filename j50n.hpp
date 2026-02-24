@@ -299,18 +299,17 @@ public:
     noexcept(noexcept(f(std::declval<j50n const&>())))
     requires(requires{f(std::declval<j50n const&>());})
   {
-    if (!is_array()) return; // !!!
-
-    for (std::size_t i{};; ++i)
-      if (auto const e((*this)[i]); e.is_empty())
-        break;
-      else if constexpr(std::is_same_v<bool,
-        decltype(f(std::declval<j50n const&>()))>)
-      {
-        if (f(e)) break;
-      }
-      else
-        f(e);
+    if (is_array()) // !!!
+      for (std::size_t i{};; ++i)
+        if (auto const e((*this)[i]); e.is_empty())
+          break;
+        else if constexpr(std::is_same_v<bool,
+          decltype(f(std::declval<j50n const&>()))>)
+        {
+          if (f(e)) break;
+        }
+        else
+          f(e);
   }
 
   void feach(auto f) const
@@ -319,19 +318,18 @@ public:
     requires(requires{f(std::declval<j50n const&>(),
       std::declval<std::size_t>());})
   {
-    if (!is_array()) return; // !!!
-
-    for (std::size_t i{};; ++i)
-      if (auto const e((*this)[i]); e.is_empty())
-        break;
-      else if constexpr(std::is_same_v<bool,
-        decltype(f(std::declval<j50n const&>(),
-          std::declval<std::size_t>()))>)
-      {
-        if (f(e, i)) break;
-      }
-      else
-        f(e, i);
+    if (is_array()) // !!!
+      for (std::size_t i{};; ++i)
+        if (auto const e((*this)[i]); e.is_empty())
+          break;
+        else if constexpr(std::is_same_v<bool,
+          decltype(f(std::declval<j50n const&>(),
+            std::declval<std::size_t>()))>)
+        {
+          if (f(e, i)) break;
+        }
+        else
+          f(e, i);
   }
 };
 
