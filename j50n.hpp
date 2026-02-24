@@ -299,7 +299,7 @@ public:
     noexcept(noexcept(f(std::declval<j50n const&>())))
     requires(requires{f(std::declval<j50n const&>());})
   {
-    if (!is_array()) return;
+    if (!is_array()) return; // !!!
 
     for (std::size_t i{};; ++i)
       if (auto const e((*this)[i]); e.is_empty())
@@ -319,7 +319,7 @@ public:
     requires(requires{f(std::declval<j50n const&>(),
       std::declval<std::size_t>());})
   {
-    if (!is_array()) return;
+    if (!is_array()) return; // !!!
 
     for (std::size_t i{};; ++i)
       if (auto const e((*this)[i]); e.is_empty())
