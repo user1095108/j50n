@@ -279,9 +279,9 @@ public:
 
     U r;
 
-    auto const q(std::from_chars(s.begin(), s.end(), r).ec != std::errc{});
+    auto const err(std::from_chars(s.begin(), s.end(), r).ec != std::errc{});
 
-    return std::pair(r, q);
+    return std::pair(r, err);
   }
 
   //

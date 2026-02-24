@@ -1,6 +1,6 @@
 # j50n
 
-A lightweight, header-only C++ JSON parser built on `std::string_view`. Zero allocations, zero dependencies beyond the standard library. It implements ideas related to the fantastic [js0n](https://github.com/quartzjer/js0n) library and its [fork](https://github.com/nigoroll/js0n/tree/pr_case).
+A lightweight, header-only C++ JSON parser built on `std::string_view`. Zero allocations, zero dependencies beyond the standard library, zero exceptions. It implements ideas related to the fantastic [js0n](https://github.com/quartzjer/js0n) library and its [fork](https://github.com/nigoroll/js0n/tree/pr_case).
 
 The essence of js0n is its [FSM](https://en.wikipedia.org/wiki/Finite-state_machine)  implementation. This FSM could be improved, but, for now, we rely on the original.
 
@@ -53,7 +53,7 @@ auto [value, error] = j.get<int>("age");
 // value == 30, error == false on success
 ```
 
-`get<U>()` uses `std::from_chars` internally and returns a `std::pair<U, bool>` where the second element is `true` on failure.
+`get<U>()` uses `std::from_chars()` internally and returns a `std::pair<U, bool>` where the second element is `true` on failure.
 
 ### Iterating arrays
 ```c++
@@ -129,11 +129,11 @@ int main()
 | `operator[](n)` | Access array element by zero-based index |
 | `get()` | Returns the underlying `std::string_view` |
 | `get(a, b, ...)` | Chained key/index access, returns `std::string_view` |
-| `get<U>(...)` | Numeric extraction via `std::from_chars`, returns `std::pair<U, bool>` |
+| `get<U>(...)` | Numeric extraction via `std::from_chars()`, returns `std::pair<U, bool>` |
 | `size()` | Number of elements in an array (O(n²)) |
 | `is_empty()` | True if the view is empty (key not found or parse error) |
-| `is_array()` | True if the value starts with `[` |
-| `is_object()` | True if the value starts with `{` |
+| `is_array()` | True if the view starts with `[` |
+| `is_object()` | True if the view starts with `{` |
 | `feach(f)` | Iterate array elements (O(n²)); supports early exit via `bool` return |
 ## Performance Notes
 
