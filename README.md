@@ -6,7 +6,7 @@ The essence of js0n is its [FSM](https://en.wikipedia.org/wiki/Finite-state_mach
 
 ## Features
 
-- **Header-only** — drop `j50n.hpp` into your project and go
+- **Header-only** — just drop `j50n.hpp` into your project
 - **Zero-copy** — operates entirely on `std::string_view`; no heap allocations
 - **Non-validating** — designed for speed and simplicity over strict RFC 8259 compliance
 - **UTF-8 aware** — handles multi-byte sequences inside strings
