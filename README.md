@@ -128,8 +128,8 @@ int main()
 | `operator[](key)` | Access object field by string key |
 | `operator[](n)` | Access array element by zero-based index |
 | `get()` | Returns the underlying `std::string_view` |
-| `get(a, b, ...)` | Chained key/index access, returns `std::string_view` |
-| `get<U>(...)` | Numeric extraction via `std::from_chars()`, returns `std::pair<U, bool>` |
+| `get(...)` | Chained key/index access, returns `std::string_view` |
+| `get<U>(...)` | Chained numeric extraction via `std::from_chars()`, returns `std::pair<U, bool>` |
 | `size()` | Number of elements in an array (O(n²)) |
 | `is_empty()` | True if the view is empty (key not found or parse error) |
 | `is_array()` | True if the view starts with `[` |
