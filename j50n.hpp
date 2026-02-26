@@ -168,7 +168,7 @@ class j50n
       }
       assert (0);
       l_bad:
-      assert("bad");
+      assert(!"bad");
       return {};
 
       l_up:
@@ -261,7 +261,7 @@ public:
   auto is_object() const noexcept {return !is_empty() && ('{' == s_.front());}
 
   //
-  auto& get() const noexcept { return s_; }
+  auto get() const noexcept { return s_; }
 
   auto get(auto&& a, auto&& ...b) const noexcept
   {
@@ -303,8 +303,7 @@ public:
       for (std::size_t i{};; ++i)
         if (auto const e((*this)[i]); e.is_empty())
           break;
-        else if constexpr(std::is_same_v<bool,
-          decltype(f(std::declval<j50n const&>()))>)
+        else if constexpr(requires{bool(f(e));})
         {
           if (f(e)) break;
         }
@@ -322,9 +321,7 @@ public:
       for (std::size_t i{};; ++i)
         if (auto const e((*this)[i]); e.is_empty())
           break;
-        else if constexpr(std::is_same_v<bool,
-          decltype(f(std::declval<j50n const&>(),
-            std::declval<std::size_t>()))>)
+        else if constexpr(requires{bool(f(e, i));})
         {
           if (f(e, i)) break;
         }
