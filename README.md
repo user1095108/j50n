@@ -133,6 +133,7 @@ int main()
 | `is_empty()` | True if the view is empty (key not found or parse error) |
 | `is_array()` | True if the view starts with `[` |
 | `is_object()` | True if the view starts with `{` |
+| `is_string()` | True if the view starts with `"` |
 | `feach(f)` | Iterate array elements (O(n²)); supports early exit via `bool` return |
 ## Performance Notes
 
