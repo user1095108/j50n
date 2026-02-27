@@ -265,7 +265,7 @@ public:
   auto get() const noexcept
   {
     return is_string() ?
-      std::string_view(std::next(s_.begin()), s_.end()) :
+      std::string_view(std::next(s_.cbegin()), s_.cend()) :
       s_;
   }
 
