@@ -187,7 +187,7 @@ class j50n
       continue;
 
       l_qdown:
-      if ((1 == depth) && cap()) return {val, cur};
+      if ((1 == depth) && cap()) return {val - 1, cur};
       state = S_STRUCT;
       continue;
 
@@ -259,15 +259,21 @@ public:
   bool is_empty() const noexcept { return s_.empty(); }
   auto is_array() const noexcept { return !is_empty() && ('[' == s_.front());}
   auto is_object() const noexcept {return !is_empty() && ('{' == s_.front());}
+  auto is_string() const noexcept {return !is_empty() && ('"' == s_.front());}
 
   //
-  auto get() const noexcept { return s_; }
+  auto get() const noexcept
+  {
+    return is_string() ?
+      std::string_view(std::next(s_.begin()), s_.end()) :
+      s_;
+  }
 
   auto get(auto&& a, auto&& ...b) const noexcept
   {
     auto r((*this)[std::forward<decltype(a)>(a)]);
 
-    return ((r = r[std::forward<decltype(b)>(b)]), ...), r.s_; // !!!
+    return ((r = r[std::forward<decltype(b)>(b)]), ...), r.get(); // !!!
   }
 
   template <typename U>
