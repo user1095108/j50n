@@ -110,8 +110,7 @@ int main()
     auto name = j.get("user", "name");
     std::cout << "Name: " << name << "\n";
 
-    auto [id, err] = j.get<int>("user", "id");
-    if (!err)
+    if (auto [id, err] = j.get<int>("user", "id"); !err)
         std::cout << "ID: " << id << "\n";
 
     j["values"].feach([](j50n const& e, std::size_t i){
