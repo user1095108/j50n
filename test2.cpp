@@ -31,6 +31,10 @@ int main()
     std::cout << "version int = " << v
               << " (error=" << err << ")\n";
 
+    auto const [a, aerr] = root.get<bool>("active");
+    std::cout << "active bool = " << a
+              << " (error=" << aerr << ")\n";
+
     auto const [p, perr] = root.get<double>("pi");
     std::cout << "pi double = " << p
               << " (error=" << perr << ")\n";
