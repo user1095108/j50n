@@ -267,6 +267,11 @@ public:
       ('"' != s_.front());
   }
 
+  bool is_null() const noexcept
+  {
+    return is_bare() && (std::string_view("null", 4) == s_);
+  }
+
   //
   auto get() const noexcept
   {
