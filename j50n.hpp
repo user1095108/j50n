@@ -267,6 +267,12 @@ public:
       ('"' != s_.front());
   }
 
+  bool is_bool() const noexcept
+  {
+    return (std::string_view("true", 4) == s_) ||
+      (std::string_view("false", 5) == s_);
+  }
+
   bool is_null() const noexcept
   {
     return std::string_view("null", 4) == s_;
@@ -316,7 +322,7 @@ public:
   auto get(auto&& ...a) const noexcept
     requires(std::is_same_v<bool, std::remove_cv_t<U>>)
   {
-    if (auto const j(get_view(std::forward<decltype(a)>(a)...)); j.is_bare())
+    if (auto const j(get_view(std::forward<decltype(a)>(a)...)); j.is_bool())
     {
       if (auto& sv(j.s_); std::string_view("true", 4) == sv)
         return std::pair(true, false);
