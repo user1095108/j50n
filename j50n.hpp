@@ -257,9 +257,15 @@ public:
 
   //
   bool is_empty() const noexcept { return s_.empty(); }
-  auto is_array() const noexcept { return !is_empty() && ('[' == s_.front());}
-  auto is_object() const noexcept {return !is_empty() && ('{' == s_.front());}
-  auto is_string() const noexcept {return !is_empty() && ('"' == s_.front());}
+  bool is_array() const noexcept { return !is_empty() && ('[' == s_.front());}
+  bool is_object() const noexcept {return !is_empty() && ('{' == s_.front());}
+  bool is_string() const noexcept {return !is_empty() && ('"' == s_.front());}
+
+  bool is_bare() const noexcept
+  {
+    return !is_empty() && ('[' != s_.front()) && ('{' != s_.front()) &&
+      ('"' != s_.front());
+  }
 
   //
   auto get() const noexcept
