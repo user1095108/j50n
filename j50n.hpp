@@ -289,10 +289,9 @@ public:
       s_;
   }
 
-  auto get(auto&& a, auto&& ...b) const noexcept
+  auto get(auto&& ...a) const noexcept
   {
-    return get_view(std::forward<decltype(a)>(a),
-      std::forward<decltype(b)>(b)...).get();
+    return get_view(std::forward<decltype(a)>(a)...).get();
   }
 
   template <typename U>
