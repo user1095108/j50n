@@ -86,6 +86,7 @@ auto n = j["scores"].size();  // 3
 ```c++
 j["scores"].is_array();    // true
 j["scores"].is_object();   // false
+j["name"].is_string();     // true
 j["name"].is_empty();      // false — empty means parse failed / key not found
 ```
 
