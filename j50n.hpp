@@ -269,7 +269,7 @@ public:
 
   bool is_null() const noexcept
   {
-    return is_bare() && (std::string_view("null", 4) == s_);
+    return std::string_view("null", 4) == s_;
   }
 
   //
