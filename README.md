@@ -135,6 +135,7 @@ int main()
 | `is_array()` | True if the view starts with `[` |
 | `is_object()` | True if the view starts with `{` |
 | `is_string()` | True if the view starts with `"` |
+| `is_bare()` | True if the view does not start with `[`, `{` or `"` |
 | `feach(f)` | Iterate array elements (O(n²)); supports early exit via `bool` return |
 ## Performance Notes
 
