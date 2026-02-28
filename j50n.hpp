@@ -305,7 +305,7 @@ public:
 
     if (auto const j(get_view(std::forward<decltype(a)>(a)...)); j.is_bare())
     {
-      auto const sv(j.get());
+      auto& sv(j.s_);
 
       err = std::from_chars(sv.begin(), sv.end(), r).ec != std::errc{};
     }
@@ -319,7 +319,7 @@ public:
   {
     if (auto const j(get_view(std::forward<decltype(a)>(a)...)); j.is_bare())
     {
-      if (auto const sv(j.get()); std::string_view("true", 4) == sv)
+      if (auto& sv(j.s_); std::string_view("true", 4) == sv)
         return std::pair(true, false);
       else if (std::string_view("false", 5) == sv)
         return std::pair(false, false);
