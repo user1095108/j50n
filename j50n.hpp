@@ -279,9 +279,9 @@ public:
   }
 
   //
-  auto get_view() const noexcept { return *this; }
+  auto view() const noexcept { return *this; }
 
-  auto get_view(auto&& a, auto&& ...b) const noexcept
+  auto view(auto&& a, auto&& ...b) const noexcept
   {
     auto r((*this)[std::forward<decltype(a)>(a)]);
 
@@ -297,7 +297,7 @@ public:
 
   auto get(auto&& ...a) const noexcept
   {
-    return get_view(std::forward<decltype(a)>(a)...).get();
+    return view(std::forward<decltype(a)>(a)...).get();
   }
 
   template <typename U>
@@ -308,7 +308,7 @@ public:
     U r;
     bool err(true);
 
-    if (auto const j(get_view(std::forward<decltype(a)>(a)...)); j.is_bare())
+    if (auto const j(view(std::forward<decltype(a)>(a)...)); j.is_bare())
     {
       auto& sv(j.s_);
 
@@ -322,7 +322,7 @@ public:
   auto get(auto&& ...a) const noexcept
     requires(std::is_same_v<bool, std::remove_cv_t<U>>)
   {
-    if (auto const j(get_view(std::forward<decltype(a)>(a)...)); j.is_bool())
+    if (auto const j(view(std::forward<decltype(a)>(a)...)); j.is_bool())
     {
       if (auto& sv(j.s_); std::string_view("true", 4) == sv)
         return std::pair(true, false);
