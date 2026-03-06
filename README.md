@@ -130,7 +130,7 @@ int main()
 | `get()` | Returns the underlying `std::string_view` |
 | `get(...)` | Chained key/index access, returns `std::string_view` |
 | `get<U>(...)` | Chained numeric extraction via `std::from_chars()`, returns `std::pair<U, bool>` |
-| `view()` | Returns the underlying `j50n` |
+| `view()` | Returns `*this` |
 | `view(...)` | Chained key/index access, returns `j50n` |
 | `size()` | Number of elements in an array (O(n²)) |
 | `is_empty()` | True if the view is empty (key not found or parse error) |
