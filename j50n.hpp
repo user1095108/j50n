@@ -279,7 +279,7 @@ public:
   }
 
   //
-  auto view() const noexcept { return *this; }
+  auto& view() const noexcept { return *this; }
 
   auto view(auto&& a, auto&& ...b) const noexcept
   {
