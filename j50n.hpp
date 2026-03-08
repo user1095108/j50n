@@ -350,6 +350,7 @@ public:
   {
     if (is_array()) // !!!
       for (std::size_t i{};; ++i)
+      {
         if (auto const e((*this)[i]); e.is_empty())
           break;
         else if constexpr(requires{bool(f(e));})
@@ -358,6 +359,7 @@ public:
         }
         else
           f(e);
+      }
   }
 
   void feach(auto f) const
@@ -368,6 +370,7 @@ public:
   {
     if (is_array()) // !!!
       for (std::size_t i{};; ++i)
+      {
         if (auto const e((*this)[i]); e.is_empty())
           break;
         else if constexpr(requires{bool(f(e, i));})
@@ -376,6 +379,7 @@ public:
         }
         else
           f(e, i);
+      }
   }
 };
 
