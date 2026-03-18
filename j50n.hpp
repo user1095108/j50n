@@ -320,15 +320,14 @@ public:
   auto get(auto&& ...a) const noexcept
     requires(std::is_same_v<bool, std::remove_cv_t<U>>)
   {
-    if (auto const& j(view(std::forward<decltype(a)>(a)...)); j.is_bool())
-    {
-      if (auto& sv(j.s_); std::string_view("true", 4) == sv)
-        return std::pair(true, false);
-      else if (std::string_view("false", 5) == sv)
-        return std::pair(false, false);
-    }
+    auto const& sv(view(std::forward<decltype(a)>(a)...).s_);
 
-    return std::pair(false, true);
+    if (std::string_view("true", 4) == sv)
+      return std::pair(true, false);
+    else if (std::string_view("false", 5) == sv)
+      return std::pair(false, false);
+    else
+      return std::pair(false, true);
   }
 
   //
