@@ -273,10 +273,9 @@ public:
       (std::string_view("false", 5) == s_);
   }
 
-  bool is_null() const noexcept
-  {
-    return std::string_view("null", 4) == s_;
-  }
+  bool is_null() const noexcept { return std::string_view("null", 4) == s_; }
+
+  bool is_number() const noexcept { return !get<long double>().second; }
 
   //
   auto& view() const noexcept { return *this; }
@@ -301,21 +300,20 @@ public:
   }
 
   template <typename U>
-  auto get(auto&& ...a) const noexcept
+  std::pair<U, bool> get(auto&& ...a) const noexcept
     requires(std::is_arithmetic_v<U> &&
       !std::is_same_v<bool, std::remove_cv_t<U>>)
   {
     U r;
-    bool err(true);
+    bool err;
 
-    if (auto const& j(view(std::forward<decltype(a)>(a)...)); j.is_bare())
     {
-      auto& sv(j.s_);
+      auto const& sv(view(std::forward<decltype(a)>(a)...).s_);
 
       err = std::from_chars(sv.begin(), sv.end(), r).ec != std::errc{};
     }
 
-    return std::pair(r, err);
+    return { r, err };
   }
 
   template <typename U>
