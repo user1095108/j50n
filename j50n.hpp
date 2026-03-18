@@ -307,11 +307,8 @@ public:
     U r;
     bool err;
 
-    {
-      auto const& sv(view(std::forward<decltype(a)>(a)...).s_);
-
-      err = std::from_chars(sv.begin(), sv.end(), r).ec != std::errc{};
-    }
+    auto const& sv(view(std::forward<decltype(a)>(a)...).s_);
+    err = std::from_chars(sv.begin(), sv.end(), r).ec != std::errc{};
 
     return { r, err };
   }
