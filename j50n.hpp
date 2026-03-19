@@ -4,7 +4,6 @@
 
 #include <cassert>
 #include <cstring> // std::strncmp()
-#include <algorithm> // std::min()
 #include <charconv> // std::from_chars()
 #include <iterator> // std::next()
 #include <ostream> // operator<<()
@@ -223,7 +222,6 @@ public:
     requires std::is_constructible_v<decltype(s_), decltype(a)&&...>:
     s_(std::forward<decltype(a)>(a)...)
   {
-    s_.remove_prefix(std::min(s_.size(), s_.find_first_not_of(" \t\n\r")));
   }
 
   //
@@ -240,10 +238,7 @@ public:
     noexcept(noexcept(s_ = std::forward<decltype(a)>(a)))
     requires std::is_assignable_v<decltype(s_), decltype(a)&&>
   {
-    s_ = std::forward<decltype(a)>(a);
-    s_.remove_prefix(std::min(s_.size(), s_.find_first_not_of(" \t\n\r")));
-
-    return *this;
+    s_ = std::forward<decltype(a)>(a); return *this;
   }
 
   //
@@ -264,7 +259,6 @@ public:
   //
   bool is_empty() const noexcept { return s_.empty(); }
   bool is_array() const noexcept { return s_.size() && ('[' == s_.front()); }
-  bool is_object() const noexcept { return s_.size() && ('{' == s_.front()); }
   bool is_string() const noexcept { return s_.size() && ('"' == s_.front()); }
   bool is_null() const noexcept { return std::string_view("null", 4) == s_; }
   bool is_number() const noexcept { return !get<long double>().second; }
@@ -279,6 +273,13 @@ public:
   {
     return (std::string_view("true", 4) == s_) ||
       (std::string_view("false", 5) == s_);
+  }
+
+  bool is_object() const noexcept
+  {
+    auto const p(s_.find_first_not_of(" \t\n\r"));
+
+    return s_.size() && (p != std::string_view::npos) && ('{' == s_[p]);
   }
 
   //
