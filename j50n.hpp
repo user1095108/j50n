@@ -266,6 +266,8 @@ public:
   bool is_array() const noexcept { return s_.size() && ('[' == s_.front()); }
   bool is_object() const noexcept { return s_.size() && ('{' == s_.front()); }
   bool is_string() const noexcept { return s_.size() && ('"' == s_.front()); }
+  bool is_null() const noexcept { return std::string_view("null", 4) == s_; }
+  bool is_number() const noexcept { return !get<long double>().second; }
 
   bool is_bare() const noexcept
   {
@@ -278,10 +280,6 @@ public:
     return (std::string_view("true", 4) == s_) ||
       (std::string_view("false", 5) == s_);
   }
-
-  bool is_null() const noexcept { return std::string_view("null", 4) == s_; }
-
-  bool is_number() const noexcept { return !get<long double>().second; }
 
   //
   auto& view() const noexcept { return *this; }
