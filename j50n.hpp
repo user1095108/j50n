@@ -279,7 +279,7 @@ public:
   {
     auto const p(s_.find_first_not_of(" \t\n\r"));
 
-    return (p != std::string_view::npos) && ('{' == s_[p]);
+    return (std::string_view::npos != p) && ('{' == s_[p]);
   }
 
   //
