@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <cstring> // std::strncmp()
+#include <algorithm> // std::min()
 #include <charconv> // std::from_chars()
 #include <iterator> // std::next()
 #include <ostream> // operator<<()
@@ -222,8 +223,7 @@ public:
     requires std::is_constructible_v<decltype(s_), decltype(a)&&...>:
     s_(std::forward<decltype(a)>(a)...)
   {
-    auto const& ws(" \t\n\r");
-    s_.remove_prefix(std::min(s_.size(), s_.find_first_not_of(ws)));
+    s_.remove_prefix(std::min(s_.size(), s_.find_first_not_of(" \t\n\r")));
   }
 
   //
@@ -241,9 +241,7 @@ public:
     requires std::is_assignable_v<decltype(s_), decltype(a)&&>
   {
     s_ = std::forward<decltype(a)>(a);
-
-    auto const& ws(" \t\n\r");
-    s_.remove_prefix(std::min(s_.size(), s_.find_first_not_of(ws)));
+    s_.remove_prefix(std::min(s_.size(), s_.find_first_not_of(" \t\n\r")));
 
     return *this;
   }
