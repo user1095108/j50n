@@ -222,7 +222,7 @@ public:
     requires std::is_constructible_v<decltype(s_), decltype(a)&&...>:
     s_(std::forward<decltype(a)>(a)...)
   {
-    auto const& ws(" \t\n\r\f\v");
+    auto const& ws(" \t\n\r");
     s_.remove_prefix(std::min(s_.size(), s_.find_first_not_of(ws)));
   }
 
@@ -233,7 +233,7 @@ public:
   template <std::size_t N>
   j50n& operator=(char const(&a)[N]) noexcept
   {
-    return operator=({a, N - 1});
+    return operator=(std::string_view(a, N - 1));
   }
 
   j50n& operator=(auto&& a)
@@ -242,7 +242,7 @@ public:
   {
     s_ = std::forward<decltype(a)>(a);
 
-    auto const& ws(" \t\n\r\f\v");
+    auto const& ws(" \t\n\r");
     s_.remove_prefix(std::min(s_.size(), s_.find_first_not_of(ws)));
 
     return *this;
