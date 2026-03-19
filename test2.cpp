@@ -1,7 +1,7 @@
 #include "j50n.hpp"
 #include <iostream>
 
-static constexpr char const JSON[] = R"({
+static auto const& JSON(R"(  {
   "name": "j50n-test",
   "version": 1,
   "pi": 3.14159,
@@ -20,7 +20,7 @@ static constexpr char const JSON[] = R"({
       }
     }
   }
-})";
+})");
 
 int main()
 {
@@ -88,7 +88,7 @@ int main()
   std::cout << "pi    is_number: " << root["pi"].is_number()    << "\n";
   std::cout << "active is_bool:  " << root["active"].is_bool()  << "\n";
   std::cout << "nums  is_array:  " << root["numbers"].is_array()<< "\n";
-  std::cout << "root  is_object: " << root["nested"].is_object()<< "\n";
+  std::cout << "root  is_object: " << root.is_object()<< "\n";
 
   std::cout << "\n== Empty / missing ==\n";
   std::cout << "missing key:       " << (root["does_not_exist"].is_empty() ? "empty (OK)" : "FAIL") << "\n";

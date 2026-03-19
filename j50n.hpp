@@ -214,13 +214,17 @@ public:
   j50n(j50n const&) = default;
   j50n(j50n&&) = default;
 
-  template <std::size_t N> j50n(char const(&a)[N]) noexcept: s_(a, N - 1) { }
+  template <std::size_t N>
+  j50n(char const(&a)[N]) noexcept: j50n(a, N - 1) { }
 
   j50n(auto&& ...a)
     noexcept(noexcept(decltype(s_)(std::forward<decltype(a)>(a)...)))
     requires std::is_constructible_v<decltype(s_), decltype(a)&&...>:
     s_(std::forward<decltype(a)>(a)...)
   {
+    auto const& ws(" \t\n\r\f\v");
+
+    s_.remove_prefix(std::min(s_.size(), s_.find_first_not_of(ws)));
   }
 
   //
