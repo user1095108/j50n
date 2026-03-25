@@ -8,7 +8,7 @@ The essence of [js0n](https://github.com/quartzjer/js0n) is its [FSM](https://en
 
 - **Header-only** — just drop `j50n.hpp` into your project
 - **Zero-copy** — operates entirely on `std::string_view`; no heap allocations
-- **Non-validating** — designed for speed and simplicity over strict RFC 8259 compliance
+- **Non-validating** — designed for speed and simplicity over strict [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259.html) compliance
 - **UTF-8 aware** — handles multi-byte sequences inside strings
 
 ## Requirements
