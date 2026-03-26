@@ -146,6 +146,7 @@ int main()
 
 | Operation | Time Complexity |
 | :--- | :--- |
+| Type predicate | O(1) |
 | Key lookup | O(n) |
 | Index lookup | O(n) |
 | size() | O(n²) |
