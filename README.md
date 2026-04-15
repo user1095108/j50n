@@ -154,7 +154,7 @@ int main()
 ## Limitations
 
 - **Read-only** — no serialization or mutation
-- **Non-owning** — the source string must outlive any `j50n` instance derived from it
+- **Non-owning** — the source string must outlive any `j50n` instance referencing it
 - **Not strictly validating** — malformed JSON may produce unexpected results rather than errors
-- Duplicate keys: the first matching key is returned
+- Duplicate keys: the first matching key is matched
 - No support for `null` as a distinct type — it parses as a bare value string `"null"`
