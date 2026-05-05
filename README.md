@@ -137,7 +137,7 @@ int main()
 | `get(...)` | Chained key/index access, returns `std::string_view` |
 | `get_or(def, ...)` | Chained key/index access, returns `std::string_view` or `def` if empty |
 | `get<U>(...)` | Chained numeric extraction via `std::from_chars()`, returns `std::pair<U, bool>` |
-| `get_or<U>(def, ...)` | Chained numeric extraction via `std::from_chars()`, returns `U` or `def` if error |
+| `get_or<U>(def, ...)` | Chained numeric extraction via `std::from_chars()`, returns `U` or `def` on error |
 | `view()` | Returns `*this` |
 | `view(...)` | Chained key/index access, returns `j50n` |
 | `size()` | Number of elements in an array (O(n²)) |
