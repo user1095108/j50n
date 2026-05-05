@@ -98,8 +98,8 @@ std::cout << j["name"] << '\n';  // prints: Alice
 ## Example
 
 ``` c++
-#include "j50n.hpp"
 #include <iostream>
+#include "j50n.hpp"
 
 int main()
 {
@@ -109,13 +109,15 @@ int main()
     })";
 
     auto name = j.get("user", "name");
-    std::cout << "Name: " << name << "\n";
+    std::cout << "Name: " << name << '\n';
 
     if (auto [id, err] = j.get<int>("user", "id"); !err)
-        std::cout << "ID: " << id << "\n";
+        std::cout << "ID: " << id << '\n';
+
+    std::cout << j.getor<int>(-1, "fail") << '\n';
 
     j["values"].feach([](j50n const& e, std::size_t i){
-        std::cout << i << ": " << e << "\n";
+        std::cout << i << ": " << e << '\n';
     });
 
     return 0;
@@ -129,9 +131,9 @@ int main()
 | `operator[](n)` | Access array element by zero-based index |
 | `get()` | Returns the underlying `std::string_view` |
 | `get(...)` | Chained key/index access, returns `std::string_view` |
-| `get2(def, ...)` | Chained key/index access, returns `std::string_view` or `def` if empty |
+| `getor(def, ...)` | Chained key/index access, returns `std::string_view` or `def` if empty |
 | `get<U>(...)` | Chained numeric extraction via `std::from_chars()`, returns `std::pair<U, bool>` |
-| `get2<U>(def, ...)` | Chained numeric extraction via `std::from_chars()`, returns `U` or `def` if error |
+| `getor<U>(def, ...)` | Chained numeric extraction via `std::from_chars()`, returns `U` or `def` if error |
 | `view()` | Returns `*this` |
 | `view(...)` | Chained key/index access, returns `j50n` |
 | `size()` | Number of elements in an array (O(n²)) |

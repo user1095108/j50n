@@ -305,14 +305,14 @@ public:
   }
 
   template <std::size_t N>
-  std::string_view get2(char const (&a)[N], auto&& ...b) const noexcept
+  std::string_view getor(char const (&a)[N], auto&& ...b) const noexcept
   {
     auto const r(view(std::forward<decltype(b)>(b)...).get());
 
     return r.size() ? r : std::string_view(a, N - 1);
   }
 
-  std::string_view get2(std::string_view const a, auto&& ...b) const noexcept
+  std::string_view getor(std::string_view const a, auto&& ...b) const noexcept
   {
     auto const r(view(std::forward<decltype(b)>(b)...).get());
 
@@ -331,7 +331,7 @@ public:
   }
 
   template <typename U>
-  U get2(U const a, auto&& ...b) const noexcept
+  U getor(U const a, auto&& ...b) const noexcept
   {
     auto const [v, err](get<U>(std::forward<decltype(b)>(b)...));
 
