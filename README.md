@@ -56,7 +56,8 @@ auto value = j.get_or<int>(40, "scores", 3);  // 40
 ```
 
 `get<U>()` uses `std::from_chars()` internally and returns a `std::pair<U, bool>` where the second element is `true` on failure.
-`get_or()` and `get_or<U>` return a default value on failure.
+
+`get_or()` and `get_or<U>()` return a default value on failure.
 
 ### Iterating arrays
 ```c++
