@@ -14,7 +14,7 @@ int main()
     if (auto [id, err] = j.get<int>("user", "id"); !err)
         std::cout << "ID: " << id << '\n';
 
-    std::cout << j.getor<int>(-1, "fail") << '\n';
+    std::cout << j.get_or<int>(-1, "fail") << '\n';
 
     j["values"].feach([](j50n const& e, std::size_t i){
         std::cout << i << ": " << e << '\n';
