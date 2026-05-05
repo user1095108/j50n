@@ -310,12 +310,10 @@ public:
       !std::is_same_v<bool, std::remove_cv_t<U>>)
   {
     U r;
-    bool err;
 
     auto const& sv(view(std::forward<decltype(a)>(a)...).s_);
-    err = std::from_chars(sv.begin(), sv.end(), r).ec != std::errc{};
 
-    return { r, err };
+    return {r, std::from_chars(sv.begin(), sv.end(), r).ec != std::errc{}};
   }
 
   template <typename U>
