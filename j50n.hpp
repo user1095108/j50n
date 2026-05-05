@@ -309,10 +309,9 @@ public:
     requires(std::is_arithmetic_v<U> &&
       !std::is_same_v<bool, std::remove_cv_t<U>>)
   {
-    U r;
-
     auto const& sv(view(std::forward<decltype(a)>(a)...).s_);
 
+    U r; // !!!
     return {r, std::from_chars(sv.begin(), sv.end(), r).ec != std::errc{}};
   }
 
