@@ -38,7 +38,7 @@ int main()
   cfg["features"].feach([](j50n const& feat, std::size_t const i) {
     std::cout << (i ? ", " : "") << feat; // feat auto-converts to string_view
   });
-  std::cout << "\n";
+  std::cout << '\n';
 
   std::cout << "Starting server on " << host << ":" << port 
             << " (TLS: " << (tls ? "on" : "off") 
