@@ -131,7 +131,7 @@ int main()
 | `get(...)` | Chained key/index access, returns `std::string_view` |
 | `get2(def, ...)` | Chained key/index access, returns `std::string_view` or `def` if empty |
 | `get<U>(...)` | Chained numeric extraction via `std::from_chars()`, returns `std::pair<U, bool>` |
-| `get2<U>(def, ...)` | Chained numeric extraction via `std::from_chars()`, returns `std::pair<U, bool>` or `def` if error |
+| `get2<U>(def, ...)` | Chained numeric extraction via `std::from_chars()`, returns `U` or `def` if error |
 | `view()` | Returns `*this` |
 | `view(...)` | Chained key/index access, returns `j50n` |
 | `size()` | Number of elements in an array (O(n²)) |
