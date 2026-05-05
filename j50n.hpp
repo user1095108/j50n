@@ -283,25 +283,40 @@ public:
   }
 
   //
-  auto& view() const noexcept { return *this; }
+  j50n const& view() const noexcept { return *this; }
 
-  auto view(auto&& a, auto&& ...b) const noexcept
+  j50n view(auto&& a, auto&& ...b) const noexcept
   {
     auto r((*this)[std::forward<decltype(a)>(a)]);
 
     return ((r = r[std::forward<decltype(b)>(b)]), ...), r; // !!!
   }
 
-  auto get() const noexcept
+  std::string_view get() const noexcept
   {
     return is_string() ?
       std::string_view(std::next(s_.begin()), s_.end()) :
       s_;
   }
 
-  auto get(auto&& ...a) const noexcept
+  std::string_view get(auto&& ...a) const noexcept
   {
     return view(std::forward<decltype(a)>(a)...).get();
+  }
+
+  template <std::size_t N>
+  std::string_view get2(char const (&a)[N], auto&& ...b) const noexcept
+  {
+    auto const r(view(std::forward<decltype(b)>(b)...).get());
+
+    return r.size() ? r : std::string_view(a, N - 1);
+  }
+
+  std::string_view get2(std::string_view const a, auto&& ...b) const noexcept
+  {
+    auto const r(view(std::forward<decltype(b)>(b)...).get());
+
+    return r.size() ? r : a;
   }
 
   template <typename U>
@@ -309,17 +324,25 @@ public:
     requires(std::is_arithmetic_v<U> &&
       !std::is_same_v<bool, std::remove_cv_t<U>>)
   {
-    auto const& sv(view(std::forward<decltype(a)>(a)...).s_);
+    auto const sv(view(std::forward<decltype(a)>(a)...).s_);
 
     U r; // !!!
     return {r, std::from_chars(sv.begin(), sv.end(), r).ec != std::errc{}};
   }
 
   template <typename U>
+  U get2(U const a, auto&& ...b) const noexcept
+  {
+    auto const [v, err](get<U>(std::forward<decltype(b)>(b)...));
+
+    return err ? a : v;
+  }
+
+  template <typename U>
   auto get(auto&& ...a) const noexcept
     requires(std::is_same_v<bool, std::remove_cv_t<U>>)
   {
-    auto const& sv(view(std::forward<decltype(a)>(a)...).s_);
+    auto const sv(view(std::forward<decltype(a)>(a)...).s_);
 
     if (std::string_view("true", 4) == sv)
       return std::pair(true, false);

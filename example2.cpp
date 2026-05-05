@@ -28,14 +28,11 @@ int main()
     port = 3000;
   }
 
-  std::string_view host = cfg.get("server", "host");
-  if (host.empty()) host = "localhost";
+  std::string_view host = cfg.get2("localhost", "server", "host");
 
   auto [tls, _] = cfg.get<bool>("server", "tls", "enabled");
 
-  auto [timeout, terr] = cfg.get<double>("limits", "timeout_ms");
-  if (terr)
-    timeout = 10.0; // seconds
+  auto timeout = cfg.get2<double>(10.0, "limits", "timeout_ms");
 
   std::cout << "Enabled features: ";
   cfg["features"].feach([](j50n const& feat, std::size_t const i) {
