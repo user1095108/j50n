@@ -45,15 +45,18 @@ auto first = j["scores"][0];   // j50n wrapping 10
 ### Chained access
 ```c++
 auto sv = j.get("scores", 1);  // std::string_view "20"
+auto sv = j.get_or("40", "scores", 3);  // std::string_view "40"
 ```
 
 ### Numeric extraction
 ```c++
 auto [value, error] = j.get<int>("age");
 // value == 30, error == false on success
+auto value = j.get_or<int>(40, "scores", 3);  // 40
 ```
 
 `get<U>()` uses `std::from_chars()` internally and returns a `std::pair<U, bool>` where the second element is `true` on failure.
+`get_or()` and `get_or<U>` return a default value on failure.
 
 ### Iterating arrays
 ```c++
