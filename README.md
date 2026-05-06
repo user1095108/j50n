@@ -85,7 +85,7 @@ auto value = j.get_or<int>(40, "scores", 3);  // 40 — index out of range
 `get<U>()` uses `std::from_chars()` internally and returns `std::pair<U, bool>`.
 The second element is `true` on **failure** — always check `error` before using `value`.
 
-`get_or()` and `get_or<U>()` return a caller-supplied default on any failure.
+`get_or()` and `get_or<U>()` return a caller-supplied default on failure.
 
 ### Iterating arrays
 
