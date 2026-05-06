@@ -40,8 +40,8 @@ int main()
   });
   std::cout << '\n';
 
-  std::cout << "Starting server on " << host << ":" << port 
-            << " (TLS: " << (tls ? "on" : "off") 
+  std::cout << "Starting server on " << host << ":" << port
+            << " (TLS: " << (tls ? "on" : "off")
             << ", timeout: " << timeout << "s)\n";
 
   return 0;
