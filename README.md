@@ -189,7 +189,7 @@ int main()
 | `is_bare()` | True if the value does not start with `[`, `{`, or `"` |
 | `is_bool()` | True if the value is exactly `true` or `false` |
 | `is_null()` | True if the value is exactly `null` |
-| `is_number()` | True if the value parses as `long double` via `std::from_chars` — see compiler note |
+| `is_number()` | True if the value parses as `double` via `std::from_chars` |
 | `feach(f)` | Iterate array elements; supports early exit via `bool` return; no-op on non-arrays |
 
 ## Performance Notes
