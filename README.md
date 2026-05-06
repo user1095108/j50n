@@ -56,7 +56,7 @@ auto sv = j.get_or("40", "scores", 3);  // std::string_view "40" (key not found)
 ```
 
 Use `view(...)` when you want to continue working with the result as a `j50n`;
-use `get(...)` when you want a `std::string_view` directly.
+use `get(...)` when you want a `std::string_view`.
 
 ```cpp
 j50n  sub = j.view("scores");          // j50n — supports further [] / feach / etc.
@@ -111,7 +111,7 @@ j["scores"].feach([](j50n const& elem) -> bool {
 });
 ```
 
-`feach` is a no-op on non-array values, including empty/missing keys.
+`feach` is a no-op on non-array values.
 
 ### Array size
 
