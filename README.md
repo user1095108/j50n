@@ -181,7 +181,7 @@ int main()
 | `get_or<U>(def, ...)` | Chained numeric extraction, returns `U` or `def` on error |
 | `view()` | Returns `*this` |
 | `view(...)` | Chained key/index access, returns `j50n` |
-| `size()` | Number of elements in an array; O(n) scans, O(n²) total — see Performance |
+| `size()` | Number of elements in an array |
 | `is_empty()` | True if the view is empty (key not found or parse error) |
 | `is_array()` | True if the value starts with `[` |
 | `is_object()` | True if the value starts with `{` (skips leading whitespace) |
