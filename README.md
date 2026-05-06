@@ -60,7 +60,7 @@ use `get(...)` when you want a `std::string_view`.
 
 ```cpp
 j50n  sub = j.view("scores");          // j50n — supports further [] / feach / etc.
-auto  sv  = j.get("scores");           // std::string_view — terminal extraction
+auto  sv  = j.get("scores");           // std::string_view
 ```
 
 ### String values and escaping
