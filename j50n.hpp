@@ -307,16 +307,16 @@ public:
   template <std::size_t N>
   std::string_view get_or(char const (&a)[N], auto&& ...b) const noexcept
   {
-    auto const r(view(std::forward<decltype(b)>(b)...));
+    auto const v(view(std::forward<decltype(b)>(b)...));
 
-    return r.s_.size() ? r.get() : std::string_view(a, N - 1);
+    return v.s_.empty() ? std::string_view(a, N - 1) : v.get();
   }
 
   std::string_view get_or(std::string_view const a,auto&& ...b) const noexcept
   {
-    auto const r(view(std::forward<decltype(b)>(b)...));
+    auto const v(view(std::forward<decltype(b)>(b)...));
 
-    return r.s_.size() ? r.get() : a;
+    return v.s_.empty() ? a : v.get();
   }
 
   template <typename U>
