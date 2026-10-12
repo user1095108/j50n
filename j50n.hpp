@@ -222,9 +222,10 @@ public:
     requires std::is_constructible_v<decltype(s_), decltype(a)&&...>:
     s_(std::forward<decltype(a)>(a)...)
   {
-    if (auto const p(s_.find_first_not_of(" \t\n\r"));
-      std::string_view::npos != p)
-      s_ = std::string_view(s_.begin() + p, s_.end());
+    auto const p(s_.find_first_not_of(" \t\n\r"));
+    if (std::string_view::npos == p) { s_ = {}; return; }
+    auto const q(s_.find_last_not_of(" \t\n\r"));
+    s_ = std::string_view(s_.begin() + p, s_.begin() + q + 1);
   }
 
   //
@@ -323,8 +324,18 @@ public:
   {
     auto const sv(view(std::forward<decltype(a)>(a)...).s_);
 
-    U r; // !!!
-    return {r, std::from_chars(sv.begin(), sv.end(), r).ec != std::errc{}};
+    U r{}; // !!!
+    auto const [ptr, ec](std::from_chars(sv.begin(), sv.end(), r));
+
+    if (sv.end() != ptr)
+    {
+      std::string_view const s(ptr, sv.end());
+
+      if (std::string_view::npos != s.find_first_not_of(" \t\n\r"))
+        return std::pair(r, true);
+    }
+
+    return std::pair(r, std::errc{} != ec);
   }
 
   template <typename U>
