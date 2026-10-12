@@ -225,10 +225,8 @@ public:
     if (auto const p(s_.find_first_not_of(" \t\n\r"));
       std::string_view::npos == p) s_ = {};
     else
-    {
-      auto const q(s_.find_last_not_of(" \t\n\r"));
-      s_ = std::string_view(s_.begin() + p, s_.begin() + q + 1);
-    }
+      s_ = std::string_view(s_.begin() + p,
+        s_.begin() + s_.find_last_not_of(" \t\n\r") + 1);
   }
 
   //
