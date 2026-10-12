@@ -246,7 +246,8 @@ public:
   }
 
   j50n& operator=(auto&& a)
-    noexcept(noexcept(s_=trim(std::string_view(std::forward<decltype(a)>(a))))
+    noexcept(noexcept(
+      s_ = trim(std::string_view(std::forward<decltype(a)>(a)))))
     requires std::is_constructible_v<decltype(s_), decltype(a)&&>
   {
     s_ = trim(std::string_view(std::forward<decltype(a)>(a)));
