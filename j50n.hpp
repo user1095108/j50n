@@ -222,6 +222,11 @@ public:
     requires std::is_constructible_v<decltype(s_), decltype(a)&&...>:
     s_(std::forward<decltype(a)>(a)...)
   {
+    if (auto const p(s_.find_first_not_of(" \t\n\r"));
+      std::string_view::npos != p)
+    {
+      s_ = std::string_view(p, s_.end());
+    }
   }
 
   //
@@ -259,6 +264,7 @@ public:
   //
   bool is_empty() const noexcept { return s_.empty(); }
   bool is_array() const noexcept { return s_.size() && ('[' == s_.front()); }
+  bool is_object() const noexcept { return s_.size() && ('{' == s_.front()); }
   bool is_string() const noexcept { return s_.size() && ('"' == s_.front()); }
   bool is_null() const noexcept { return std::string_view("null", 4) == s_; }
   bool is_number() const noexcept { return !get<double>().second; }
@@ -273,13 +279,6 @@ public:
   {
     return (std::string_view("true", 4) == s_) ||
       (std::string_view("false", 5) == s_);
-  }
-
-  bool is_object() const noexcept
-  {
-    auto const p(s_.find_first_not_of(" \t\n\r"));
-
-    return (std::string_view::npos != p) && ('{' == s_[p]);
   }
 
   //
@@ -403,7 +402,7 @@ public:
 };
 
 //////////////////////////////////////////////////////////////////////////////
-auto& operator<<(std::ostream& os, j50n const& j)
+inline auto& operator<<(std::ostream& os, j50n const& j)
 { // !!!
   return os << j.get();
 }
