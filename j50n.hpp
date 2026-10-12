@@ -222,10 +222,10 @@ public:
     requires std::is_constructible_v<decltype(s_), decltype(a)&&...>:
     s_(std::forward<decltype(a)>(a)...)
   {
-    if (auto const p(s_.find_first_not_of(" \t\n\r"));
-      std::string_view::npos == p) s_ = {};
-    else
-      s_ = std::string_view(s_.begin() + p,
+    auto const p(s_.find_first_not_of(" \t\n\r"));
+
+    s_ = std::string_view::npos == p ? std::string_view() :
+      std::string_view(s_.begin() + p,
         s_.begin() + s_.find_last_not_of(" \t\n\r") + 1);
   }
 
