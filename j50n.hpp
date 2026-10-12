@@ -5,7 +5,6 @@
 #include <cassert>
 #include <cstring> // std::strncmp()
 #include <charconv> // std::from_chars()
-#include <iterator> // std::next()
 #include <ostream> // operator<<()
 #include <string_view>
 #include <type_traits>
@@ -24,7 +23,8 @@ class j50n
   }
 
   static std::string_view find(std::string_view const& s,
-    std::string_view const& k, std::size_t index = 1) noexcept
+    std::string_view const& k, std::size_t index = 1,
+    bool const keyed = true) noexcept
   {
     char const* val{};
     auto cur(s.begin()), start(cur);
@@ -33,9 +33,9 @@ class j50n
       {
         if (val && !index) //r = {val, cur + i + 1};
           return true;
-        else if (auto const ks(k.size()); ks && start)
+        else if (auto const ks(k.size()); keyed && start)
           index = (ks != std::string_view::size_type(cur - start)) ||
-            std::strncmp(start, k.begin(), ks) ? 2 : 0,
+            (ks && std::strncmp(start, k.begin(), ks)) ? 2 : 0,
           start = {};
 
         return false;
@@ -44,7 +44,7 @@ class j50n
 
     auto const push([&](std::size_t const i) noexcept
       {
-        if (k.size() && (1 == index))
+        if (keyed && (1 == index))
           start = cur + i;
         else if (!index)
           val = cur + i; // + i
@@ -172,6 +172,7 @@ class j50n
       return {};
 
       l_up:
+      if (!depth && keyed && ('{' != *cur)) return {}; // no keys in arrays
       if (1 == depth) push(0);
       ++depth;
       continue;
@@ -187,7 +188,7 @@ class j50n
       continue;
 
       l_qdown:
-      if ((1 == depth) && cap()) return {val - 1, cur};
+      if ((1 == depth) && cap()) return {val - 1, cur + 1};
       state = S_STRUCT;
       continue;
 
@@ -208,6 +209,15 @@ class j50n
 
   };
 
+  static std::string_view trim(std::string_view s) noexcept
+  {
+    auto const p(s.find_first_not_of(" \t\n\r"));
+
+    return std::string_view::npos == p ? std::string_view() :
+      std::string_view(s.begin() + p,
+        s.begin() + s.find_last_not_of(" \t\n\r") + 1);
+  }
+
 public:
   j50n() = default;
 
@@ -222,11 +232,7 @@ public:
     requires std::is_constructible_v<decltype(s_), decltype(a)&&...>:
     s_(std::forward<decltype(a)>(a)...)
   {
-    auto const p(s_.find_first_not_of(" \t\n\r"));
-
-    s_ = std::string_view::npos == p ? std::string_view() :
-      std::string_view(s_.begin() + p,
-        s_.begin() + s_.find_last_not_of(" \t\n\r") + 1);
+    s_ = trim(s_);
   }
 
   //
@@ -240,10 +246,12 @@ public:
   }
 
   j50n& operator=(auto&& a)
-    noexcept(noexcept(s_ = std::forward<decltype(a)>(a)))
-    requires std::is_assignable_v<decltype(s_), decltype(a)&&>
+    noexcept(noexcept(s_=trim(std::string_view(std::forward<decltype(a)>(a))))
+    requires std::is_constructible_v<decltype(s_), decltype(a)&&>
   {
-    s_ = std::forward<decltype(a)>(a); return *this;
+    s_ = trim(std::string_view(std::forward<decltype(a)>(a)));
+
+    return *this;
   }
 
   //
@@ -258,7 +266,7 @@ public:
     if constexpr(std::is_convertible_v<decltype(a), std::string_view>)
       return S::find(s_, std::forward<decltype(a)>(a));
     else
-      return S::find(s_, {}, std::forward<decltype(a)>(a));
+      return S::find(s_, {}, std::forward<decltype(a)>(a), false);
   }
 
   //
@@ -293,9 +301,14 @@ public:
 
   std::string_view get() const noexcept
   {
-    return is_string() ?
-      std::string_view(std::next(s_.begin()), s_.end()) :
-      s_;
+    if (!is_string())
+      return s_;
+
+    auto r(s_.substr(1));
+    if (r.size() && ('"' == r.back()))
+      r.remove_suffix(1); // drop quotes
+
+    return r;
   }
 
   std::string_view get(auto&& ...a) const noexcept
@@ -325,9 +338,9 @@ public:
   {
     auto const sv(view(std::forward<decltype(a)>(a)...).s_);
 
-    U r; // !!!
-    auto const [ptr, ec](std::from_chars(sv.begin(), sv.end(), r));
-    return std::pair(r, std::errc{} != ec || sv.end() != ptr);
+    U r{};
+    auto const [ptr, ec](std::from_chars(sv.data(), sv.data() + sv.size(), r));
+    return std::pair(r, std::errc{} != ec || (sv.data() + sv.size()) != ptr);
   }
 
   template <typename U>
