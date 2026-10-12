@@ -224,9 +224,7 @@ public:
   {
     if (auto const p(s_.find_first_not_of(" \t\n\r"));
       std::string_view::npos != p)
-    {
-      s_ = std::string_view(p, s_.end());
-    }
+      s_ = std::string_view(s_.begin() + p, s_.end());
   }
 
   //
