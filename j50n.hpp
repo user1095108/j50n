@@ -329,16 +329,7 @@ public:
 
     U r{}; // !!!
     auto const [ptr, ec](std::from_chars(sv.begin(), sv.end(), r));
-
-    if (sv.end() != ptr)
-    {
-      std::string_view const s(ptr, sv.end());
-
-      if (std::string_view::npos != s.find_first_not_of(" \t\n\r"))
-        return std::pair(r, true);
-    }
-
-    return std::pair(r, std::errc{} != ec);
+    return std::pair(r, std::errc{} != ec || sv.end() != ptr);
   }
 
   template <typename U>
