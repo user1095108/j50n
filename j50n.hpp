@@ -75,7 +75,7 @@ class j50n
         range(*p, 'a', 'z')) ? bare_end(p, end) : nullptr;
     }
 
-    static bool each_item(std::string_view const s, auto cb) noexcept
+    static bool each_item(std::string_view const s, auto const cb) noexcept
     {
       auto const end(s.data() + s.size());
       char const* start{};
