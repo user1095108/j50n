@@ -22,6 +22,11 @@ class j50n
     return (x >= s) && (x <= e);
   }
 
+  static bool one_of(char const c, std::string_view const set) noexcept
+  {
+    return std::string_view::npos != set.find(c);
+  }
+
   static char const* str_end(char const* p, char const* const end) noexcept
   {
     constexpr std::string_view esc("\"\\/bfnrtu"); // what may follow a '\'
@@ -72,6 +77,17 @@ class j50n
     return end;
   }
 
+  // end of a token (quoted string or bare word); nullptr if it can't start
+  static char const* token_end(char const* const p, char const* const end) noexcept
+  {
+    if ('"' == *p)
+      return str_end(p + 1, end);
+
+    auto const c(*p);
+    return (('-' == c) || range(c, '0', '9') || range(c, 'A', 'Z') ||
+      range(c, 'a', 'z')) ? bare_end(p, end) : nullptr;
+  }
+
   static std::string_view find(std::string_view const s,
     std::string_view const k, std::size_t index = 1,
     bool const keyed = true) noexcept
@@ -81,87 +97,68 @@ class j50n
     char const* key{}; // start of the key being read
     int depth{};
 
-    auto const open([&](char const* const p, bool const quoted) noexcept
+    auto const fail([&](bool const ok) noexcept
+      { assert(ok); return std::string_view(); });
+
+    auto const open([&](char const* const p) noexcept
       {
         if (keyed && (1 == index))
-          key = p + (quoted ? 1 : 0);
+          key = p + ('"' == *p); // skip the quote of a string key
         else if (!index)
           val = p;
         else
           --index;
-      }
-    );
+      });
 
-    auto const close([&](char const* const p) noexcept
+    // seal off an element: deliver the value, or match a key; {} = keep going
+    auto const seal([&](char const* const e, bool const incl) noexcept
+      -> std::string_view
       {
         if (val)
-          return true;
+          return std::string_view(val, std::size_t(e - val) + incl);
 
-        if (keyed && key)
+        if (key) // implies keyed
         {
-          index = (k == std::string_view(key, std::size_t(p - key))) ? 0 : 2;
+          index = (k == std::string_view(key, std::size_t(e - key))) ? 0 : 2;
           key = {};
         }
 
-        return false;
-      }
-    );
-
-    auto const upto([&](char const* const e) noexcept
-      { return std::string_view(val, std::size_t(e - val)); }
-    );
-
-    auto const bad([]() noexcept
-      { assert(!"bad"); return std::string_view(); }
-    );
-
-    auto const eof([&]() noexcept
-      { assert(!depth); return std::string_view(); }
-    );
+        return {};
+      });
 
     for (auto p(s.data()); end != p; ++p)
-      switch (*p)
+      if (one_of(*p, " \t\r\n:,"))
+        continue;
+      else if (one_of(*p, "[{"))
       {
-      case '\t': case ' ': case '\r': case '\n': case ':': case ',':
-        break;
-
-      case '[':
-      case '{':
         if (!depth && keyed && ('{' != *p)) return {}; // arrays have no keys
-        if (1 == depth) open(p, false);
+        if (1 == depth) open(p);
         ++depth;
-        break;
+      }
+      else if (one_of(*p, "]}"))
+      {
+        if ((1 == --depth))
+          if (auto const r = seal(p, true); !r.empty())
+            return r;
+      }
+      else
+      {
+        auto const e(token_end(p, end));
 
-      case ']':
-      case '}':
-        if ((1 == --depth) && close(p)) return upto(p + 1);
-        break;
+        if (!e) return fail(false); // invalid token
+        if (end == e) return fail(!depth); // unterminated
 
-      default: // a string or a bare word
+        if (1 == depth)
         {
-          auto const quoted('"' == *p);
-
-          if (!quoted && ('-' != *p) && !range(*p, '0', '9') &&
-            !range(*p, 'A', 'Z') && !range(*p, 'a', 'z'))
-            return bad();
-
-          auto const e(quoted ? str_end(p + 1, end) : bare_end(p, end));
-
-          if (!e) return bad();
-          if (end == e) return eof();
-
-          if (1 == depth)
-          {
-            open(p, quoted);
-            if (close(e)) return upto(e + (quoted ? 1 : 0));
-          }
-
-          // resume after a string, but at the terminator of a bare word
-          p = quoted ? e : e - 1;
+          open(p);
+          if (auto const r = seal(e, '"' == *p); !r.empty())
+            return r;
         }
+
+        p = e - ('"' != *p); // past a string; at a bare word's terminator
       }
 
-    return eof();
+    return fail(!depth);
   }
 
   static void trim(std::string_view& s) noexcept
@@ -268,6 +265,7 @@ public:
     return r;
   }
 
+  template <int = 0>
   std::string_view get(auto&& ...a) const noexcept
   {
     return view(std::forward<decltype(a)>(a)...).get();
