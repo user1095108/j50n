@@ -472,7 +472,7 @@ public:
     S::feach(s_, std::forward<decltype(f)>(f));
   }
 
-  void feach(auto&& f)
+  void feach(auto&& f) const
     noexcept(noexcept(f(std::declval<std::string_view>(),
       std::declval<j50n const&>())))
     requires(requires{f(std::declval<std::string_view>(),
