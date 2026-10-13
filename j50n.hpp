@@ -367,16 +367,16 @@ public:
   }
 
   //
-  j50n const& view() const noexcept { return *this; }
+  j50n const& view() const & noexcept { return *this; }
 
-  j50n view(auto&& a, auto&& ...b) const noexcept
+  j50n view(auto&& a, auto&& ...b) const & noexcept
   {
     auto r((*this)[std::forward<decltype(a)>(a)]);
 
     return ((r = r[std::forward<decltype(b)>(b)]), ...), r; // !!!
   }
 
-  std::string_view get() const noexcept
+  std::string_view get() const & noexcept
   {
     if (!is_string()) return s_;
 
