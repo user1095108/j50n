@@ -10,27 +10,27 @@
 #include <type_traits>
 #include <utility> // std::forward()
 
+using namespace std::literals::string_view_literals;
+
 class j50n
 {
   std::string_view s_;
 
   struct S
   {
-
   static auto range(auto const x, decltype(x) s, decltype(x) e) noexcept
   {
     return (x >= s) && (x <= e);
   }
 
-  static bool one_of(char const c, std::string_view const set) noexcept
+  template <char... chars>
+  static bool one_of(char const c) noexcept
   {
-    return std::string_view::npos != set.find(c);
+    return ((c == chars) || ...);
   }
 
   static char const* str_end(char const* p, char const* const end) noexcept
   {
-    constexpr std::string_view esc("\"\\/bfnrtu"); // what may follow a '\'
-
     for (; end != p; ++p)
     {
       auto const c(static_cast<unsigned char>(*p));
@@ -40,7 +40,7 @@ class j50n
       else if ('\\' == c)
       {
         if (end == ++p) break;
-        if (std::string_view::npos == esc.find(*p)) return {};
+        if (!one_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p)) return {};
       }
       else if (!range(c, 32, 126)) // UTF-8: a lead byte, then continuations
       {
@@ -63,16 +63,8 @@ class j50n
   static char const* bare_end(char const* p, char const* const end) noexcept
   {
     for (; end != p; ++p)
-      switch (*p)
-      {
-      case '\t': case ' ': case '\r': case '\n':
-      case ':': case ',': case ']': case '}':
-        return p;
-
-      default:
-        // could be more pedantic/validation-checking
-        if (!range(static_cast<unsigned char>(*p), 32, 126)) return {};
-      }
+      if (one_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*p)) return p;
+      else if (!range(static_cast<unsigned char>(*p), 32, 126)) return {};
 
     return end;
   }
@@ -83,9 +75,8 @@ class j50n
     if ('"' == *p)
       return str_end(p + 1, end);
 
-    auto const c(*p);
-    return (('-' == c) || range(c, '0', '9') || range(c, 'A', 'Z') ||
-      range(c, 'a', 'z')) ? bare_end(p, end) : nullptr;
+    return (('-' == *p) || range(*p, '0', '9') || range(*p, 'A', 'Z') ||
+      range(*p, 'a', 'z')) ? bare_end(p, end) : nullptr;
   }
 
   static std::string_view find(std::string_view const s,
@@ -93,8 +84,7 @@ class j50n
     bool const keyed = true) noexcept
   {
     auto const end(s.data() + s.size());
-    char const* val{}; // start of the wanted value
-    char const* key{}; // start of the key being read
+    char const* val{}, *key{};
     int depth{};
 
     auto const fail([&](bool const ok) noexcept
@@ -127,15 +117,15 @@ class j50n
       });
 
     for (auto p(s.data()); end != p; ++p)
-      if (one_of(*p, " \t\r\n:,"))
+      if (one_of<' ', '\t', '\r', '\n', ':', ','>(*p))
         continue;
-      else if (one_of(*p, "[{"))
+      else if (one_of<'[', '{'>(*p))
       {
         if (!depth && keyed && ('{' != *p)) return {}; // arrays have no keys
         if (1 == depth) open(p);
         ++depth;
       }
-      else if (one_of(*p, "]}"))
+      else if (one_of<']', '}'>(*p))
       {
         if ((1 == --depth))
           if (auto const r = seal(p, true); !r.empty())
