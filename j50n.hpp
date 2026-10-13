@@ -20,6 +20,7 @@ class j50n
     template <auto lo, decltype(lo) hi>
     static constexpr bool range(auto const c) noexcept
     {
+      static_assert(lo <= hi, "range bounds must be ordered");
       return c >= lo && c <= hi;
     }
 
