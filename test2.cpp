@@ -646,9 +646,9 @@ static void test_arrays()
   CHECK_EQ(root["pi"].size(),        0u);
   CHECK_EQ(root["active"].size(),    0u);
   CHECK_EQ(root["ratio"].size(),     0u);
-  CHECK_EQ(root["nested"].size(),    0u);
+  CHECK_EQ(root["nested"].size(),    1u);
   CHECK_EQ(root["empty_obj"].size(), 0u);
-  CHECK_EQ(root.size(),              0u);   // object root
+  CHECK_EQ(root.size(),              11u);   // object root
   CHECK_EQ(root["objects"].size(),   3u);
 
   // arrays of objects

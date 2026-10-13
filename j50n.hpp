@@ -204,6 +204,75 @@ class j50n
       }
     }
 
+    static void feach(std::string_view const s, auto f)
+      noexcept(noexcept(f(std::declval<std::string_view>(),
+        std::declval<j50n const&>())))
+      requires(requires{f(std::declval<std::string_view>(),
+        std::declval<j50n const&>());})
+    {
+      if (s.empty() || '{' != s.front()) return; // objects only
+
+      auto const end(s.data() + s.size());
+      char const* k_ptr{};
+      char const* k_end{};
+      char const* v_ptr{};
+      int depth{};
+      bool expecting_key{true};
+
+      auto const emit = [&](char const* v_end, bool incl)
+        noexcept(noexcept(f(std::declval<std::string_view>(),
+          std::declval<j50n const&>())))
+      {
+        bool const quoted('"' == *k_ptr);
+        std::string_view const key(k_ptr + quoted,
+          std::size_t(k_end - k_ptr - quoted));
+        j50n const val(v_ptr, std::size_t(v_end - v_ptr) + incl);
+        expecting_key = true;
+        v_ptr = {};
+        if constexpr (requires { bool(f(key, val)); }) return f(key, val);
+        else { f(key, val); return false; }
+      };
+
+      for (auto p(s.data()); end != p; ++p)
+      {
+        if (one_of<' ', '\t', '\r', '\n', ':', ','>(*p)) continue;
+
+        if (one_of<'[', '{'>(*p))
+        {
+          if (depth == 1 && !expecting_key) v_ptr = p;
+          ++depth;
+        }
+        else if (one_of<']', '}'>(*p))
+        {
+          if (--depth == 1 && !expecting_key && v_ptr)
+          {
+            if (emit(p, true)) break;
+          }
+        }
+        else
+        {
+          auto const e(token_end(p, end));
+          if (!e || end == e) break;
+
+          if (depth == 1)
+          {
+            if (expecting_key)
+            {
+              k_ptr = p;
+              k_end = e;
+              expecting_key = false;
+            }
+            else
+            {
+              v_ptr = p;
+              if (emit(e, '"' == *p)) break;
+            }
+          }
+          p = e - ('"' != *p);
+        }
+      }
+    }
+
     static void trim(std::string_view& s) noexcept
     {
       auto const p(s.find_first_not_of(" \t\n\r"));
@@ -365,11 +434,18 @@ public:
   {
     std::size_t i{};
 
-    S::feach(s_, [&](j50n const& e, std::size_t) noexcept
-      {
-        ++i;
-      }
-    );
+    if (is_array())
+      S::feach(s_, [&](j50n const&, std::size_t) noexcept
+        {
+          ++i;
+        }
+      );
+    else
+      S::feach(s_, [&](std::string_view const&, j50n const&) noexcept
+        {
+          ++i;
+        }
+      );
 
     return i;
   }
@@ -392,6 +468,15 @@ public:
       std::declval<std::size_t>())))
     requires(requires{f(std::declval<j50n const&>(),
       std::declval<std::size_t>());})
+  {
+    S::feach(s_, f);
+  }
+
+  void feach(auto f)
+    noexcept(noexcept(f(std::declval<std::string_view>(),
+      std::declval<j50n const&>())))
+    requires(requires{f(std::declval<std::string_view>(),
+      std::declval<j50n const&>());})
   {
     S::feach(s_, f);
   }
