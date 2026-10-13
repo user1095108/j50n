@@ -152,11 +152,23 @@ class j50n
       return fail(!depth);
     }
 
-    static void feach(std::string_view const s, auto f)
-      noexcept(noexcept(f(std::declval<j50n>(),
-        std::declval<std::size_t>())))
-      requires(requires{f(std::declval<j50n>(),
+    template <typename F>
+    static consteval bool feach_noexcept() noexcept
+    {
+      if constexpr(requires(F f){f(std::declval<j50n>(),
         std::declval<std::size_t>());})
+        return noexcept(std::declval<F&>()(std::declval<j50n>(),
+          std::declval<std::size_t>()));
+      else
+        return noexcept(std::declval<F&>()(std::declval<j50n>()));
+    }
+
+    static void feach(std::string_view const s, auto f)
+      noexcept(feach_noexcept<decltype(f)>())
+      requires(
+        requires{f(std::declval<j50n>(), std::declval<std::size_t>());} ||
+        requires{f(std::declval<j50n>());}
+      )
     {
       if (s.empty() || '[' != s.front()) return; // arrays only
 
@@ -166,12 +178,13 @@ class j50n
       std::size_t i{};
 
       auto const emit = [&](char const* const item_end, bool const incl)
-        noexcept(noexcept(f(std::declval<j50n>(),
-          std::declval<std::size_t>())))
+        noexcept(feach_noexcept<decltype(f)>())
         {
           j50n const item(val, std::size_t(item_end - val) + incl);
           val = {};
-          if constexpr (requires { bool(f(item, i)); }) return f(item, i++);
+          if constexpr(requires{bool(f(item, i));}) return f(item, i++);
+          else if constexpr(requires{bool(f(item));}){ ++i; return f(item); }
+          else if constexpr(requires{f(item);}){ ++i; f(item); return false; }
           else { f(item, i++); return false; }
         };
 
@@ -451,16 +464,11 @@ public:
   }
 
   //
-  void feach(auto f) const
+  void feach(auto&& f) const
     noexcept(noexcept(f(std::declval<j50n>())))
     requires(requires{f(std::declval<j50n>());})
   {
-    S::feach(s_, [&](j50n const e, std::size_t)
-      noexcept(noexcept(f(std::declval<j50n>())))
-      {
-        return f(e);
-      }
-    );
+    S::feach(s_, std::forward<decltype(f)>(f));
   }
 
   void feach(auto&& f) const
