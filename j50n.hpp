@@ -188,17 +188,17 @@ class j50n
 
       std::size_t i{};
 
-      auto const emit = [&](char const* const p, char const* const e,
-        bool const incl) noexcept(feach_noexcept<decltype(f)>()) -> bool
-        {
-          j50n const item(p, std::size_t(e - p) + incl);
-          if constexpr(requires{bool(f(item, i));}) return f(item, i++);
-          else if constexpr(requires{bool(f(item));}){ ++i; return f(item); }
-          else if constexpr(requires{f(item);}){ ++i; f(item); return false; }
-          else { f(item, i++); return false; }
-        };
-
-      each_item(s, emit);
+      each_item(s,
+        [&](char const* const p, char const* const e,
+          bool const incl) noexcept(feach_noexcept<decltype(f)>()) -> bool
+          {
+            j50n const item(p, std::size_t(e - p) + incl);
+            if constexpr(requires{bool(f(item, i));}) return f(item, i++);
+            else if constexpr(requires{bool(f(item));}){ ++i; return f(item); }
+            else if constexpr(requires{f(item);}){ ++i; f(item); return false; }
+            else { f(item, i++); return false; }
+          }
+      );
     }
 
     static void feach(std::string_view const s, auto f)
@@ -213,30 +213,30 @@ class j50n
       char const* k_end{};
       bool expecting_key{true};
 
-      auto const emit = [&](char const* const p, char const* const e,
-        bool const incl)
-        noexcept(noexcept(f(std::declval<std::string_view>(),
-          std::declval<j50n>()))) -> bool
-        {
-          if (expecting_key)
+      each_item(s,
+        [&](char const* const p, char const* const e,
+          bool const incl)
+          noexcept(noexcept(f(std::declval<std::string_view>(),
+            std::declval<j50n>()))) -> bool
           {
-            k_ptr = p;
-            k_end = e;
-            expecting_key = false;
-            return false;
+            if (expecting_key)
+            {
+              k_ptr = p;
+              k_end = e;
+              expecting_key = false;
+              return false;
+            }
+
+            bool const quoted('"' == *k_ptr);
+            std::string_view const key(k_ptr + quoted,
+              std::size_t(k_end - k_ptr) - quoted);
+            j50n const val(p, std::size_t(e - p) + incl);
+            expecting_key = true;
+
+            if constexpr (requires { bool(f(key, val)); }) return f(key, val);
+            else { f(key, val); return false; }
           }
-
-          bool const quoted('"' == *k_ptr);
-          std::string_view const key(k_ptr + quoted,
-            std::size_t(k_end - k_ptr) - quoted);
-          j50n const val(p, std::size_t(e - p) + incl);
-          expecting_key = true;
-
-          if constexpr (requires { bool(f(key, val)); }) return f(key, val);
-          else { f(key, val); return false; }
-        };
-
-      each_item(s, emit);
+      );
     }
 
     static void trim(std::string_view& s) noexcept
@@ -320,16 +320,16 @@ public:
   }
 
   //
-  j50n const& view() const & noexcept { return *this; }
+  j50n const& view() const noexcept { return *this; }
 
-  j50n view(auto&& a, auto&& ...b) const & noexcept
+  j50n view(auto&& a, auto&& ...b) const noexcept
   {
     auto r((*this)[std::forward<decltype(a)>(a)]);
 
     return ((r = r[std::forward<decltype(b)>(b)]), ...), r; // !!!
   }
 
-  std::string_view get() const & noexcept
+  std::string_view get() const noexcept
   {
     if (!is_string()) return s_;
 
