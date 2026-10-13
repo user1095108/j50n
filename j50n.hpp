@@ -73,7 +73,7 @@ class j50n
         range(*p, 'a', 'z')) ? bare_end(p, end) : nullptr;
     }
 
-    static bool each_item(std::string_view const s, auto const cb) noexcept
+    static void each_item(std::string_view const s, auto const cb) noexcept
     {
       auto const end(s.data() + s.size());
       char const* start{};
@@ -92,7 +92,7 @@ class j50n
         {
           if (--depth == 1 && start)
           {
-            if (cb(start, p, true)) return false;
+            if (cb(start, p, true)) return;
             start = {};
           }
         }
@@ -101,13 +101,11 @@ class j50n
           auto const e(token_end(p, end));
 
           if (!e || (depth == 1 && cb(p, e, '"' == *p)) || (end == e))
-            return false;
+            return;
 
           p = e - ('"' != *p);
         }
       }
-
-      return !depth;
     }
 
     static std::string_view find(std::string_view const s,
