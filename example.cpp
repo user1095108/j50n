@@ -24,5 +24,7 @@ int main()
         std::cout << i << ": " << e << '\n';
     });
 
+    std::cout << j50n(R"("\ud83c\udf08 \ud83e\udd8b \u2728 \ud83c\udf3b \ud83d\udc96")").get_unescaped() << std::endl;
+
     return 0;
 }

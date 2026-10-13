@@ -35,27 +35,25 @@ class j50n
         auto const c(static_cast<unsigned char>(*p));
 
         if ('"' == c) return p;
-        if ('\\' == c)
+        else if ('\\' == c)
         {
-          if (end == ++p) break;
-          if (!one_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
+          if ((end == ++p) ||
+            !one_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
             return {};
         }
-        else if (!range(c, 32, 126))
+        else if (!range(c, 32, 127)) // 0x7F (DEL) is allowed unescaped per RFC 8259
         {
-          int n((c & 224) == 192 ? 1 :
-            (c & 240) == 224 ? 2 : (c & 248) == 240 ? 3 : 0);
+          auto n((c & 224) == 192 ? 1u :
+            (c & 240) == 224 ? 2u : (c & 248) == 240 ? 3u : 0u);
           if (!n) return {};
 
           for (; n; --n)
-          {
-            if (end == ++p) return end;
-            if ((static_cast<unsigned char>(*p) & 192) != 128) return {};
-          }
+            if ((end == ++p) || ((static_cast<unsigned char>(*p) & 192) != 128))
+              return {};
         }
       }
 
-      return end;
+      return {};
     }
 
     static char const* bare_end(char const* p, char const* const end) noexcept
@@ -83,9 +81,9 @@ class j50n
 
       for (auto p(s.data()); end != p; ++p)
       {
-        if (one_of<' ', '\t', '\r', '\n', ':', ','>(*p)) continue;
-
-        if (one_of<'[', '{'>(*p))
+        if (one_of<' ', '\t', '\r', '\n', ':', ','>(*p))
+          continue;
+        else if (one_of<'[', '{'>(*p))
         {
           if (depth == 1) start = p;
           ++depth;
@@ -94,17 +92,16 @@ class j50n
         {
           if (--depth == 1 && start)
           {
-            char const* const first = start;
+            if (cb(start, p, true)) return false;
             start = {};
-            if (cb(first, p, true)) return false;
           }
         }
         else
         {
           auto const e(token_end(p, end));
-          if (!e || end == e) return false;
 
-          if (depth == 1 && cb(p, e, '"' == *p)) return false;
+          if (!e || (depth == 1 && cb(p, e, '"' == *p)) || (end == e))
+            return false;
 
           p = e - ('"' != *p);
         }
@@ -366,6 +363,92 @@ public:
     U r{};
     auto const [ptr, ec](std::from_chars(sv.data(), sv.data() + sv.size(), r));
     return std::pair(r, std::errc{} != ec || (sv.data() + sv.size()) != ptr);
+  }
+
+  std::string get_unescaped(auto&& ...a) const
+  {
+    auto const sv(view(std::forward<decltype(a)>(a)...).get());
+
+    std::string r;
+    r.reserve(sv.size());
+
+    auto const hex = [](char const c) noexcept -> unsigned
+      {
+        return c >= '0' && c <= '9' ? unsigned(c - '0') :
+               c >= 'a' && c <= 'f' ? unsigned(c - 'a' + 10) :
+               c >= 'A' && c <= 'F' ? unsigned(c - 'A' + 10) : 16u;
+      };
+
+    auto const utf8 = [&](unsigned cp) noexcept
+      {
+        int const n = cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+        char b[4];
+        for (int i = n - 1; i > 0; --i, cp >>= 6) b[i] = char(0x80 | (cp & 0x3F));
+        b[0] = char(cp | (n > 1 ? (0xFF << (8 - n)) & 0xFF : 0));
+        r.append(b, n);
+      };
+
+    auto const hex4 = [&](auto& p) noexcept
+      {
+        unsigned v{};
+
+        for (auto const end(p + 4); end != p; ++p)
+        {
+          auto const h(hex(*p));
+
+          if (h > 15) return std::pair(v, false);
+          v = (v << 4) | h;
+        }
+
+        return std::pair(v, true);
+      };
+
+    auto const end(sv.cend());
+
+    for (auto p(sv.cbegin()); end != p;)
+    {
+      char const c = *p++;
+      if ('\\' != c || p == end) { r += c; continue; }
+
+      switch (char const e = *p++; e)
+      {
+        case '"':  r += '"';  break;
+        case '\\': r += '\\'; break;
+        case '/':  r += '/';  break;
+        case 'b':  r += '\b'; break;
+        case 'f':  r += '\f'; break;
+        case 'n':  r += '\n'; break;
+        case 'r':  r += '\r'; break;
+        case 't':  r += '\t'; break;
+        case 'u':
+        {
+          if (end - p < 4) { r += 'u'; break; }
+          auto const p0 = p;
+          auto const [cp, ok] = hex4(p);
+          if (!ok) { p = p0; r += 'u'; break; }
+          unsigned u = cp;
+          if (cp >= 0xD800 && cp <= 0xDBFF && end - p >= 6 &&
+              *p == '\\' && *(p + 1) == 'u')
+          {
+            auto q = p + 2;
+            auto const [lo, ok2] = hex4(q);
+            if (ok2 && lo >= 0xDC00 && lo <= 0xDFFF)
+            {
+              u = 0x10000u + ((cp - 0xD800u) << 10) + (lo - 0xDC00u);
+              p += 6;
+            }
+          }
+          utf8(u);
+          break;
+        }
+
+        default:
+          r.append(1, '\\').append(1, e);
+          break;
+      }
+    }
+
+    return r;
   }
 
   template <typename U>
