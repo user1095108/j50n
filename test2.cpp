@@ -6,6 +6,8 @@
 // lets gcc's -Wmaybe-uninitialized guard the get<number>() result, which no
 // runtime check can reliably do):
 //   g++ -std=c++20 -Wall -Wextra -Werror -O2 -DNDEBUG test2.cpp -o test2_ndebug
+// The scanner must not depend on the signedness of char, so also try:
+//   g++ -std=c++20 -O1 -DNDEBUG -funsigned-char test2.cpp -o test2_uc   (and -fsigned-char)
 // Build with a second translation unit (checks that j50n.hpp can be included
 // from several .cpp files, i.e. that nothing in it violates the ODR):
 //   g++ -std=c++20 -DJ50N_TEST_ODR test2.cpp test2_odr.cpp -o test2_odr
@@ -563,6 +565,15 @@ static void test_empty_and_missing()
   CHECK(j50n("{ }")["a"].is_empty());
   CHECK(!j50n("{}").is_empty());
 
+  // top-level scalars have no members; unterminated ones are simply empty
+  CHECK(j50n("\"abc\"")["x"].is_empty());
+  CHECK(j50n("\"abc")["x"].is_empty());          // unterminated string
+  CHECK(j50n("\"a\\")["x"].is_empty());          // ... ending in a lone '\'
+  CHECK(j50n("\"\xC3")["x"].is_empty());         // ... or in half a UTF-8 char
+  CHECK(j50n("abc")["x"].is_empty());
+  CHECK(j50n("42")[0].is_empty());
+  CHECK(j50n("true")["x"].is_empty());
+
   // is_null()/is_bool() on empty views (these used to be undefined behaviour:
   // `s_.begin() + npos`; run under UBSan to keep it that way)
   CHECK(!root["does_not_exist"].is_null());
@@ -968,6 +979,130 @@ static void test_utf8()
   CHECK_EQ(root["utf8"].get().size(), 12u);   // h é(2) l l ø(2) ' ' 🌍(4)
 }
 
+static void test_character_classes()
+{
+  // The scanner's rules, byte by byte.
+  SECTION("character classes");
+
+  // string content: any printable ASCII character except '"' and '\'
+  {
+    std::string all;
+    for (int c = 32; c <= 126; ++c)
+      if (c != '"' && c != '\\') all += char(c);
+
+    std::string const doc("{\"" + all + "\":\"" + all + "\",\"after\":1}");
+    j50n const j(doc);
+    CHECK_EQ(j[all].get(), all);                // as key and as value
+    CHECK_EQ(j["after"], "1");
+    CHECK(j[all.substr(1)].is_empty());
+    CHECK(j[all.substr(0, all.size() - 1)].is_empty());
+  }
+
+  // UTF-8: a lead byte followed by the right number of continuation bytes
+  for (int b = 0xC2; b <= 0xF4; ++b)
+  {
+    int const need((b <= 0xDF) ? 1 : (b <= 0xEF) ? 2 : 3);
+    std::string const body(std::string(1, char(b)) + std::string(need, '\x80'));
+    std::string const doc("{\"" + body + "\":\"" + body + "\",\"c\":2}");
+    j50n const j(doc);
+
+    t::record(j[body].get() == body && j["c"].get() == "2",
+      "UTF-8 sequence with lead byte " + std::to_string(b), __LINE__);
+  }
+
+  // bare words (numbers, true, ...): a bare word runs up to a blank or one of
+  // , : ] }  and anything printable may appear inside it (current rule)
+  for (int c = 33; c <= 126; ++c)
+  {
+    if (c == ',' || c == ':' || c == ']' || c == '}') continue;
+
+    std::string const w(std::string("x") + char(c) + "y");
+    std::string const doc("{\"a\":" + w + ",\"b\":2}");   // j50n does not own it
+    j50n const j(doc);
+
+    t::record(j["a"].get() == w && j["b"].get() == "2",
+      "bare word containing '" + std::string(1, char(c)) + "'", __LINE__);
+  }
+  for (char const* sep : {" ", "\t", "\r", "\n", ",", ":"})
+  {
+    std::string const doc(std::string("{\"a\":12") + sep + "\"b\":3}");
+    j50n const j(doc);
+
+    t::record(j["a"].get() == "12" && j["b"].get() == "3",
+      "bare word ended by " + t::show(std::string(sep)), __LINE__);
+  }
+  CHECK_EQ(j50n("[1]")[0], "1");                // ... and by ] and }
+  CHECK_EQ(j50n("{\"a\":1}")["a"], "1");
+
+  // a bare word starts with '-' or an ASCII letter or digit
+  for (int c = 33; c <= 126; ++c)
+  {
+    if (c != '-' && !(c >= '0' && c <= '9') && !(c >= 'A' && c <= 'Z') &&
+      !(c >= 'a' && c <= 'z')) continue;
+
+    std::string const doc(std::string("{\"a\":") + char(c) + "z,\"b\":2}");
+
+    t::record(j50n(doc)["b"].get() == "2",
+      "bare word starting with '" + std::string(1, char(c)) + "'", __LINE__);
+  }
+
+#ifdef NDEBUG
+  // Malformed bytes are rejected: the result is empty (with assertions on, the
+  // scanner aborts instead).  0x7F, 0xC0, 0xC1 and 0xF5..0xF7 are left out:
+  // whether they are accepted is not a rule worth pinning.
+  for (int b = 0; b < 256; ++b)
+  {
+    if (b == '"' || b == '\\' || (b >= 32 && b <= 126) || b == 0x7F ||
+      (b >= 0xC0 && b <= 0xC1) || (b >= 0xC2 && b <= 0xF4) ||
+      (b >= 0xF5 && b <= 0xF7)) continue;
+
+    std::string const doc("{\"a\":\"" + std::string(1, char(b)) + "\",\"c\":2}");
+
+    t::record(j50n(doc)["c"].is_empty(),
+      "byte " + std::to_string(b) + " in a string is rejected", __LINE__);
+  }
+
+  // a lead byte needs all of its continuation bytes, and only those
+  for (int b = 0xC2; b <= 0xF4; ++b)
+  {
+    int const need((b <= 0xDF) ? 1 : (b <= 0xEF) ? 2 : 3);
+    std::string const lead(1, char(b));
+    std::string const shortseq(lead + std::string(need - 1, '\x80'));
+    std::string const wrong(shortseq + "a");          // not a continuation
+
+    t::record(j50n("{\"a\":\"" + shortseq + "\",\"c\":2}")["c"].is_empty() &&
+      j50n("{\"a\":\"" + wrong + "\",\"c\":2}")["c"].is_empty(),
+      "UTF-8 sequence with lead byte " + std::to_string(b) + " truncated",
+      __LINE__);
+  }
+
+  // bytes that cannot be inside a bare word
+  for (int b = 0; b < 256; ++b)
+  {
+    if ((b >= 33 && b <= 126) || b == ' ' || b == '\t' || b == '\r' ||
+      b == '\n' || b == 0x7F) continue;
+
+    std::string const doc("{\"a\":x" + std::string(1, char(b)) + "y,\"b\":2}");
+
+    t::record(j50n(doc)["b"].is_empty(),
+      "byte " + std::to_string(b) + " in a bare word is rejected", __LINE__);
+  }
+
+  // printable characters that cannot start a bare word
+  for (int c = 33; c <= 126; ++c)
+  {
+    if (c == '-' || c == '"' || c == '[' || c == '{' || c == ']' || c == '}' ||
+      c == ',' || c == ':' || (c >= '0' && c <= '9') ||
+      (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) continue;
+
+    std::string const doc(std::string("{\"a\":") + char(c) + "z,\"b\":2}");
+
+    t::record(j50n(doc)["b"].is_empty(),
+      "'" + std::string(1, char(c)) + "' cannot start a bare word", __LINE__);
+  }
+#endif
+}
+
 static void test_whitespace_and_formatting()
 {
   SECTION("whitespace and formatting");
@@ -1253,6 +1388,15 @@ static void test_malformed()
   CHECK(j50n("{\"a\":@,\"b\":2}")["b"].is_empty());            // junk token
   CHECK(j50n("{{\"a\":1}")["a"].is_empty());                   // unbalanced
   CHECK(j50n("\xC3\xA9")["a"].is_empty());                     // UTF-8 outside string
+
+  // documents that end inside a token
+  CHECK(j50n("{\"a\":\"x\\")["a"].is_empty());                // after a '\'
+  CHECK(j50n("{\"a\":\"\xC3")["a"].is_empty());                // inside a UTF-8 char
+  CHECK(j50n("{\"a\":\"\xE2\x82")["a"].is_empty());
+  CHECK(j50n("{\"a\":\"abc")["a"].is_empty());                // inside a string
+  CHECK(j50n("{\"a\":12")["a"].is_empty());                    // inside a bare word
+  CHECK(j50n("{\"a")["a"].is_empty());                         // inside a key
+  CHECK(j50n("[1,2")[1].is_empty());
 #else
   std::cout << "  (skipped: build with -DNDEBUG to run the malformed-input "
                "tests; with assertions enabled they abort by design)\n";
@@ -1304,6 +1448,7 @@ int main(int argc, char** argv)
   test_strings_and_escapes();
   test_string_blanks();
   test_utf8();
+  test_character_classes();
   test_whitespace_and_formatting();
   test_lenient_extensions();
   test_construction_and_assignment();

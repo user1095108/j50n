@@ -22,201 +22,158 @@ class j50n
     return (x >= s) && (x <= e);
   }
 
-  static std::string_view find(std::string_view const& s,
-    std::string_view const& k, std::size_t index = 1,
+  static char const* str_end(char const* p, char const* const end) noexcept
+  {
+    constexpr std::string_view esc("\"\\/bfnrtu"); // what may follow a '\'
+
+    for (; end != p; ++p)
+    {
+      auto const c(static_cast<unsigned char>(*p));
+
+      if ('"' == c)
+        return p;
+      else if ('\\' == c)
+      {
+        if (end == ++p) break;
+        if (std::string_view::npos == esc.find(*p)) return {};
+      }
+      else if (!range(c, 32, 126)) // UTF-8: a lead byte, then continuations
+      {
+        int n((192 == (c & 224)) ? 1 : (224 == (c & 240)) ? 2 :
+          (240 == (c & 248)) ? 3 : 0);
+
+        if (!n) return {};
+
+        for (; n; --n)
+        {
+          if (end == ++p) return end;
+          if (128 != (static_cast<unsigned char>(*p) & 192)) return {};
+        }
+      }
+    }
+
+    return end;
+  }
+
+  static char const* bare_end(char const* p, char const* const end) noexcept
+  {
+    for (; end != p; ++p)
+      switch (*p)
+      {
+      case '\t': case ' ': case '\r': case '\n':
+      case ':': case ',': case ']': case '}':
+        return p;
+
+      default:
+        // could be more pedantic/validation-checking
+        if (!range(static_cast<unsigned char>(*p), 32, 126)) return {};
+      }
+
+    return end;
+  }
+
+  static std::string_view find(std::string_view const s,
+    std::string_view const k, std::size_t index = 1,
     bool const keyed = true) noexcept
   {
-    char const* val{};
-    auto cur(s.begin()), start(cur);
+    auto const end(s.data() + s.size());
+    char const* val{}; // start of the wanted value
+    char const* key{}; // start of the key being read
+    int depth{};
 
-    auto const cap([&]() noexcept
-      {
-        if (val && !index) //r = {val, cur + i + 1};
-          return true;
-        else if (auto const ks(k.size()); keyed && start)
-          index = (ks != std::string_view::size_type(cur - start)) ||
-            (ks && std::strncmp(start, k.begin(), ks)) ? 2 : 0,
-          start = {};
-
-        return false;
-      }
-    );
-
-    auto const push([&](std::size_t const i) noexcept
+    auto const open([&](char const* const p, bool const quoted) noexcept
       {
         if (keyed && (1 == index))
-          start = cur + i;
+          key = p + (quoted ? 1 : 0);
         else if (!index)
-          val = cur + i; // + i
+          val = p;
         else
           --index;
       }
     );
 
-    int depth{};
-    int utf8_remain{};
-
-    enum
-    {
-      S_STRUCT,
-      S_BARE,
-      S_STRING,
-      S_UTF8,
-      S_ESC,
-    } state{S_STRUCT};
-
-    for (auto const end(s.end()); end != cur; ++cur)
-    {
-      again:
-      switch (state)
+    auto const close([&](char const* const p) noexcept
       {
-      case S_STRUCT:
-        switch (*cur) {
-        case '\t':
-        case ' ':
-        case '\r':
-        case '\n':
-        case ':':
-        case ',':
-          continue;
+        if (val)
+          return true;
 
-        case '"': goto l_qup;
-        case '[': goto l_up;
-        case ']': goto l_down;
-        case '{': goto l_up;
-        case '}': goto l_down;
+        if (keyed && key)
+        {
+          index = (k == std::string_view(key, std::size_t(p - key))) ? 0 : 2;
+          key = {};
+        }
 
-        case '-': goto l_bare;
-        default: {
-          if (range(*cur, '0', '9') ||
-              range(*cur, 'A', 'Z') ||
-              range(*cur, 'a', 'z'))
-            goto l_bare;
-          else
-            goto l_bad;
-        }
-        }
-        assert(0);
-      case S_BARE:
-        switch (*cur) {
-        case '\t':
-        case ' ':
-        case '\r':
-        case '\n':
-        case ',':
-        case ']':
-        case '}':
-        case ':':
-          goto l_unbare;
-        default:  {
-          // could be more pedantic/validation-checking
-          if (range(*cur, 32, 126))
-            continue;
-          goto l_bad;
-        }
-        }
-        assert(0);
-      case S_STRING:
-        if (*cur == '\\') {
-          state = S_ESC;
-          continue;
-        }
-        if (*cur == '"')
-          goto l_qdown;
-        if (range(*cur, 32, 126))
-          continue;
-        if ((*cur & 224) == 192) { // range(*cur, 192, 223))
-          state = S_UTF8;
-          utf8_remain = 1;
-          continue;
-        }
-        if ((*cur & 240) == 224) { // range(*cur, 224, 239)
-          state = S_UTF8;
-          utf8_remain = 2;
-          continue;
-        }
-        if ((*cur & 248) == 240) { // range(*cur, 240, 247)
-          state = S_UTF8;
-          utf8_remain = 3;
-          continue;
-        }
-        goto l_bad;
-      // XXX no utf8 outside strings?
-      case S_UTF8:
-        if ((*cur & 192) == 128) { // range(*cur, 128, 191)
-          if (!--utf8_remain)
-            state = S_STRING;
-          continue;
-        }
-        goto l_bad;
-      case S_ESC:
-        switch (*cur) {
-        case '"':
-        case '\\':
-        case '/':
-        case 'b':
-        case 'f':
-        case 'n':
-        case 'r':
-        case 't':
-        case 'u':
-          state = S_STRING;
-          continue;
-        default:
-          goto l_bad;
+        return false;
+      }
+    );
+
+    auto const upto([&](char const* const e) noexcept
+      { return std::string_view(val, std::size_t(e - val)); }
+    );
+
+    auto const bad([]() noexcept
+      { assert(!"bad"); return std::string_view(); }
+    );
+
+    auto const eof([&]() noexcept
+      { assert(!depth); return std::string_view(); }
+    );
+
+    for (auto p(s.data()); end != p; ++p)
+      switch (*p)
+      {
+      case '\t': case ' ': case '\r': case '\n': case ':': case ',':
+        break;
+
+      case '[':
+      case '{':
+        if (!depth && keyed && ('{' != *p)) return {}; // arrays have no keys
+        if (1 == depth) open(p, false);
+        ++depth;
+        break;
+
+      case ']':
+      case '}':
+        if ((1 == --depth) && close(p)) return upto(p + 1);
+        break;
+
+      default: // a string or a bare word
+        {
+          auto const quoted('"' == *p);
+
+          if (!quoted && ('-' != *p) && !range(*p, '0', '9') &&
+            !range(*p, 'A', 'Z') && !range(*p, 'a', 'z'))
+            return bad();
+
+          auto const e(quoted ? str_end(p + 1, end) : bare_end(p, end));
+
+          if (!e) return bad();
+          if (end == e) return eof();
+
+          if (1 == depth)
+          {
+            open(p, quoted);
+            if (close(e)) return upto(e + (quoted ? 1 : 0));
+          }
+
+          // resume after a string, but at the terminator of a bare word
+          p = quoted ? e : e - 1;
         }
       }
-      assert (0);
-      l_bad:
-      assert(!"bad");
-      return {};
 
-      l_up:
-      if (!depth && keyed && ('{' != *cur)) return {}; // no keys in arrays
-      if (1 == depth) push(0);
-      ++depth;
-      continue;
-
-      l_down:
-      --depth;
-      if ((1 == depth) && cap()) return {val, cur + 1};
-      continue;
-
-      l_qup:
-      if (1 == depth) push(1);
-      state = S_STRING;
-      continue;
-
-      l_qdown:
-      if ((1 == depth) && cap()) return {val - 1, cur + 1};
-      state = S_STRUCT;
-      continue;
-
-      l_bare:
-      if (1 == depth) push(0);
-      state = S_BARE;
-      continue;
-
-      l_unbare:
-      if ((1 == depth) && cap()) return {val, cur};
-      state = S_STRUCT;
-      goto again;
-    }
-
-    assert(!depth);
-    return {};
+    return eof();
   }
 
-  };
-
-  static std::string_view trim(std::string_view s) noexcept
+  static void trim(std::string_view& s) noexcept
   {
     auto const p(s.find_first_not_of(" \t\n\r"));
 
-    return std::string_view::npos == p ? std::string_view() :
+    s = std::string_view::npos == p ? std::string_view() :
       std::string_view(s.begin() + p,
         s.begin() + s.find_last_not_of(" \t\n\r") + 1);
   }
+
+  };
 
 public:
   j50n() = default;
@@ -232,7 +189,7 @@ public:
     requires std::is_constructible_v<decltype(s_), decltype(a)&&...>:
     s_(std::forward<decltype(a)>(a)...)
   {
-    s_ = trim(s_);
+    S::trim(s_);
   }
 
   //
@@ -247,10 +204,10 @@ public:
 
   j50n& operator=(auto&& a)
     noexcept(noexcept(
-      s_ = trim(std::string_view(std::forward<decltype(a)>(a)))))
+      S::trim(s_ = std::string_view(std::forward<decltype(a)>(a)))))
     requires std::is_constructible_v<decltype(s_), decltype(a)&&>
   {
-    s_ = trim(std::string_view(std::forward<decltype(a)>(a)));
+    S::trim(s_ = std::string_view(std::forward<decltype(a)>(a)));
 
     return *this;
   }
