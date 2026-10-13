@@ -445,22 +445,18 @@ public:
   //
   auto size() const noexcept
   {
-    std::size_t i{};
+    std::size_t sz{};
 
     if (is_array())
-      S::feach(s_, [&](j50n const&, std::size_t) noexcept
-        {
-          ++i;
-        }
+      S::feach(s_,
+        [&](j50n, std::size_t) noexcept { ++sz; }
       );
     else
-      S::feach(s_, [&](std::string_view const&, j50n const&) noexcept
-        {
-          ++i;
-        }
+      S::feach(s_,
+        [&](std::string_view, j50n) noexcept { ++sz; }
       );
 
-    return i;
+    return sz;
   }
 
   //
