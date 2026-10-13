@@ -182,6 +182,7 @@ int main()
 | `operator[](n)` | Access array element by zero-based index |
 | `get()` | Returns the raw underlying `std::string_view` (no unescaping) |
 | `get(...)` | Chained key/index access, returns `std::string_view` |
+| `get_unescaped(...)` | Chained key/index access, returns `std::string` |
 | `get_or(def, ...)` | Chained key/index access, returns `std::string_view` or `def` if not found |
 | `get<U>(...)` | Chained numeric extraction via `std::from_chars()`, returns `std::pair<U, bool>` where second is `true` on failure |
 | `get_or<U>(def, ...)` | Chained numeric extraction, returns `U` or `def` on error |
@@ -213,5 +214,4 @@ int main()
 - **Read-only** — no serialization or mutation
 - **Non-owning** — the source string must outlive any `j50n` instance referencing it
 - **Not strictly validating** — malformed JSON may silently produce empty or incorrect results rather than errors
-- **No unescaping** — `get()` returns raw JSON string content; escape sequences such as `\"`, `\\`, and `\n` are not decoded
 - **Duplicate keys** — only the first matching key is matched
