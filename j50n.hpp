@@ -153,9 +153,9 @@ class j50n
     }
 
     static void feach(std::string_view const s, auto f)
-      noexcept(noexcept(f(std::declval<j50n const&>(),
+      noexcept(noexcept(f(std::declval<j50n>(),
         std::declval<std::size_t>())))
-      requires(requires{f(std::declval<j50n const&>(),
+      requires(requires{f(std::declval<j50n>(),
         std::declval<std::size_t>());})
     {
       if (s.empty() || '[' != s.front()) return; // arrays only
@@ -166,7 +166,7 @@ class j50n
       std::size_t i{};
 
       auto const emit = [&](char const* const item_end, bool const incl)
-        noexcept(noexcept(f(std::declval<j50n const&>(),
+        noexcept(noexcept(f(std::declval<j50n>(),
           std::declval<std::size_t>())))
         {
           j50n const item(val, std::size_t(item_end - val) + incl);
@@ -206,9 +206,9 @@ class j50n
 
     static void feach(std::string_view const s, auto f)
       noexcept(noexcept(f(std::declval<std::string_view>(),
-        std::declval<j50n const&>())))
+        std::declval<j50n>())))
       requires(requires{f(std::declval<std::string_view>(),
-        std::declval<j50n const&>());})
+        std::declval<j50n>());})
     {
       if (s.empty() || '{' != s.front()) return; // objects only
 
@@ -221,7 +221,7 @@ class j50n
 
       auto const emit = [&](char const* v_end, bool incl)
         noexcept(noexcept(f(std::declval<std::string_view>(),
-          std::declval<j50n const&>())))
+          std::declval<j50n>())))
         {
           bool const quoted('"' == *k_ptr);
           std::string_view const key(k_ptr + quoted,
@@ -452,11 +452,11 @@ public:
 
   //
   void feach(auto f) const
-    noexcept(noexcept(f(std::declval<j50n const&>())))
-    requires(requires{f(std::declval<j50n const&>());})
+    noexcept(noexcept(f(std::declval<j50n>())))
+    requires(requires{f(std::declval<j50n>());})
   {
-    S::feach(s_, [&](j50n const& e, std::size_t)
-      noexcept(noexcept(f(std::declval<j50n const&>())))
+    S::feach(s_, [&](j50n const e, std::size_t)
+      noexcept(noexcept(f(std::declval<j50n>())))
       {
         return f(e);
       }
@@ -464,9 +464,9 @@ public:
   }
 
   void feach(auto&& f) const
-    noexcept(noexcept(f(std::declval<j50n const&>(),
+    noexcept(noexcept(f(std::declval<j50n>(),
       std::declval<std::size_t>())))
-    requires(requires{f(std::declval<j50n const&>(),
+    requires(requires{f(std::declval<j50n>(),
       std::declval<std::size_t>());})
   {
     S::feach(s_, std::forward<decltype(f)>(f));
@@ -474,16 +474,16 @@ public:
 
   void feach(auto&& f) const
     noexcept(noexcept(f(std::declval<std::string_view>(),
-      std::declval<j50n const&>())))
+      std::declval<j50n>())))
     requires(requires{f(std::declval<std::string_view>(),
-      std::declval<j50n const&>());})
+      std::declval<j50n>());})
   {
     S::feach(s_, std::forward<decltype(f)>(f));
   }
 };
 
 //////////////////////////////////////////////////////////////////////////////
-inline auto& operator<<(std::ostream& os, j50n const& j)
+inline auto& operator<<(std::ostream& os, j50n const j)
 { // !!!
   return os << j.get();
 }

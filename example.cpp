@@ -16,11 +16,11 @@ int main()
 
     std::cout << j.get_or<int>(-1, "fail") << '\n';
 
-    j.feach([](std::string_view const k, j50n const& e){
+    j.feach([](std::string_view const k, j50n const e){
         std::cout << k << ": " << e << '\n';
     });
 
-    j["values"].feach([](j50n const& e, std::size_t i){
+    j["values"].feach([](j50n const e, std::size_t i){
         std::cout << i << ": " << e << '\n';
     });
 

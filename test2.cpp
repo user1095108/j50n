@@ -242,7 +242,7 @@ struct Section
 #define KNOWN_BUG(cond, why)    ::t::known_bug(bool(cond), #cond, (why), __LINE__)
 #define SECTION(name)           ::t::Section section_guard_(name)
 
-static std::string str(j50n const& j)
+static std::string str(j50n const j)
 {
   std::ostringstream os;
   os << j;
@@ -262,14 +262,14 @@ static_assert(std::is_nothrow_move_assignable_v<j50n>);
 static_assert(std::is_nothrow_constructible_v<j50n, std::string_view>);
 static_assert(noexcept(std::declval<j50n&>() = std::string_view()));
 static_assert(noexcept(std::declval<j50n&>() = "x"));
-static_assert(noexcept(std::declval<j50n const&>()["key"]));
-static_assert(noexcept(std::declval<j50n const&>()[std::size_t{}]));
-static_assert(noexcept(std::declval<j50n const&>().size()));
-static_assert(noexcept(std::declval<j50n const&>().is_object()));
-static_assert(noexcept(std::declval<j50n const&>().get()));
-static_assert(std::is_same_v<decltype(std::declval<j50n const&>().get<int>("x")),
+static_assert(noexcept(std::declval<j50n>()["key"]));
+static_assert(noexcept(std::declval<j50n>()[std::size_t{}]));
+static_assert(noexcept(std::declval<j50n>().size()));
+static_assert(noexcept(std::declval<j50n>().is_object()));
+static_assert(noexcept(std::declval<j50n>().get()));
+static_assert(std::is_same_v<decltype(std::declval<j50n>().get<int>("x")),
   std::pair<int, bool>>);
-static_assert(std::is_same_v<decltype(std::declval<j50n const&>().get<bool>("x")),
+static_assert(std::is_same_v<decltype(std::declval<j50n>().get<bool>("x")),
   std::pair<bool, bool>>);
 
 // ── tests ───────────────────────────────────────────────────────────────────
@@ -669,13 +669,13 @@ static void test_feach()
   // (element) visitor
   {
     std::string seen;
-    numbers.feach([&](j50n const& e) { seen += std::string(e.get()) + ","; });
+    numbers.feach([&](j50n const e) { seen += std::string(e.get()) + ","; });
     CHECK_EQ(seen, "1,2,3,4,5,");
   }
   // (element, index) visitor
   {
     std::string seen;
-    numbers.feach([&](j50n const& e, std::size_t i)
+    numbers.feach([&](j50n const e, std::size_t i)
       { seen += std::to_string(i) + "=" + std::string(e.get()) + ";"; });
     CHECK_EQ(seen, "0=1;1=2;2=3;3=4;4=5;");
   }
@@ -683,7 +683,7 @@ static void test_feach()
   {
     int sum{};
     std::size_t last{};
-    root["objects"].feach([&](j50n const& o, std::size_t i)
+    root["objects"].feach([&](j50n const o, std::size_t i)
       { sum += o.get_or<int>(0, "value"); last = i; });
     CHECK_EQ(sum, 60);
     CHECK_EQ(last, 2u);
@@ -691,13 +691,13 @@ static void test_feach()
   // nested arrays
   {
     std::size_t total{};
-    j50n(R"j([[1,2],[3],[]])j").feach([&](j50n const& a) { total += a.size(); });
+    j50n(R"j([[1,2],[3],[]])j").feach([&](j50n const a) { total += a.size(); });
     CHECK_EQ(total, 3u);
   }
   // mutable visitor
   {
     std::string seen;
-    numbers.feach([&seen, n = 0](j50n const& e) mutable
+    numbers.feach([&seen, n = 0](j50n const e) mutable
       { seen += std::to_string(n++) + ":" + std::string(e.get()) + ";"; });
     CHECK_EQ(seen, "0:1;1:2;2:3;3:4;4:5;");
   }
@@ -705,37 +705,37 @@ static void test_feach()
   // early exit: returning true stops iteration, no further calls are made
   {
     std::size_t count{};
-    numbers.feach([&](j50n const& e) -> bool
+    numbers.feach([&](j50n const e) -> bool
       { ++count; return e.get<int>().first >= 3; });
     CHECK_EQ(count, 3u);
   }
   {
     std::size_t count{};
-    numbers.feach([&](j50n const&, std::size_t) -> bool
+    numbers.feach([&](j50n const, std::size_t) -> bool
       { ++count; return count == 2; });
     CHECK_EQ(count, 2u);
   }
   {
     std::size_t count{};                       // stop on first element
-    numbers.feach([&](j50n const&) -> bool { ++count; return true; });
+    numbers.feach([&](j50n const) -> bool { ++count; return true; });
     CHECK_EQ(count, 1u);
   }
   {
     std::size_t count{};                       // stop on last element
-    numbers.feach([&](j50n const&, std::size_t i) -> bool
+    numbers.feach([&](j50n const, std::size_t i) -> bool
       { ++count; return i == 4; });
     CHECK_EQ(count, 5u);
   }
   {
     std::size_t count{};                       // never stop
-    numbers.feach([&](j50n const&) -> bool { ++count; return false; });
+    numbers.feach([&](j50n const) -> bool { ++count; return false; });
     CHECK_EQ(count, 5u);
   }
 
   // no-ops: empty array, non-arrays, missing, default constructed
   std::size_t calls{};
-  auto const f([&](j50n const&) { ++calls; });
-  auto const g([&](j50n const&, std::size_t) { ++calls; });
+  auto const f([&](j50n const) { ++calls; });
+  auto const g([&](j50n const, std::size_t) { ++calls; });
   root["empty_arr"].feach(f);
   root["empty_arr"].feach(g);
   root["name"].feach(f);                       // string
@@ -1352,7 +1352,7 @@ static void test_scale_and_nesting()
     CHECK_EQ(d[N - 1], std::to_string(N - 1));
     CHECK(d[N].is_empty());
     std::size_t n{}, sum{};
-    d.feach([&](j50n const& e, std::size_t i)
+    d.feach([&](j50n const e, std::size_t i)
       { ++n; sum += i + e.get<std::size_t>().first; });
     CHECK_EQ(n, N);
     CHECK_EQ(sum, N * (N - 1));                  // sum(i) + sum(value)

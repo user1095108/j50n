@@ -35,7 +35,7 @@ int main()
   auto timeout = cfg.get_or<double>(10.0, "limits", "timeout_ms");
 
   std::cout << "Enabled features: ";
-  cfg["features"].feach([](j50n const& feat, std::size_t const i) {
+  cfg["features"].feach([](j50n const feat, std::size_t const i) {
     std::cout << (i ? ", " : "") << feat; // feat auto-converts to string_view
   });
   std::cout << '\n';
