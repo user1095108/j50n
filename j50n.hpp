@@ -3,7 +3,7 @@
 # pragma once
 
 #include <cassert>
-#include <cstring> // std::strncmp()
+#include <cstddef> // std::size_t
 #include <charconv> // std::from_chars()
 #include <ostream> // operator<<()
 #include <string_view>
