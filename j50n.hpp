@@ -2,7 +2,6 @@
 # define J50N_HPP
 # pragma once
 
-#include <cassert>
 #include <cstddef> // std::size_t
 #include <charconv> // std::from_chars()
 #include <ostream> // operator<<()
@@ -132,7 +131,7 @@ class j50n
       char const* val_end{};
       bool val_incl{};
 
-      bool const ok = each_item(s,
+      each_item(s,
         [&](char const* p, char const* e, bool incl) noexcept -> bool
         {
           if (keyed && index == search_key)
@@ -157,13 +156,9 @@ class j50n
           return false;
         });
 
-      if (!val)
-      {
-        assert(ok);
-        return {};
-      }
-
-      return {val, static_cast<std::size_t>(val_end - val) + val_incl};
+      return val ?
+        std::string_view(val, std::size_t(val_end - val) + val_incl) :
+        std::string_view();
     }
 
     template <typename F>
