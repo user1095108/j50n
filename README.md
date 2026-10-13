@@ -87,7 +87,7 @@ The second element is `true` on **failure** — always check `error` before usin
 
 `get_or()` and `get_or<U>()` return a caller-supplied default on failure.
 
-### Iterating arrays
+### Iterating arrays and objects
 
 ```cpp
 // Without index
@@ -98,6 +98,11 @@ j["scores"].feach([](j50n const& elem) {
 // With index
 j["scores"].feach([](j50n const& elem, std::size_t i) {
     std::cout << i << ": " << elem << '\n';
+});
+
+// With key/value
+j.feach([](std::string_view key, j50n const& elem) {
+    std::cout << key << ": " << elem << '\n';
 });
 ```
 
@@ -113,9 +118,10 @@ j["scores"].feach([](j50n const& elem) -> bool {
 
 `feach` is a no-op on non-array values.
 
-### Array size
+### Array/Object size
 
 ```cpp
+auto s = j.size(); // 3
 auto n = j["scores"].size();  // 3
 ```
 
@@ -181,7 +187,7 @@ int main()
 | `get_or<U>(def, ...)` | Chained numeric extraction, returns `U` or `def` on error |
 | `view()` | Returns `*this` |
 | `view(...)` | Chained key/index access, returns `j50n` |
-| `size()` | Number of elements in an array |
+| `size()` | Number of elements in an array or number of key/value pairs in an object |
 | `is_empty()` | True if the view is empty (key not found or parse error) |
 | `is_array()` | True if the value starts with `[` |
 | `is_object()` | True if the value starts with `{` (skips leading whitespace) |
@@ -199,8 +205,8 @@ int main()
 | Type predicate | O(1) | |
 | Key lookup | O(n) | Scans the JSON text |
 | Index lookup | O(n) | Scans from array start |
-| `size()` | O(n²) | Calls index lookup once per element |
-| `feach()` | O(n²) | Each step rescans from array start |
+| `size()` | O(n) | Scans the entire array/object |
+| `feach()` | O(n) | Supports early termination |
 
 ## Limitations
 
@@ -209,4 +215,3 @@ int main()
 - **Not strictly validating** — malformed JSON may silently produce empty or incorrect results rather than errors
 - **No unescaping** — `get()` returns raw JSON string content; escape sequences such as `\"`, `\\`, and `\n` are not decoded
 - **Duplicate keys** — only the first matching key is matched
-- **Object iteration** — there is no equivalent of `feach` for objects; structured access requires knowing keys in advance
