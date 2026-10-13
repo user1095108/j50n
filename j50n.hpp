@@ -17,9 +17,10 @@ class j50n
 
   struct S
   {
-    static auto range(auto const x, decltype(x) s, decltype(x) e) noexcept
+    template <auto lo, decltype(lo) hi>
+    static constexpr bool range(auto const c) noexcept
     {
-      return x >= s && x <= e;
+      return c >= lo && c <= hi;
     }
 
     template <char... chars>
@@ -32,16 +33,15 @@ class j50n
     {
       for (; end != p; ++p)
       {
-        auto const c(static_cast<unsigned char>(*p));
-
-        if ('"' == c) return p;
+        if (auto const c(static_cast<unsigned char>(*p)); '"' == c)
+          return p;
         else if ('\\' == c)
         {
           if ((end == ++p) ||
             !one_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
             return {};
         }
-        else if (!range(c, 32, 127)) // 0x7F (DEL) is allowed unescaped per RFC 8259
+        else if (!range<32u, 127u>(c)) // 0x7F (DEL) is allowed unescaped per RFC 8259
         {
           auto n((c & 224) == 192 ? 1u :
             (c & 240) == 224 ? 2u : (c & 248) == 240 ? 3u : 0u);
@@ -60,7 +60,7 @@ class j50n
     {
       for (; end != p; ++p)
         if (one_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*p)) return p;
-        else if (!range(static_cast<unsigned char>(*p), 32, 126)) return {};
+        else if (!range<32u, 126u>(static_cast<unsigned char>(*p))) return {};
 
       return end;
     }
@@ -68,9 +68,9 @@ class j50n
     static char const* token_end(char const* const p,
       char const* const end) noexcept
     {
-      if ('"' == *p) return str_end(p + 1, end);
-      return ('-' == *p || range(*p, '0', '9') || range(*p, 'A', 'Z') ||
-        range(*p, 'a', 'z')) ? bare_end(p, end) : nullptr;
+      return ('"' == *p) ? str_end(p + 1, end) :
+        (('-' == *p || range<'0', '9'>(*p) || range<'A', 'Z'>(*p) ||
+        range<'a', 'z'>(*p)) ? bare_end(p, end) : nullptr);
     }
 
     static void each_item(std::string_view const s, auto const cb) noexcept
