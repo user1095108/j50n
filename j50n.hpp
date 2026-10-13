@@ -76,6 +76,44 @@ class j50n
         range(*p, 'a', 'z')) ? bare_end(p, end) : nullptr;
     }
 
+    static bool each_item(std::string_view const s, auto cb) noexcept
+    {
+      auto const end(s.data() + s.size());
+      char const* start{};
+      int depth{};
+
+      for (auto p(s.data()); end != p; ++p)
+      {
+        if (one_of<' ', '\t', '\r', '\n', ':', ','>(*p)) continue;
+
+        if (one_of<'[', '{'>(*p))
+        {
+          if (depth == 1) start = p;
+          ++depth;
+        }
+        else if (one_of<']', '}'>(*p))
+        {
+          if (--depth == 1 && start)
+          {
+            char const* const first = start;
+            start = {};
+            if (cb(first, p, true)) return false;
+          }
+        }
+        else
+        {
+          auto const e(token_end(p, end));
+          if (!e || end == e) return false;
+
+          if (depth == 1 && cb(p, e, '"' == *p)) return false;
+
+          p = e - ('"' != *p);
+        }
+      }
+
+      return !depth;
+    }
+
     static std::string_view find(std::string_view const s,
       std::string_view const k, std::size_t index = 1,
       bool const keyed = true) noexcept
@@ -87,69 +125,45 @@ class j50n
         skip_value = 2
       };
 
-      auto const end(s.data() + s.size());
-      char const* val{}, *key{};
-      int depth{};
+      if (s.empty()) return {};
+      if (keyed ? '{' != s.front() : '[' != s.front()) return {};
 
-      auto const fail = [](bool ok) noexcept
-        { assert(ok); return std::string_view{}; };
+      char const* val{};
+      char const* val_end{};
+      bool val_incl{};
 
-      auto const open = [&](char const* p) noexcept
+      bool const ok = each_item(s,
+        [&](char const* p, char const* e, bool incl) noexcept -> bool
         {
           if (keyed && index == search_key)
-            key = p + ('"' == *p);
+          {
+            bool const quoted('"' == *p);
+            std::string_view const key(p + quoted,
+              std::size_t(e - p) - quoted);
+            index = k == key ? key_found : skip_value;
+          }
           else if (index == key_found)
+          {
             val = p;
+            val_end = e;
+            val_incl = incl;
+            return true;
+          }
           else
+          {
             --index;
-        };
-
-      auto const seal = [&](char const* e, bool incl) noexcept -> std::string_view
-        {
-          if (val) return {val, static_cast<std::size_t>(e - val) + incl};
-
-          if (key)
-          {
-            index = k == std::string_view(key, std::size_t(e - key)) ?
-              key_found : skip_value;
-            key = {};
           }
 
-          return {};
-        };
+          return false;
+        });
 
-      for (auto p(s.data()); end != p; ++p)
+      if (!val)
       {
-        if (one_of<' ', '\t', '\r', '\n', ':', ','>(*p)) continue;
-
-        if (one_of<'[', '{'>(*p))
-        {
-          if (!depth && keyed && '{' != *p) return {};
-          if (depth == 1) open(p);
-          ++depth;
-        }
-        else if (one_of<']', '}'>(*p))
-        {
-          if (--depth == 1)
-            if (auto r = seal(p, true); !r.empty()) return r;
-        }
-        else
-        {
-          auto const e(token_end(p, end));
-          if (!e) return fail(false);
-          if (end == e) return fail(!depth);
-
-          if (1 == depth)
-          {
-            open(p);
-            if (auto r = seal(e, '"' == *p); !r.empty()) return r;
-          }
-
-          p = e - ('"' != *p);
-        }
+        assert(ok);
+        return {};
       }
 
-      return fail(!depth);
+      return {val, static_cast<std::size_t>(val_end - val) + val_incl};
     }
 
     template <typename F>
@@ -172,49 +186,19 @@ class j50n
     {
       if (s.empty() || '[' != s.front()) return; // arrays only
 
-      auto const end(s.data() + s.size());
-      char const* val{};
-      int depth{};
       std::size_t i{};
 
-      auto const emit = [&](char const* const item_end, bool const incl)
-        noexcept(feach_noexcept<decltype(f)>())
+      auto const emit = [&](char const* const p, char const* const e,
+        bool const incl) noexcept(feach_noexcept<decltype(f)>()) -> bool
         {
-          j50n const item(val, std::size_t(item_end - val) + incl);
-          val = {};
+          j50n const item(p, std::size_t(e - p) + incl);
           if constexpr(requires{bool(f(item, i));}) return f(item, i++);
           else if constexpr(requires{bool(f(item));}){ ++i; return f(item); }
           else if constexpr(requires{f(item);}){ ++i; f(item); return false; }
           else { f(item, i++); return false; }
         };
 
-      for (auto p(s.data()); end != p; ++p)
-      {
-        if (one_of<' ', '\t', '\r', '\n', ':', ','>(*p)) continue;
-
-        if (one_of<'[', '{'>(*p))
-        {
-          if (depth == 1) val = p;
-          ++depth;
-        }
-        else if (one_of<']', '}'>(*p))
-        {
-          if (--depth == 1 && val && emit(p, true)) break;
-        }
-        else
-        {
-          auto const e(token_end(p, end));
-          if (!e || end == e) break;
-
-          if (depth == 1)
-          {
-            val = p;
-            if (emit(e, '"' == *p)) break;
-          }
-
-          p = e - ('"' != *p);
-        }
-      }
+      each_item(s, emit);
     }
 
     static void feach(std::string_view const s, auto f)
@@ -225,65 +209,34 @@ class j50n
     {
       if (s.empty() || '{' != s.front()) return; // objects only
 
-      auto const end(s.data() + s.size());
       char const* k_ptr{};
       char const* k_end{};
-      char const* v_ptr{};
-      int depth{};
       bool expecting_key{true};
 
-      auto const emit = [&](char const* v_end, bool incl)
+      auto const emit = [&](char const* const p, char const* const e,
+        bool const incl)
         noexcept(noexcept(f(std::declval<std::string_view>(),
-          std::declval<j50n>())))
+          std::declval<j50n>()))) -> bool
         {
+          if (expecting_key)
+          {
+            k_ptr = p;
+            k_end = e;
+            expecting_key = false;
+            return false;
+          }
+
           bool const quoted('"' == *k_ptr);
           std::string_view const key(k_ptr + quoted,
-            std::size_t(k_end - k_ptr - quoted));
-          j50n const val(v_ptr, std::size_t(v_end - v_ptr) + incl);
+            std::size_t(k_end - k_ptr) - quoted);
+          j50n const val(p, std::size_t(e - p) + incl);
           expecting_key = true;
-          v_ptr = {};
+
           if constexpr (requires { bool(f(key, val)); }) return f(key, val);
           else { f(key, val); return false; }
         };
 
-      for (auto p(s.data()); end != p; ++p)
-      {
-        if (one_of<' ', '\t', '\r', '\n', ':', ','>(*p)) continue;
-
-        if (one_of<'[', '{'>(*p))
-        {
-          if (depth == 1 && !expecting_key) v_ptr = p;
-          ++depth;
-        }
-        else if (one_of<']', '}'>(*p))
-        {
-          if (--depth == 1 && !expecting_key && v_ptr)
-          {
-            if (emit(p, true)) break;
-          }
-        }
-        else
-        {
-          auto const e(token_end(p, end));
-          if (!e || end == e) break;
-
-          if (depth == 1)
-          {
-            if (expecting_key)
-            {
-              k_ptr = p;
-              k_end = e;
-              expecting_key = false;
-            }
-            else
-            {
-              v_ptr = p;
-              if (emit(e, '"' == *p)) break;
-            }
-          }
-          p = e - ('"' != *p);
-        }
-      }
+      each_item(s, emit);
     }
 
     static void trim(std::string_view& s) noexcept
