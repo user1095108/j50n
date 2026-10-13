@@ -302,8 +302,7 @@ public:
 
   std::string_view get() const noexcept
   {
-    if (!is_string())
-      return s_;
+    if (!is_string()) return s_;
 
     auto r(s_.substr(1));
     if (r.size() && ('"' == r.back()))
