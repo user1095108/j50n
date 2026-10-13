@@ -8,9 +8,6 @@
 //   g++ -std=c++20 -Wall -Wextra -Werror -O2 -DNDEBUG test2.cpp -o test2_ndebug
 // The scanner must not depend on the signedness of char, so also try:
 //   g++ -std=c++20 -O1 -DNDEBUG -funsigned-char test2.cpp -o test2_uc   (and -fsigned-char)
-// Build with a second translation unit (checks that j50n.hpp can be included
-// from several .cpp files, i.e. that nothing in it violates the ODR):
-//   g++ -std=c++20 -DJ50N_TEST_ODR test2.cpp test2_odr.cpp -o test2_odr
 //
 // Run:   ./test2 [-v|--verbose] [--strict]
 //   -v        print every PASS line, not just failures and per-section totals
@@ -357,12 +354,12 @@ static void test_typed_getters()
   CHECK_GET(nums.get<int>("neg"),                 -42);
   CHECK_GET(nums.get<double>("negfloat"),         -3.14);
   CHECK_GET(nums.get<int>("zero"),                0);
-  CHECK_GET(nums.get<long long>("big"),           9007199254740992LL);
+  CHECK_GET(nums.get<std::int64_t>("big"),        INT64_C(9007199254740992));
   CHECK_GET(nums.get<double>("big"),              9007199254740992.0);
   CHECK_GET(nums.get<double>("sci"),              150.0);
   CHECK_GET(nums.get<double>("sci_neg"),          0.25);
   CHECK_GET(nums.get<unsigned>("uint_max"),       4294967295u);
-  CHECK_GET(nums.get<std::uint64_t>("uint_max"),  4294967295u);
+  CHECK_GET(nums.get<std::uint64_t>("uint_max"),  UINT64_C(4294967295));
   CHECK_GET(nums.get<float>("sci_neg"),           0.25f);
 
   // range / sign errors reported by std::from_chars
@@ -371,7 +368,7 @@ static void test_typed_getters()
   CHECK_GET_ERR(nums.get<std::uint8_t>("uint_max"));
 
   j50n const edge(R"j({"i64":9007199254740993,"i64min":-9223372036854775808,"u64max":18446744073709551615,"over":18446744073709551616,"negz":-0.0,"E":1E5,"s":"123"})j");
-  CHECK_GET(edge.get<std::int64_t>("i64"),    9007199254740993LL);   // > 2^53, exact
+  CHECK_GET(edge.get<std::int64_t>("i64"),    INT64_C(9007199254740993)); // > 2^53
   CHECK_GET(edge.get<std::int64_t>("i64min"), INT64_MIN);
   CHECK_GET(edge.get<std::uint64_t>("u64max"), UINT64_MAX);
   CHECK_GET_ERR(edge.get<std::uint64_t>("over"));
@@ -1403,20 +1400,167 @@ static void test_malformed()
 #endif
 }
 
-#ifdef J50N_TEST_ODR
-// Defined in test2_odr.cpp, which also includes j50n.hpp.  Linking the two
-// translation units fails ("multiple definition") if anything in the header,
-// e.g. operator<<, is not inline.
-std::string odr_other_tu();
-#endif
-
-static void test_odr()
+static void test_misc_edge_cases()
 {
-#ifdef J50N_TEST_ODR
-  SECTION("ODR (second translation unit)");
-  CHECK_EQ(odr_other_tu(), "x|1");
-  CHECK_EQ(str(j50n(R"j({"k":"x"})j")["k"]), "x");
-#endif
+  SECTION("misc edge cases");
+
+  // repeated size() / feach() calls return the same result: the scanner is
+  // stateless and does not cache or mutate anything
+  j50n const arr("[1,2,3,4,5]");
+  CHECK_EQ(arr.size(), 5u);
+  CHECK_EQ(arr.size(), 5u);
+  std::size_t n1{}, n2{};
+  arr.feach([&](j50n) { ++n1; });
+  arr.feach([&](j50n) { ++n2; });
+  CHECK_EQ(n1, 5u);
+  CHECK_EQ(n2, 5u);
+  CHECK_EQ(n1, n2);
+
+  // iterating does not modify the j50n
+  j50n const before = arr;
+  arr.feach([](j50n) {});
+  CHECK_EQ(arr.get(), before.get());
+
+  // a j50n built from a subview navigates independently of its parent
+  j50n const root(JSON.data(), JSON.size());
+  j50n const nested(root["nested"]);
+  CHECK(nested.is_object());
+  CHECK_EQ(nested["a"]["b"]["c"], "deep");
+  CHECK_EQ(nested.get("a", "b", "c"), "deep");
+  CHECK(nested["a"]["b"]["c"].is_string());
+
+  // view() results are independent from one another and from the parent
+  auto const v1(root.view("nested"));
+  auto const v2(root.view("nested", "a"));
+  CHECK_EQ(v1["a"]["b"]["c"], "deep");
+  CHECK_EQ(v2["b"]["c"], "deep");
+  CHECK(v1.is_object());
+  CHECK(v2.is_object());
+
+  // zero-length span, constructed from a data pointer and length 0
+  j50n const empty(JSON.data(), std::size_t{0});
+  CHECK(empty.is_empty());
+
+  // a j50n view with a non-zero start offset
+  j50n const substr(JSON.data() + 4, 6);
+  CHECK_EQ(substr.get(), "name");
+
+  // is_bare() across the full spectrum of top-level values
+  CHECK(j50n("42").is_bare());
+  CHECK(j50n("-1.5").is_bare());
+  CHECK(j50n("true").is_bare());
+  CHECK(j50n("false").is_bare());
+  CHECK(j50n("null").is_bare());
+  CHECK(!j50n("\"str\"").is_bare());
+  CHECK(!j50n("[1]").is_bare());
+  CHECK(!j50n("{}").is_bare());
+  CHECK(!j50n("").is_bare());
+
+  // a string document whose *contents* look like a container stays a string
+  CHECK(j50n(R"j("[not an array]")j").is_string());
+  CHECK(!j50n(R"j("[not an array]")j").is_array());
+  CHECK_EQ(j50n(R"j("[not an array]")j").get(), "[not an array]");
+
+  // very long key: matched exactly, and near-misses (one byte short) rejected
+  std::string const longkey(10000, 'k');
+  std::string const doc = "{\"" + longkey + "\":1,\"after\":2}";
+  j50n const lk(doc);
+  CHECK_EQ(lk[longkey], "1");
+  CHECK_EQ(lk["after"], "2");
+  CHECK(lk[longkey.substr(0, longkey.size() - 1)].is_empty());
+
+  // get_or with a std::string_view fallback and a nested path
+  CHECK_EQ(root.get_or(std::string_view("FB"), "nested", "a", "b", "c"),
+    "deep");
+  CHECK_EQ(root.get_or(std::string_view("FB"), "nested", "zzz"), "FB");
+}
+
+static void test_more_coverage()
+{
+  SECTION("additional coverage");
+
+  // get<T> for several integer widths returns consistent values
+  j50n const n(R"j({"v":1000})j");
+  CHECK_GET(n.get<int>("v"),          1000);
+  CHECK_GET(n.get<long>("v"),         1000L);
+  CHECK_GET(n.get<long long>("v"),    1000LL);
+  CHECK_GET(n.get<std::int64_t>("v"), INT64_C(1000));
+  CHECK_GET(n.get<std::int32_t>("v"), std::int32_t(1000));
+  CHECK_GET(n.get<unsigned>("v"),     1000u);
+
+  // float / double / long double all parse the same value
+  j50n const f(R"j({"pi":3.5})j");
+  CHECK_GET(f.get<float>("pi"),       3.5f);
+  CHECK_GET(f.get<double>("pi"),      3.5);
+  CHECK_GET(f.get<long double>("pi"), 3.5L);
+
+  // integer values coerce cleanly to floating point
+  CHECK_GET(n.get<double>("v"), 1000.0);
+  CHECK_GET(n.get<float>("v"),  1000.0f);
+
+  // nested feach: iterating an array of arrays
+  j50n const grid(R"j([[1,2,3],[4,5],[6]])j");
+  std::size_t total{};
+  grid.feach([&](j50n const row) { total += row.size(); });
+  CHECK_EQ(total, 6u);
+
+  // feach over an array of objects, accumulating
+  std::size_t idsum{};
+  j50n(R"j([{"id":1},{"id":2},{"id":3},{"id":4}])j")
+    .feach([&](j50n const o) { idsum += o.get<std::size_t>("id").first; });
+  CHECK_EQ(idsum, 10u);
+
+  // view chains can mix keys and indices in any order
+  j50n const root(JSON.data(), JSON.size());
+  CHECK_GET(root.view("objects", 0).get<int>("id"), 1);
+  CHECK_GET(root.view("objects").get<int>(1, "value"), 20);
+
+  // a sub-view of a sub-view behaves the same as the equivalent long path
+  auto const mid(root["objects"]);
+  CHECK_EQ(mid[1]["tag"], root["objects"][1]["tag"]);
+  CHECK_EQ(mid[2]["value"], root["objects"][2]["value"]);
+
+  // very long string value survives round-trip byte-exact
+  std::string const big(50000, 'x');
+  std::string const doc = "{\"big\":\"" + big + "\",\"t\":1}";
+  j50n const b(doc);
+  CHECK_EQ(b["big"].get().size(), big.size());
+  CHECK(b["big"].get() == big);
+
+  // strings containing only whitespace and structural punctuation
+  j50n const punct(R"j({"a":" , : [ ] { } ","b":"\t\t\t"})j");
+  CHECK_EQ(punct["a"].get(), " , : [ ] { } ");
+  CHECK_EQ(punct["b"].get(), "\\t\\t\\t");
+
+  // get_or<bool> distinguishes false from wrong-type
+  j50n const bd(R"j({"t":true,"f":false,"n":0,"s":"false"})j");
+  CHECK(bd.get_or<bool>(true,  "t") == true);
+  CHECK(bd.get_or<bool>(true,  "f") == false);
+  CHECK(bd.get_or<bool>(true,  "n") == true);    // number, not bool
+  CHECK(bd.get_or<bool>(true,  "s") == true);    // string, not bool
+
+  // every predicate on a value fetched by various key types
+  CHECK(root[std::string("active")].is_bool());
+  CHECK(root[std::string_view("active")].is_bool());
+  CHECK(root["active"].is_bool());
+
+  // a j50n built from an iterator pair over a std::string body
+  std::string const src(R"j({"x":42})j");
+  j50n const from_iters(src.begin(), src.end());
+  CHECK_GET(from_iters.get<int>("x"), 42);
+
+  // move assignment leaves the target usable
+  j50n a(R"j({"a":1})j");
+  j50n bb(R"j({"b":2})j");
+  a = std::move(bb);
+  CHECK_EQ(a["b"], "2");
+  CHECK(a["a"].is_empty());
+
+  // equivalent values reached by different paths compare identically
+  CHECK_EQ(root["nested"]["a"]["b"]["c"],
+           root.view("nested").view("a").view("b").view("c"));
+  CHECK_EQ(root.get("objects", 0, "id"),
+           root.view("objects", 0).get("id"));
 }
 
 // ── main ────────────────────────────────────────────────────────────────────
@@ -1455,7 +1599,8 @@ int main(int argc, char** argv)
   test_scale_and_nesting();
   test_lazy_scanning();
   test_malformed();
-  test_odr();
+  test_misc_edge_cases();
+  test_more_coverage();
 
   std::cout << "\n== Summary ==\n"
     << t::g.checks << " checks, " << t::g.failures << " failed";

@@ -120,8 +120,8 @@ class j50n
         skip_value = 2
       };
 
-      if (s.empty()) return {};
-      if (keyed ? '{' != s.front() : '[' != s.front()) return {};
+      if (s.empty() || (keyed ? '{' != s.front() : '[' != s.front()))
+        return {};
 
       char const* val{};
       char const* val_end{};
