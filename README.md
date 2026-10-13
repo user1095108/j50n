@@ -199,8 +199,8 @@ int main()
 | Type predicate | O(1) | |
 | Key lookup | O(n) | Scans the JSON text |
 | Index lookup | O(n) | Scans from array start |
-| `size()` | O(n²) | Calls index lookup once per element |
-| `feach()` | O(n²) | Each step rescans from array start |
+| `size()` | O(n) | |
+| `feach()` | O(n) | |
 
 ## Limitations
 
