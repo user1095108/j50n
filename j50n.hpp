@@ -365,7 +365,11 @@ public:
   {
     std::size_t i{};
 
-    if (is_array()) while (!(*this)[i].is_empty()) ++i;
+    S::feach(s_, [&](j50n const& e, std::size_t) noexcept
+      {
+        ++i;
+      }
+    );
 
     return i;
   }
