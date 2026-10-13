@@ -430,7 +430,7 @@ public:
 
   template <typename U>
   auto get(auto&& ...a) const noexcept
-    requires(std::is_same_v<bool, std::remove_cv_t<U>>)
+    requires(std::is_same_v<bool, U>)
   {
     auto const sv(view(std::forward<decltype(a)>(a)...).s_);
 
