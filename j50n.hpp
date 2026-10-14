@@ -126,9 +126,8 @@ class j50n
           if (keyed && search_key == index)
           {
             bool const quoted('"' == *p);
-            std::string_view const key(p + quoted,
-              std::size_t(e - p) - quoted);
-            index = k == key ? key_found : skip_value;
+            index = k == std::string_view(p + quoted,
+              std::size_t(e - p) - quoted) ? key_found : skip_value;
           }
           else if (key_found == index)
           {
