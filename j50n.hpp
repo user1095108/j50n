@@ -266,13 +266,18 @@ public:
   bool operator==(j50n const o) const noexcept { return s_ == o.s_; }
   bool operator==(std::nullptr_t) const noexcept { return is_null(); }
 
-  template <typename U>
-  bool operator==(U const v) const noexcept
-    requires std::is_arithmetic_v<U>
+  bool operator==(auto const a) const noexcept
+    requires std::is_arithmetic_v<decltype(a)>
   {
-    auto const [x, err] = get<U>();
+    return *this <=> a == 0;
+  }
 
-    return !err && x == v;
+  auto operator<=>(auto const a) const noexcept
+    requires std::is_arithmetic_v<decltype(a)>
+  {
+    auto const [x, err](get<std::remove_cv_t<decltype(a)>>());
+
+    return err ? std::partial_ordering::unordered : x <=> a;
   }
 
   template <std::size_t N>

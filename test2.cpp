@@ -2097,6 +2097,159 @@ static void test_size()
     CHECK_EQ(d["a"]["b"]["c"].size(), 0u);  // 1, a scalar
   }
 }
+static void test_operator_spaceship()
+{
+  SECTION("operator<=>");
+
+  // Return type and constraint
+  static_assert(std::is_same_v<decltype(std::declval<j50n>() <=> 1),
+    std::partial_ordering>);
+  static_assert(std::is_same_v<decltype(std::declval<j50n>() <=> 1.0),
+    std::partial_ordering>);
+  static_assert(noexcept(std::declval<j50n>() <=> 1));
+
+  j50n const root(JSON.data(), JSON.size());
+
+  // Six relational operators on a numeric view, both directions.
+  CHECK(root["version"] <  2);
+  CHECK(root["version"] <= 1);
+  CHECK(root["version"] <= 2);
+  CHECK(root["version"] >  0);
+  CHECK(root["version"] >= 1);
+  CHECK(root["version"] >= 0);
+  CHECK(!(root["version"] <  1));
+  CHECK(!(root["version"] >  1));
+  CHECK(!(root["version"] <= 0));
+  CHECK(!(root["version"] >= 2));
+
+  // Different arithmetic types against the same value.
+  CHECK(root["version"] <  2L);
+  CHECK(root["version"] <  2u);
+  CHECK(root["version"] <  2.0);
+  CHECK(root["version"] <  2.0f);
+
+  // Floating point.
+  CHECK(root["pi"] >  3.0);
+  CHECK(root["pi"] <  4.0);
+  CHECK(root["pi"] >= 3.14159);
+  CHECK(root["pi"] <= 3.14159);
+  CHECK(!(root["pi"] <  3.14159));
+  CHECK(!(root["pi"] >  3.14159));
+
+  // Negative numbers.
+  j50n const neg(R"j({"n":-42})j");
+  CHECK(neg["n"] <  0);
+  CHECK(neg["n"] >  -100);
+  CHECK(neg["n"] <= -42);
+  CHECK(neg["n"] >= -42);
+  CHECK(!(neg["n"] >  0));
+  CHECK(!(neg["n"] < -42));
+
+  // Zero, including negative zero and every spelling.
+  j50n const z(R"j({"a":0,"b":-0,"c":0.0,"d":0e0,"e":1})j");
+  CHECK(z["a"] <= 0);
+  CHECK(z["a"] >= 0);
+  CHECK(z["b"] <= 0);
+  CHECK(z["b"] >= 0);
+  CHECK(z["c"] <= 0.);
+  CHECK(z["c"] >= 0.);
+  CHECK(z["d"] <= 0.);
+  CHECK(z["d"] >= 0.);
+  CHECK(z["e"] >  0);
+
+  // Reversed operands: 5 < j is rewritten to 0 < (j <=> 5).
+  CHECK(2 >  root["version"]);
+  CHECK(2 >= root["version"]);
+  CHECK(0 <  root["version"]);
+  CHECK(0 <= root["version"]);
+  CHECK(!(1 <  root["version"]));
+  CHECK(!(1 >  root["version"]));
+  CHECK(4.0 > root["pi"]);
+
+  // unordered: every comparison against a non-numeric view is false.
+  j50n const s(R"j({"s":"abc"})j");
+  CHECK(!(s["s"] <  1));
+  CHECK(!(s["s"] >  1));
+  CHECK(!(s["s"] <= 1));
+  CHECK(!(s["s"] >= 1));
+  CHECK(!(1 <  s["s"]));
+  CHECK(!(1 >  s["s"]));
+
+  // null, bool, containers, empty view, absent key: all unordered.
+  j50n const u(R"j({"n":null,"b":true,"arr":[1],"obj":{"a":1}})j");
+  CHECK(!(u["n"]   < 1));
+  CHECK(!(u["b"]   < 1));
+  CHECK(!(u["arr"] < 1));
+  CHECK(!(u["obj"] < 1));
+  CHECK(!(u["n"]   > 0));
+  CHECK(!(u["b"]   > 0));
+  CHECK(!(u["arr"] <= 0));
+  CHECK(!(u["obj"] >= 0));
+
+  j50n const empty;
+  CHECK(!(empty <  0));
+  CHECK(!(empty >  0));
+  CHECK(!(empty <= 0));
+  CHECK(!(empty >= 0));
+
+  CHECK(!(root["does_not_exist"] <  0));
+  CHECK(!(root["does_not_exist"] >  0));
+  CHECK(!(root["does_not_exist"] <= 0));
+  CHECK(!(root["does_not_exist"] >= 0));
+
+  // Direct category inspection.
+  j50n const nums(root["numbers"]);
+  CHECK((nums[0] <=> 1) == std::partial_ordering::equivalent);
+  CHECK((nums[0] <=> 2) == std::partial_ordering::less);
+  CHECK((nums[4] <=> 1) == std::partial_ordering::greater);
+  CHECK((s["s"]   <=> 1) == std::partial_ordering::unordered);
+  CHECK((u["n"]   <=> 1) == std::partial_ordering::unordered);
+  CHECK((root["does_not_exist"] <=> 1) ==
+    std::partial_ordering::unordered);
+
+  // Array elements compared to numbers.  Two j50n views are not ordered
+  // against each other by design: ordering between two views would be
+  // ambiguous (raw text? numeric? structural?), so the library omits it
+  // and the caller extracts a value first.
+  CHECK(nums[0] <  2);
+  CHECK(nums[1] >  1);
+  CHECK(nums[1] <= 2);
+  CHECK(nums[1] >= 2);
+  CHECK(nums[4] >  4);
+  CHECK(nums[4] <= 5);
+  CHECK(!(nums[0] >  1));
+  CHECK(!(nums[4] <  5));
+
+  // Values reached by path, compared to numbers.
+  CHECK(root.view("objects", 0, "id") <  2);
+  CHECK(root.view("objects", 1, "id") >  1);
+  CHECK(root.view("objects", 1, "id") <= 2);
+  CHECK(root.view("objects", 2, "id") >  2);
+  CHECK(root.view("objects", 0, "value") <  20);
+  CHECK(root.view("objects", 1, "value") >  10);
+  CHECK(root.view("objects", 2, "value") == 30);
+  CHECK(root.view("objects", 2, "value") >= 30);
+
+  // Cross-checking == and <=> on the same values.
+  CHECK((root["version"] == 1) && (root["version"] <= 1) &&
+    (root["version"] >= 1));
+  CHECK((root["version"] < 2) && !(root["version"] > 2) &&
+    !(root["version"] == 2) && (root["version"] <= 2));
+  CHECK((root["pi"] == 3.14159) && (root["pi"] <= 3.14159) &&
+    (root["pi"] >= 3.14159));
+
+  // Unsigned: a negative j50n parses as unsigned only if non-negative,
+  // so the parse fails and the result is unordered.
+  j50n const one(R"j({"v":1})j");
+  j50n const negone(R"j({"v":-1})j");
+  CHECK(one["v"] <  2u);
+  CHECK(one["v"] >= 1u);
+  CHECK((negone["v"] <=> 1u) == std::partial_ordering::unordered);
+  CHECK(!(negone["v"] < 0u));
+  CHECK(!(negone["v"] > 0u));
+  CHECK((j50n("true") <=> false) == std::partial_ordering::greater);
+  CHECK((j50n("true") <=> true)  == std::partial_ordering::equivalent);
+}
 
 // ── main ────────────────────────────────────────────────────────────────────
 
@@ -2130,6 +2283,7 @@ int main(int argc, char** argv)
   test_unescape();
   test_operator_eq();
   test_operator_bool();
+  test_operator_spaceship();
   test_utf8();
   test_character_classes();
   test_whitespace_and_formatting();
