@@ -409,9 +409,9 @@ public:
         return std::pair(v, true);
       };
 
-    auto const end(sv.cend());
+    auto const end(sv.data() + sv.size());
 
-    for (auto p(sv.cbegin()); end != p;)
+    for (auto p(sv.data()); end != p;)
     {
       char const c(*p++);
       if ('\\' != c || p == end) { r += c; continue; }
