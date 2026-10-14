@@ -116,12 +116,10 @@ j["scores"].feach([](j50n const& elem) -> bool {
 });
 ```
 
-`feach` is a no-op on non-array values.
-
 ### Array/Object size
 
 ```cpp
-auto s = j.size(); // 3
+auto m = j.size(); // 3
 auto n = j["scores"].size();  // 3
 ```
 
