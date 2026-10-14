@@ -198,7 +198,7 @@ int main()
 | `is_bool()` | True if the value is exactly `true` or `false` |
 | `is_null()` | True if the value is exactly `null` |
 | `is_number()` | True if the value parses as `double` via `std::from_chars` |
-| `feach(f)` | Iterate array elements; supports early exit via `bool` return; no-op on non-arrays |
+| `feach(f)` | Iterate array/object elements; supports early exit via `bool` return |
 
 ## Performance Notes
 
