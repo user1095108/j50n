@@ -1774,6 +1774,104 @@ static void test_more_coverage()
            root.view("objects", 0).get("id"));
 }
 
+static void test_operator_eq()
+{
+  SECTION("operator==");
+  j50n const root(JSON.data(), JSON.size());
+
+  // numbers
+  CHECK(root["version"] == 1);
+  CHECK(1 == root["version"]);            // rewritten
+  CHECK(root["version"] == 1L);
+  CHECK(root["version"] == 1u);
+  CHECK(root["version"] == 1.0);
+  CHECK(root["pi"] == 3.14159);
+  CHECK(root["pi"] == 3.14159f);
+  CHECK(!(root["pi"] == 3));              // 3.14159 is not the integer 3
+  CHECK(!(root["version"] == 2));
+  CHECK(!(root["version"] == -1));
+  CHECK(!(root["pi"] == 3.14));           // not bit-identical
+
+  // bool
+  CHECK(root["active"] == true);
+  CHECK(true == root["active"]);
+  CHECK(!(root["active"] == false));
+  CHECK(!(root["active"] == 1));          // bool is not number
+  CHECK(!(root["version"] == true));      // number is not bool
+
+  // null
+  CHECK(root["ratio"] == nullptr);
+  CHECK(nullptr == root["ratio"]);
+  CHECK(!(root["ratio"] == 0));
+  CHECK(!(root["name"] == nullptr));
+
+  // strings
+  CHECK(root["name"] == "j50n-test");
+  CHECK("j50n-test" == root["name"]);
+  CHECK(root["name"] == std::string_view("j50n-test"));
+  CHECK(root["name"] == std::string("j50n-test"));
+  CHECK(!(root["name"] == "j50n"));
+  CHECK(!(root["name"] == ""));
+  CHECK(!(root["version"] == "1"));       // number is not string
+  CHECK(!(root["ratio"] == "null"));      // null is not string
+
+  // empty string
+  j50n const e(R"j({"s":""})j");
+  CHECK(e["s"] == "");
+  CHECK(!(e["s"] == "x"));
+
+  // escaped strings compare unescaped
+  j50n const esc(JSON_ESCAPED.data(), JSON_ESCAPED.size());
+  CHECK(esc["quote"]     == "say \"hello\"");
+  CHECK(esc["backslash"] == "one\\two");
+  CHECK(esc["newline"]   == "line1\nline2");
+  CHECK(esc["tab"]       == "col1\tcol2");
+  CHECK(esc["solidus"]   == "a/b");
+  CHECK(esc["unicode"]   == "ABC");       // \u0041BC
+  CHECK(!(esc["newline"] == R"(line1\nline2)")); // raw backslash-n is not a newline
+
+  // the same comparison on a string without escapes takes the fast path
+  j50n const plain(R"j({"s":"abc"})j");
+  CHECK(plain["s"] == "abc");
+  CHECK(!(plain["s"] == "ab"));
+
+  // two j50n compare raw-text
+  CHECK(j50n("{}") == j50n("{}"));
+  CHECK(j50n("[1,2]") == j50n("[1,2]"));
+  CHECK(!(j50n("[1,2]") == j50n("[1, 2]")));   // whitespace differs
+  CHECK(!(j50n("{}") == j50n("[]")));
+  CHECK(j50n() == j50n());                     // both empty
+
+  // cross-type comparisons are always false
+  CHECK(!(root["version"] == root["name"]));
+  CHECK(!(root["active"] == root["pi"]));
+  CHECK(!(root["ratio"] == root["numbers"]));
+
+  // array element comparison
+  CHECK(root["numbers"][0] == 1);
+  CHECK(root["numbers"][4] == 5);
+  CHECK(root["objects"][0]["id"] == 1);
+  CHECK(root["objects"][0]["tag"] == "first");
+  CHECK(root["objects"][1]["tag"] == nullptr);
+  CHECK(!(root["objects"][2]["tag"] == "x"));  // absent tag
+
+  // error path returns false, not UB
+  CHECK(!(root["does_not_exist"] == "anything"));
+  CHECK(!(root["does_not_exist"] == 0));
+  CHECK(!(root["does_not_exist"] == false));
+  CHECK(!(root["does_not_exist"] == nullptr));
+
+  // nested path via get() still works
+  CHECK(root.get("nested", "a", "b", "c") == "deep");
+  CHECK(!(root.get("nested", "a", "x") == "deep"));
+
+  // return type is bool
+  static_assert(std::is_same_v<decltype(root["name"] == "x"), bool>);
+  static_assert(std::is_same_v<decltype(root["version"] == 1), bool>);
+  static_assert(std::is_same_v<decltype(root["active"] == true), bool>);
+  static_assert(std::is_same_v<decltype(root["ratio"] == nullptr), bool>);
+}
+
 // ── main ────────────────────────────────────────────────────────────────────
 
 int main(int argc, char** argv)
@@ -1804,6 +1902,7 @@ int main(int argc, char** argv)
   test_strings_and_escapes();
   test_string_blanks();
   test_unescape();
+  test_operator_eq();
   test_utf8();
   test_character_classes();
   test_whitespace_and_formatting();

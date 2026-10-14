@@ -232,9 +232,9 @@ public:
   j50n(j50n&&) = default;
 
   template <std::size_t N>
-  j50n(char const(&a)[N]) noexcept: j50n(a, N - 1) { }
+  explicit j50n(char const(&a)[N]) noexcept: j50n(a, N - 1) { }
 
-  j50n(auto&& ...a)
+  explicit j50n(auto&& ...a)
     noexcept(noexcept(decltype(s_)(std::forward<decltype(a)>(a)...)))
     requires std::is_constructible_v<decltype(s_), decltype(a)&&...>:
     s_(std::forward<decltype(a)>(a)...)
@@ -263,18 +263,48 @@ public:
   }
 
   //
+  bool operator==(j50n const o) const noexcept { return s_ == o.s_; }
+  bool operator==(std::nullptr_t) const noexcept { return is_null(); }
+
+  template <typename U>
+  bool operator==(U const v) const noexcept
+    requires std::is_arithmetic_v<U>
+  {
+    auto const [x, err] = get<U>();
+
+    return !err && x == v;
+  }
+
+  template <std::size_t N>
+  bool operator==(char const(&a)[N]) const noexcept
+  {
+    return operator==(std::string_view(a, N - 1));
+  }
+
+  bool operator==(std::string_view const v) const
+  {
+    if (!is_string()) return false;
+
+    auto const sv(get());
+    if (sv.find('\\') == std::string_view::npos)
+      return sv == v; // fast path: no escapes to decode
+
+    return unescape(sv) == v;
+  }
+
+  //
   template <std::size_t N>
   j50n operator[](char const(&a)[N]) const noexcept
   {
-    return S::find(s_, std::string_view(a, N - 1));
+    return j50n(S::find(s_, std::string_view(a, N - 1)));
   }
 
   j50n operator[](auto&& a) const noexcept
   {
     if constexpr(std::is_convertible_v<decltype(a), std::string_view>)
-      return S::find(s_, std::forward<decltype(a)>(a));
+      return j50n(S::find(s_, std::forward<decltype(a)>(a)));
     else
-      return S::find(s_, {}, std::forward<decltype(a)>(a), false);
+      return j50n(S::find(s_, {}, std::forward<decltype(a)>(a), false));
   }
 
   //
