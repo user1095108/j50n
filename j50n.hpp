@@ -66,14 +66,6 @@ class j50n
       return end;
     }
 
-    static char const* token_end(char const* const p,
-      char const* const end) noexcept
-    {
-      return ('"' == *p) ? str_end(p + 1, end) :
-        (('-' == *p || range<'0', '9'>(*p) || range<'A', 'Z'>(*p) ||
-        range<'a', 'z'>(*p)) ? bare_end(p, end) : nullptr);
-    }
-
     static void each_item(std::string_view const s, auto const cb) noexcept
     {
       auto const end(s.data() + s.size());
@@ -98,8 +90,10 @@ class j50n
           }
         }
         else
-        {
-          auto const e(token_end(p, end));
+        { // delimit token
+          auto const e(('"' == *p) ? str_end(p + 1, end) :
+            (('-' == *p || range<'0', '9'>(*p) || range<'A', 'Z'>(*p) ||
+            range<'a', 'z'>(*p)) ? bare_end(p, end) : nullptr));
 
           if (!e || (depth == 1 && cb(p, e, '"' == *p)) || (end == e))
             return;
@@ -123,21 +117,20 @@ class j50n
       if (s.empty() || (keyed ? '{' != s.front() : '[' != s.front()))
         return {};
 
-      char const* val{};
-      char const* val_end{};
+      char const *val{}, *val_end{};
       bool val_incl{};
 
       each_item(s,
         [&](char const* p, char const* e, bool incl) noexcept -> bool
         {
-          if (keyed && index == search_key)
+          if (keyed && search_key == index)
           {
             bool const quoted('"' == *p);
             std::string_view const key(p + quoted,
               std::size_t(e - p) - quoted);
             index = k == key ? key_found : skip_value;
           }
-          else if (index == key_found)
+          else if (key_found == index)
           {
             val = p;
             val_end = e;
@@ -145,9 +138,7 @@ class j50n
             return true;
           }
           else
-          {
             --index;
-          }
 
           return false;
         });
@@ -200,8 +191,7 @@ class j50n
     {
       if (s.empty() || '{' != s.front()) return; // objects only
 
-      char const* k_ptr{};
-      char const* k_end{};
+      char const *k_ptr{}, *k_end{};
       bool expecting_key{true};
 
       each_item(s,
@@ -214,15 +204,15 @@ class j50n
             {
               k_ptr = p;
               k_end = e;
-              expecting_key = false;
-              return false;
+              return expecting_key = false;
             }
+
+            expecting_key = true;
 
             bool const quoted('"' == *k_ptr);
             std::string_view const key(k_ptr + quoted,
               std::size_t(k_end - k_ptr) - quoted);
             j50n const val(p, std::size_t(e - p) + incl);
-            expecting_key = true;
 
             if constexpr (requires { bool(f(key, val)); }) return f(key, val);
             else { f(key, val); return false; }
