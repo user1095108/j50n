@@ -376,14 +376,14 @@ public:
   {
     auto const v(view(std::forward<decltype(b)>(b)...));
 
-    return v.s_.empty() ? std::string_view(a, N - 1) : v.get();
+    return v.is_empty() ? std::string_view(a, N - 1) : v.get();
   }
 
   std::string_view get_or(std::string_view const a,auto&& ...b) const noexcept
   {
     auto const v(view(std::forward<decltype(b)>(b)...));
 
-    return v.s_.empty() ? a : v.get();
+    return v.is_empty() ? a : v.get();
   }
 
   template <typename U>
@@ -393,9 +393,9 @@ public:
   {
     auto const sv(view(std::forward<decltype(a)>(a)...).s_);
 
-    U r{};
-    auto const [ptr, ec](std::from_chars(sv.data(), sv.data() + sv.size(), r));
-    return std::pair(r, std::errc{} != ec || (sv.data() + sv.size()) != ptr);
+    U r{}; auto const end(sv.data() + sv.size());
+    auto const [ptr, ec](std::from_chars(sv.data(), end, r));
+    return std::pair(r, std::errc{} != ec || end != ptr);
   }
 
   template <typename U>
@@ -509,7 +509,7 @@ public:
   {
     std::size_t sz{};
 
-    S::feach(s_, [&](j50n, std::size_t) noexcept { ++sz; });
+    S::feach(s_, [&](j50n) noexcept { ++sz; });
     S::feach(s_, [&](std::string_view, j50n) noexcept { ++sz; });
 
     return sz;
