@@ -185,6 +185,7 @@ int main()
 |---|---|
 | `operator[](key)` | Access object field by string key |
 | `operator[](n)` | Access array element by zero-based index |
+| `contains(...)` | Chained check whether key/index exists, returns `bool` |
 | `get()` | Returns the raw underlying `std::string_view` (no unescaping) |
 | `get(...)` | Chained key/index access, returns `std::string_view` |
 | `get_or(def, ...)` | Chained key/index access, returns `std::string_view` or `def` if not found |
