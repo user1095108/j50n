@@ -183,8 +183,7 @@ int main()
 | `get()` | Returns the raw underlying `std::string_view` (no unescaping) |
 | `get(...)` | Chained key/index access, returns `std::string_view` |
 | `get_or(def, ...)` | Chained key/index access, returns `std::string_view` or `def` if not found |
-| `get_unescaped(...)` | Chained key/index access, returns `std::string` |
-| `get_unescaped_or(def, ...)` | Chained key/index access, returns `std::string` or `def` if not found |
+| `unescape(sv)` | Unescape `sv`, returns `std::string` |
 | `get<U>(...)` | Chained numeric extraction via `std::from_chars()`, returns `std::pair<U, bool>` where second is `true` on failure |
 | `get_or<U>(def, ...)` | Chained numeric extraction, returns `U` or `def` on error |
 | `view()` | Returns `*this` |
