@@ -63,7 +63,7 @@ class j50n
         if (one_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*p)) return p;
         else if (!range<32u, 126u>(static_cast<unsigned char>(*p))) return {};
 
-      return {};
+      return end;
     }
 
     static char const* token_end(char const* const p,

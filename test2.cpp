@@ -1486,9 +1486,9 @@ static void test_malformed()
   CHECK(j50n("{\"a\":\"\xC3")["a"].is_empty());                // inside a UTF-8 char
   CHECK(j50n("{\"a\":\"\xE2\x82")["a"].is_empty());
   CHECK(j50n("{\"a\":\"abc")["a"].is_empty());                // inside a string
-  CHECK(j50n("{\"a\":12")["a"].is_empty());                    // inside a bare word
+  CHECK_EQ(j50n("{\"a\":12")["a"], "12");     // truncated object
   CHECK(j50n("{\"a")["a"].is_empty());                         // inside a key
-  CHECK(j50n("[1,2")[1].is_empty());
+  CHECK_EQ(j50n("[1,2")[1], "2");             // truncated arra
 }
 
 static void test_misc_edge_cases()
