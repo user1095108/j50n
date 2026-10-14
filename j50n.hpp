@@ -17,6 +17,8 @@ class j50n
 
   struct S
   {
+    using size_type = std::string_view::size_type;
+
     template <auto lo, decltype(lo) hi>
     static constexpr bool range(auto const c) noexcept
     {
@@ -127,7 +129,7 @@ class j50n
           {
             bool const quoted('"' == *p);
             index = k == std::string_view(p + quoted,
-              std::size_t(e - p) - quoted) ? key_found : skip_value;
+              size_type(e - p) - quoted) ? key_found : skip_value;
           }
           else if (key_found == index)
           {
@@ -141,7 +143,7 @@ class j50n
         });
 
       return val ?
-        std::string_view(val, std::size_t(val_end - val) + val_incl) :
+        std::string_view(val, size_type(val_end - val) + val_incl) :
         std::string_view();
     }
 
@@ -171,7 +173,7 @@ class j50n
         [&](char const* const p, char const* const e,
           bool const incl) noexcept(feach_noexcept<decltype(f)>()) -> bool
           {
-            j50n const item(p, std::size_t(e - p) + incl);
+            j50n const item(p, size_type(e - p) + incl);
             if constexpr(requires{bool(f(item, i));}) return f(item, i++);
             else if constexpr(requires{bool(f(item));}){ ++i; return f(item); }
             else if constexpr(requires{f(item);}){ ++i; f(item); return false; }
@@ -207,8 +209,8 @@ class j50n
 
             bool const quoted('"' == *k_ptr);
             std::string_view const key(k_ptr + quoted,
-              std::size_t(k_end - k_ptr) - quoted);
-            j50n const val(p, std::size_t(e - p) + incl);
+              size_type(k_end - k_ptr) - quoted);
+            j50n const val(p, size_type(e - p) + incl);
 
             if constexpr (requires { bool(f(key, val)); }) return f(key, val);
             else { f(key, val); return false; }
@@ -220,7 +222,7 @@ class j50n
     {
       auto const p(s.find_first_not_of(" \t\n\r"));
       s = std::string_view::npos == p ? std::string_view{} :
-        s.substr(p, s.find_last_not_of(" \t\n\r") - p + 1);
+        s.substr(p, size_type(s.find_last_not_of(" \t\n\r") - p) + 1);
     }
   };
 
