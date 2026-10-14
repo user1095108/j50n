@@ -1872,6 +1872,115 @@ static void test_operator_eq()
   static_assert(std::is_same_v<decltype(root["ratio"] == nullptr), bool>);
 }
 
+static void test_operator_bool()
+{
+  SECTION("operator bool");
+
+  // explicit: direct-init works, copy-init does not
+  static_assert(std::is_constructible_v<bool, j50n>);
+  static_assert(!std::is_convertible_v<j50n, bool>);
+  static_assert(noexcept(bool(std::declval<j50n>())));
+
+  // Empty view: default-constructed, blank document, absent key.
+  CHECK(!bool(j50n()));
+  CHECK(!bool(j50n("")));
+  CHECK(!bool(j50n("   \t\r\n")));
+  CHECK(!bool(j50n("{}")["missing"]));
+  CHECK(!bool(j50n("{\"a\":1}")["b"]));
+
+  // null: literal, padded, and as a present key.
+  CHECK(!bool(j50n("null")));
+  CHECK(!bool(j50n(" null ")));
+  CHECK(!bool(j50n(R"j({"n":null})j")["n"]));
+
+  // Booleans: the two spellings, padded, and as present keys.
+  CHECK(bool(j50n("true")));
+  CHECK(!bool(j50n("false")));
+  CHECK(bool(j50n(" true ")));
+  CHECK(!bool(j50n(" false ")));
+  CHECK(bool(j50n(R"j({"t":true,"f":false})j")["t"]));
+  CHECK(!bool(j50n(R"j({"t":true,"f":false})j")["f"]));
+
+  // Strings: empty is falsy, any content is truthy.
+  CHECK(!bool(j50n(R"("")")));
+  CHECK(bool(j50n(R"("x")")));
+  CHECK(bool(j50n(R"("0")")));          // "0" is a non-empty string
+  CHECK(bool(j50n(R"("false")")));      // ditto
+  CHECK(!bool(j50n(R"j({"s":""})j")["s"]));
+  CHECK(bool(j50n(R"j({"s":"x"})j")["s"]));
+
+  // Escaped string: content after unescaping is what matters, so an
+  // escape-only string "\u0000" is still non-empty.
+  CHECK(!bool(j50n(R"j({"s":""})j")["s"]));
+  CHECK(bool(j50n(R"j({"s":"\n"})j")["s"]));   // one newline of content
+
+  // Numbers: all spellings of zero are falsy, everything else is truthy.
+  CHECK(!bool(j50n("0")));
+  CHECK(!bool(j50n("-0")));
+  CHECK(!bool(j50n("0.0")));
+  CHECK(!bool(j50n("-0.0")));
+  CHECK(!bool(j50n("0e0")));
+  CHECK(!bool(j50n("0E5")));
+  CHECK(bool(j50n("1")));
+  CHECK(bool(j50n("-1")));
+  CHECK(bool(j50n("3.14")));
+  CHECK(bool(j50n("0.000001")));
+  CHECK(!bool(j50n(R"j({"n":0})j")["n"]));
+  CHECK(bool(j50n(R"j({"n":1})j")["n"]));
+
+  // Containers: empty (with and without interior whitespace) is falsy,
+  // anything with at least one element is truthy.
+  CHECK(!bool(j50n("[]")));
+  CHECK(!bool(j50n("{}")));
+  CHECK(!bool(j50n("[ ]")));
+  CHECK(!bool(j50n("{ }")));
+  CHECK(!bool(j50n("[   ]")));
+  CHECK(!bool(j50n("{       }")));
+  CHECK(!bool(j50n("[\n\t]")));
+  CHECK(!bool(j50n("{\n\t}")));
+  CHECK(bool(j50n("[0]")));
+  CHECK(bool(j50n("[false]")));
+  CHECK(bool(j50n("[null]")));
+  CHECK(bool(j50n("[[]]")));
+  CHECK(bool(j50n(R"(["",0,null])")));
+  CHECK(bool(j50n(R"j({"a":0})j")));
+  CHECK(bool(j50n(R"j({"a":null})j")));
+  CHECK(bool(j50n(R"j({"a":[]})j")));
+  CHECK(!bool(j50n(R"j({"a":[]})j")["a"]));    // sub-container, still empty
+  CHECK(bool(j50n(R"j({"a":[0]})j")["a"]));
+
+  // Values reached through the fixture.
+  j50n const root(JSON.data(), JSON.size());
+  CHECK(bool(root));
+  CHECK(bool(root["name"]));
+  CHECK(bool(root["version"]));
+  CHECK(bool(root["active"]));
+  CHECK(!bool(root["ratio"]));         // null
+  CHECK(!bool(root["empty_arr"]));     // []
+  CHECK(!bool(root["empty_obj"]));     // {}
+  CHECK(bool(root["numbers"]));        // [1,2,3,4,5]
+  CHECK(bool(root["nested"]));         // non-empty object
+  CHECK(!bool(root["does_not_exist"]));// empty view
+
+  // Unparseable bare tokens fall through to size(), which is 0 for a
+  // non-container.  So they are falsy under the current implementation.
+  // If the fall-through is ever changed to "non-empty bare is truthy",
+  // flip these three lines.
+  CHECK(bool(j50n("tru")));
+  CHECK(bool(j50n("falsex")));
+  CHECK(bool(j50n("1.2.3")));
+
+  // Direct use in control flow: if (j) is the intended spelling.
+  int n{};
+  for (j50n const x : {j50n("0"), j50n("1"), j50n("null"), j50n("[]")})
+    if (x) ++n;
+  CHECK_EQ(n, 1);   // only "1" is truthy
+
+  // Return type is bool.
+  static_assert(std::is_same_v<decltype(static_cast<bool>(
+    std::declval<j50n>())), bool>);
+}
+
 // ── main ────────────────────────────────────────────────────────────────────
 
 int main(int argc, char** argv)
@@ -1903,6 +2012,7 @@ int main(int argc, char** argv)
   test_string_blanks();
   test_unescape();
   test_operator_eq();
+  test_operator_bool();
   test_utf8();
   test_character_classes();
   test_whitespace_and_formatting();
