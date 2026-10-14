@@ -508,10 +508,8 @@ public:
   {
     std::size_t sz{};
 
-    if (is_array())
-      S::feach(s_, [&](j50n, std::size_t) noexcept { ++sz; });
-    else
-      S::feach(s_, [&](std::string_view, j50n) noexcept { ++sz; });
+    S::feach(s_, [&](j50n, std::size_t) noexcept { ++sz; });
+    S::feach(s_, [&](std::string_view, j50n) noexcept { ++sz; });
 
     return sz;
   }
