@@ -296,7 +296,7 @@ public:
   {
     if (is_empty() || is_null() || (std::string_view("false", 5) == s_))
       return {};
-    else if (is_string()) return !get().empty();
+    else if ('"' == s_.front()) return !get().empty();
     else if (auto const [v, err](get<double>()); !err)
       return v;
     else 
