@@ -75,6 +75,13 @@ j50n j(R"({"msg":"say \"hello\""})");
 auto sv = j.get("msg");   // sv == R"(say \"hello\")"  — not  say "hello"
 ```
 
+If you need unescaping, try `unescape()`:
+
+```cpp
+j50n j(R"({"msg":"say \"hello\""})");
+auto s = j50n::unescape(j.get("msg"));   // s == say "hello"
+```
+
 ### Numeric extraction
 
 ```cpp
@@ -116,12 +123,10 @@ j["scores"].feach([](j50n const& elem) -> bool {
 });
 ```
 
-`feach` is a no-op on non-array values.
-
 ### Array/Object size
 
 ```cpp
-auto s = j.size(); // 3
+auto m = j.size(); // 3
 auto n = j["scores"].size();  // 3
 ```
 
@@ -183,8 +188,7 @@ int main()
 | `get()` | Returns the raw underlying `std::string_view` (no unescaping) |
 | `get(...)` | Chained key/index access, returns `std::string_view` |
 | `get_or(def, ...)` | Chained key/index access, returns `std::string_view` or `def` if not found |
-| `get_unescaped(...)` | Chained key/index access, returns `std::string` |
-| `get_unescaped_or(def, ...)` | Chained key/index access, returns `std::string` or `def` if not found |
+| `unescape(sv)` | Unescape `sv`, returns `std::string` |
 | `get<U>(...)` | Chained numeric extraction via `std::from_chars()`, returns `std::pair<U, bool>` where second is `true` on failure |
 | `get_or<U>(def, ...)` | Chained numeric extraction, returns `U` or `def` on error |
 | `view()` | Returns `*this` |
