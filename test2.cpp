@@ -1499,13 +1499,11 @@ static void test_misc_edge_cases()
   // stateless and does not cache or mutate anything
   j50n const arr("[1,2,3,4,5]");
   CHECK_EQ(arr.size(), 5u);
-  CHECK_EQ(arr.size(), 5u);
   std::size_t n1{}, n2{};
   arr.feach([&](j50n) { ++n1; });
   arr.feach([&](j50n) { ++n2; });
   CHECK_EQ(n1, 5u);
   CHECK_EQ(n2, 5u);
-  CHECK_EQ(n1, n2);
 
   // iterating does not modify the j50n
   j50n const before = arr;
