@@ -194,8 +194,7 @@ class j50n
       bool expecting_key{true};
 
       each_item(s,
-        [&](char const* const p, char const* const e,
-          bool const incl)
+        [&](char const* const p, char const* const e, bool const incl)
           noexcept(noexcept(f(std::declval<std::string_view>(),
             std::declval<j50n>()))) -> bool
           {
