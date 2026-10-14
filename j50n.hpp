@@ -448,7 +448,7 @@ public:
         }
 
         default:
-          r.append(1, '\\').append(1, e);
+          (r += '\\') += e;
           break;
       }
     }
