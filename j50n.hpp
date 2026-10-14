@@ -132,9 +132,7 @@ class j50n
           }
           else if (key_found == index)
           {
-            val = p;
-            val_end = e;
-            val_incl = incl;
+            val = p; val_end = e; val_incl = incl;
             return true;
           }
           else
@@ -202,8 +200,7 @@ class j50n
           {
             if (expecting_key)
             {
-              k_ptr = p;
-              k_end = e;
+              k_ptr = p; k_end = e;
               return expecting_key = false;
             }
 
