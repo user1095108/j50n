@@ -299,10 +299,8 @@ public:
     else if (is_string()) return !get().empty();
     else if (auto const [v, err](get<double>()); !err)
       return v;
-    else if (is_bare())
-      return true;
-    else
-      return size();
+    else 
+      return ('[' != s_.front() && '{' != s_.front()) || size();
   }
 
   //

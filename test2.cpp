@@ -1969,6 +1969,8 @@ static void test_operator_bool()
   CHECK(bool(j50n("tru")));
   CHECK(bool(j50n("falsex")));
   CHECK(bool(j50n("1.2.3")));
+  CHECK(bool(j50n("NaN")));
+  CHECK(bool(j50n("-")));
 
   // Direct use in control flow: if (j) is the intended spelling.
   int n{};
