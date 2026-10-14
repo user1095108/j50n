@@ -2097,6 +2097,7 @@ static void test_size()
     CHECK_EQ(d["a"]["b"]["c"].size(), 0u);  // 1, a scalar
   }
 }
+
 static void test_operator_spaceship()
 {
   SECTION("operator<=>");
@@ -2106,7 +2107,12 @@ static void test_operator_spaceship()
     std::partial_ordering>);
   static_assert(std::is_same_v<decltype(std::declval<j50n>() <=> 1.0),
     std::partial_ordering>);
+  static_assert(std::is_same_v<decltype(std::declval<j50n>() <=> true),
+    std::partial_ordering>);
   static_assert(noexcept(std::declval<j50n>() <=> 1));
+
+  static_assert( requires(j50n a, j50n b){ a == b; });
+  static_assert( requires(j50n a, j50n b){ a != b; });
 
   j50n const root(JSON.data(), JSON.size());
 
@@ -2151,8 +2157,8 @@ static void test_operator_spaceship()
   CHECK(z["a"] >= 0);
   CHECK(z["b"] <= 0);
   CHECK(z["b"] >= 0);
-  CHECK(z["c"] <= 0.);
-  CHECK(z["c"] >= 0.);
+  CHECK(z["c"] <= 0.0);
+  CHECK(z["c"] >= 0.0);
   CHECK(z["d"] <= 0.);
   CHECK(z["d"] >= 0.);
   CHECK(z["e"] >  0);
@@ -2166,6 +2172,39 @@ static void test_operator_spaceship()
   CHECK(!(1 >  root["version"]));
   CHECK(4.0 > root["pi"]);
 
+  // bool: ordering is C++'s, false < true.  Not a JSON concept, but
+  // well-defined and consistent with operator==, which also accepts bool.
+  CHECK((j50n("true")  <=> true)  == std::partial_ordering::equivalent);
+  CHECK((j50n("false") <=> false) == std::partial_ordering::equivalent);
+  CHECK((j50n("false") <=> true)  == std::partial_ordering::less);
+  CHECK((j50n("true")  <=> false) == std::partial_ordering::greater);
+
+  CHECK(j50n("false") <  true);
+  CHECK(j50n("true")  >  false);
+  CHECK(j50n("true")  >= true);
+  CHECK(j50n("false") <= false);
+  CHECK(!(j50n("true")  <  true));
+  CHECK(!(j50n("false") >  true));
+
+  // A number is not a bool: unordered, not ordered.
+  CHECK((j50n("1") <=> true)  == std::partial_ordering::unordered);
+  CHECK((j50n("0") <=> true)  == std::partial_ordering::unordered);
+  CHECK((j50n("1") <=> false) == std::partial_ordering::unordered);
+  CHECK(!(j50n("1") < true));
+  CHECK(!(j50n("1") > false));
+
+  // A string is not a bool either.
+  CHECK((j50n(R"("true")")  <=> true)  == std::partial_ordering::unordered);
+  CHECK((j50n(R"("false")") <=> false) == std::partial_ordering::unordered);
+
+  // Consistency: ==, <=, and >= all agree where both apply.
+  CHECK(j50n("true")  == true);
+  CHECK(j50n("true")  <= true);
+  CHECK(j50n("true")  >= true);
+  CHECK(j50n("false") == false);
+  CHECK(j50n("false") <= false);
+  CHECK(j50n("false") >= false);
+
   // unordered: every comparison against a non-numeric view is false.
   j50n const s(R"j({"s":"abc"})j");
   CHECK(!(s["s"] <  1));
@@ -2175,14 +2214,12 @@ static void test_operator_spaceship()
   CHECK(!(1 <  s["s"]));
   CHECK(!(1 >  s["s"]));
 
-  // null, bool, containers, empty view, absent key: all unordered.
-  j50n const u(R"j({"n":null,"b":true,"arr":[1],"obj":{"a":1}})j");
+  // null, containers, empty view, absent key: all unordered against numbers.
+  j50n const u(R"j({"n":null,"arr":[1],"obj":{"a":1}})j");
   CHECK(!(u["n"]   < 1));
-  CHECK(!(u["b"]   < 1));
   CHECK(!(u["arr"] < 1));
   CHECK(!(u["obj"] < 1));
   CHECK(!(u["n"]   > 0));
-  CHECK(!(u["b"]   > 0));
   CHECK(!(u["arr"] <= 0));
   CHECK(!(u["obj"] >= 0));
 
@@ -2207,10 +2244,7 @@ static void test_operator_spaceship()
   CHECK((root["does_not_exist"] <=> 1) ==
     std::partial_ordering::unordered);
 
-  // Array elements compared to numbers.  Two j50n views are not ordered
-  // against each other by design: ordering between two views would be
-  // ambiguous (raw text? numeric? structural?), so the library omits it
-  // and the caller extracts a value first.
+  // Array elements compared to numbers.
   CHECK(nums[0] <  2);
   CHECK(nums[1] >  1);
   CHECK(nums[1] <= 2);
@@ -2247,8 +2281,6 @@ static void test_operator_spaceship()
   CHECK((negone["v"] <=> 1u) == std::partial_ordering::unordered);
   CHECK(!(negone["v"] < 0u));
   CHECK(!(negone["v"] > 0u));
-  CHECK((j50n("true") <=> false) == std::partial_ordering::greater);
-  CHECK((j50n("true") <=> true)  == std::partial_ordering::equivalent);
 }
 
 // ── main ────────────────────────────────────────────────────────────────────
