@@ -307,6 +307,11 @@ public:
     return ((r = r[std::forward<decltype(b)>(b)]), ...), r; // !!!
   }
 
+  bool contains(auto&& ...a) const noexcept requires(!!sizeof...(a))
+  {
+    return !view(std::forward<decltype(a)>(a)...).is_empty();
+  }
+
   std::string_view get() const noexcept
   {
     if (!is_string()) return s_;

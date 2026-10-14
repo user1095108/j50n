@@ -866,6 +866,129 @@ static void test_path_access()
   CHECK_EQ(n.get("b", "c"), "deep");
 }
 
+static void test_contains()
+{
+  SECTION("contains");
+  j50n const root(JSON.data(), JSON.size());
+
+  // Every present value counts, including null and the empty string,
+  // because the raw views of "null" and "\"\"" are both non-empty.
+  CHECK(root.contains("name"));
+  CHECK(root.contains("version"));
+  CHECK(root.contains("pi"));
+  CHECK(root.contains("active"));
+  CHECK(root.contains("ratio"));       // null: present
+  CHECK(root.contains("utf8"));
+  CHECK(root.contains("empty_arr"));
+  CHECK(root.contains("empty_obj"));
+  CHECK(root.contains("numbers"));
+  CHECK(root.contains("objects"));
+  CHECK(root.contains("nested"));
+
+  // Absent keys
+  CHECK(!root.contains("missing"));
+  CHECK(!root.contains("Name"));       // case-sensitive
+  CHECK(!root.contains("n"));
+  CHECK(!root.contains("names"));
+  CHECK(!root.contains(""));
+
+  // The empty-view trap that contains() exists to solve: null, empty
+  // string, and empty container all report present, even though the
+  // empty string's get() result is also empty.
+  j50n const e(R"j({"n":null,"s":"","a":[],"o":{}})j");
+  CHECK(e.contains("n"));
+  CHECK(e.contains("s"));
+  CHECK(e.contains("a"));
+  CHECK(e.contains("o"));
+  CHECK_EQ(e["n"].get(), "null");
+  CHECK_EQ(e["s"].get(), "");          // get() is empty
+  CHECK(!e["s"].is_empty());           // ... but the j50n is not
+  CHECK(!e.contains("x"));
+
+  // Array index presence
+  j50n const nums(root["numbers"]);
+  CHECK(nums.contains(0));
+  CHECK(nums.contains(4));
+  CHECK(!nums.contains(5));
+  CHECK(!nums.contains(100));
+  CHECK(!nums.contains(std::size_t(-1)));
+
+  // contains(key) over an array is false: arrays have no keys
+  CHECK(!nums.contains("0"));
+  CHECK(!nums.contains("1"));
+  CHECK(!nums.contains("numbers"));
+
+  // contains(index) over an object is false: objects have no indices
+  CHECK(!root.contains(0));
+  CHECK(!root.contains(1));
+
+  // Nested paths
+  CHECK(root.contains("nested", "a"));
+  CHECK(root.contains("nested", "a", "b"));
+  CHECK(root.contains("nested", "a", "b", "c"));
+  CHECK(!root.contains("nested", "a", "b", "c", "d"));
+  CHECK(!root.contains("nested", "x"));
+  CHECK(!root.contains("nested", "a", "b", "x"));
+  CHECK(!root.contains("missing", "a", "b", "c"));
+
+  // Mixed keys and indices in a nested path
+  CHECK(root.contains("objects", 0));
+  CHECK(root.contains("objects", 2));
+  CHECK(!root.contains("objects", 3));
+  CHECK(root.contains("objects", 0, "id"));
+  CHECK(root.contains("objects", 1, "value"));
+  CHECK(!root.contains("objects", 0, "nope"));
+  CHECK(root.contains("objects", 1, "tag"));    // null, but present
+  CHECK(!root.contains("objects", 2, "tag"));   // absent
+  CHECK(!root.contains("numbers", 5));
+
+  // Scalars: no keys, no indices
+  CHECK(!root["pi"].contains("x"));
+  CHECK(!root["pi"].contains(0));
+  CHECK(!root["name"].contains("x"));
+  CHECK(!root["name"].contains(0));
+  CHECK(!root["active"].contains("x"));
+  CHECK(!root["ratio"].contains("x"));          // null receiver
+
+  // Empty / default-constructed receivers
+  j50n const def;
+  CHECK(!def.contains("a"));
+  CHECK(!def.contains(0));
+  CHECK(!def.contains("a", "b"));
+
+  CHECK(!j50n("").contains("a"));
+  CHECK(!j50n("{}").contains("a"));
+  CHECK(!j50n("[]").contains(0));
+
+  // Every key-type overload resolves through the same dispatch as
+  // operator[]: string literal, char array, std::string, string_view,
+  // const char*, and index.
+  std::string const ks("name");
+  std::string_view const kv("name");
+  char const* const kp("name");
+  CHECK(root.contains(ks));
+  CHECK(root.contains(kv));
+  CHECK(root.contains(kp));
+  CHECK(root.contains("name"));
+  CHECK(root.contains("numbers", std::size_t(0)));
+
+  // Early exit: contains stops at the first match, so damage after the
+  // matched key does not affect the result.
+  CHECK(j50n(R"j({"a":1,"b":"\x"})j").contains("a"));
+  CHECK(j50n(R"j([1,2,@])j").contains(1));
+
+  // Truncated containers follow the streaming policy: the last complete
+  // token before the truncation is still emitted, so contains reports
+  // it as present.  Same limitation as operator[].
+  CHECK(j50n("{\"a\":12").contains("a"));
+  CHECK(j50n("[1,2").contains(1));
+
+  // A search that does not match any present key still returns false
+  // even if the document is truncated.
+  CHECK(!j50n("{\"a\":12").contains("b"));
+  CHECK(!j50n("{\"a\":12").contains(3));
+}
+
 static void test_strings_and_escapes()
 {
   // j50n returns the raw JSON text between the quotes; it does not unescape.
@@ -1677,6 +1800,7 @@ int main(int argc, char** argv)
   test_feach();
   test_object_keys();
   test_path_access();
+  test_contains();
   test_strings_and_escapes();
   test_string_blanks();
   test_unescape();
