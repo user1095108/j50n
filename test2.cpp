@@ -2098,6 +2098,12 @@ static void test_size()
   }
 }
 
+template <class T, class U>
+inline constexpr bool cmp_eq = requires(T t, U u){ t == u; };
+
+template <class T, class U>
+inline constexpr bool cmp_sp = requires(T t, U u){ t <=> u; };
+
 static void test_operator_spaceship()
 {
   SECTION("operator<=>");
@@ -2113,6 +2119,16 @@ static void test_operator_spaceship()
 
   static_assert( requires(j50n a, j50n b){ a == b; });
   static_assert( requires(j50n a, j50n b){ a != b; });
+
+  static_assert( cmp_sp<j50n, int>);
+  static_assert( cmp_sp<j50n, double>);
+  static_assert( cmp_sp<j50n, bool>);
+  static_assert( cmp_sp<int, j50n>);
+
+  static_assert(!cmp_sp<j50n, std::nullptr_t>);
+  static_assert(!cmp_sp<j50n, const char*>);
+  static_assert(!cmp_sp<j50n, std::string_view>);
+  static_assert(!cmp_sp<j50n, j50n>);
 
   j50n const root(JSON.data(), JSON.size());
 
