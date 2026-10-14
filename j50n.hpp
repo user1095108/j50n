@@ -458,7 +458,7 @@ public:
   }
 
   //
-  auto size() const noexcept
+  std::size_t size() const noexcept
   {
     std::size_t sz{};
 
