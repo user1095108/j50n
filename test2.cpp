@@ -1,13 +1,10 @@
 // test2.cpp - test suite for j50n.hpp
 //
-// Build (assertions ON: malformed-input tests are skipped, see test_malformed):
+// Build:
 //   g++ -std=c++20 -Wall -Wextra -g -fsanitize=address,undefined -fno-sanitize-recover=all test2.cpp -o test2
-// Build (assertions OFF: also runs the malformed-input tests; -Werror at -O2
-// lets gcc's -Wmaybe-uninitialized guard the get<number>() result, which no
-// runtime check can reliably do):
-//   g++ -std=c++20 -Wall -Wextra -Werror -O2 -DNDEBUG test2.cpp -o test2_ndebug
+//   g++ -std=c++20 -Wall -Wextra -Werror -O2 test2.cpp -o test2_o2
 // The scanner must not depend on the signedness of char, so also try:
-//   g++ -std=c++20 -O1 -DNDEBUG -funsigned-char test2.cpp -o test2_uc   (and -fsigned-char)
+//   g++ -std=c++20 -O1 -funsigned-char test2.cpp -o test2_uc   (and -fsigned-char)
 //
 // Run:   ./test2 [-v|--verbose] [--strict]
 //   -v        print every PASS line, not just failures and per-section totals
@@ -952,6 +949,108 @@ static void test_string_blanks()
   CHECK_EQ(j50n("\"").get(),                  "");
 }
 
+static void test_unescape()
+{
+  SECTION("get_unescaped / get_unescaped_or");
+
+  // The JSON_ESCAPED fixture carries each simple escape as its own field.
+  j50n const esc(JSON_ESCAPED.data(), JSON_ESCAPED.size());
+
+  CHECK_EQ(esc.get_unescaped("quote"),     "say \"hello\"");
+  CHECK_EQ(esc.get_unescaped("backslash"), "one\\two");        // one\\two -> one\two
+  CHECK_EQ(esc.get_unescaped("newline"),   std::string("line1\nline2"));
+  CHECK_EQ(esc.get_unescaped("tab"),       std::string("col1\tcol2"));
+  CHECK_EQ(esc.get_unescaped("solidus"),   "a/b");
+  CHECK_EQ(esc.get_unescaped("unicode"),   "ABC");             // \u0041BC
+
+  // All eight simple escapes back to back.
+  j50n const simple(R"j({"s":"\"\\\/\b\f\n\r\t"})j");
+  CHECK_EQ(simple.get_unescaped("s"), std::string("\"\\/\b\f\n\r\t"));
+
+  // Unicode: 2-, 3- and 4-byte UTF-8 encodings, and a surrogate pair.
+  j50n const uni(R"j({"e9":"\u00e9","euro":"\u20ac","rocket":"\ud83d\ude80","A":"\u0041"})j");
+  CHECK_EQ(uni.get_unescaped("e9"),     std::string("\xC3\xA9", 2));          // é
+  CHECK_EQ(uni.get_unescaped("euro"),   std::string("\xE2\x82\xAC", 3));      // €
+  CHECK_EQ(uni.get_unescaped("rocket"), std::string("\xF0\x9F\x9A\x80", 4));  // 🚀
+  CHECK_EQ(uni.get_unescaped("A"),      "A");                                 // \u0041
+
+  // NUL byte in the middle: std::string carries it; any .c_str()
+  // consumer would truncate at the NUL.
+  {
+    j50n const n(R"j({"s":"a\u0000b"})j");
+    auto const s(n.get_unescaped("s"));
+    CHECK_EQ(s.size(), 3u);
+    CHECK(s[0] == 'a' && s[1] == '\0' && s[2] == 'b');
+  }
+
+  // Malformed \u falls through to the literal remainder: the 'u' is
+  // emitted, then the remaining chars are re-processed as ordinary input.
+  j50n const bad(R"j({"a":"\uZZZZ","b":"\u12"})j");
+  CHECK_EQ(bad.get_unescaped("a"), "uZZZZ");
+  CHECK_EQ(bad.get_unescaped("b"), "u12");
+
+  // Lone surrogate: three-byte encoding (CESU-8-ish).  RFC 8259 says
+  // this is invalid input, but the decoder produces these bytes.
+  j50n const lone(R"j({"s":"\ud800"})j");
+  CHECK_EQ(lone.get_unescaped("s"), std::string("\xED\xA0\x80", 3));
+
+  // Empty string and strings without escapes.
+  j50n const plain(R"j({"e":"","plain":"hello","tail":"end"})j");
+  CHECK_EQ(plain.get_unescaped("e"),     "");
+  CHECK_EQ(plain.get_unescaped("plain"), "hello");
+  CHECK_EQ(plain.get_unescaped("tail"),  "end");
+
+  // Path access: keys and indices.
+  j50n const root(JSON.data(), JSON.size());
+  CHECK_EQ(root.get_unescaped("nested", "a", "b", "c"), "deep");
+  CHECK_EQ(root.get_unescaped("name"), "j50n-test");
+
+  j50n const arr(R"j(["a\nb","c"])j");
+  CHECK_EQ(arr.get_unescaped(0), std::string("a\nb"));
+  CHECK_EQ(arr.get_unescaped(1), "c");
+
+  // Missing key: get_unescaped returns an empty string.
+  CHECK_EQ(root.get_unescaped("does_not_exist"), "");
+
+  // Non-strings.  These assume the is_string() guard on get_unescaped
+  // returns "" for anything that is not a quoted string.  Remove or
+  // relax if the guard is not in the implementation.
+  j50n const misc(R"j({"n":42,"b":true,"z":null,"arr":[1,2]})j");
+  CHECK(misc.get_unescaped("n").empty());
+  CHECK(misc.get_unescaped("b").empty());
+  CHECK(misc.get_unescaped("z").empty());
+  CHECK(misc.get_unescaped("arr").empty());
+
+  // A container whose contents happen to hold escapes: must not decode
+  // them.  With the guard in place, "" is returned.
+  j50n const nested_esc(R"j({"o":{"s":"x\ny"}})j");
+  CHECK(nested_esc.get_unescaped("o").empty());
+
+  // get_unescaped_or
+  CHECK_EQ(plain.get_unescaped_or("FB", "plain"),   "hello");
+  CHECK_EQ(plain.get_unescaped_or("FB", "e"),       "");       // present, empty
+  CHECK_EQ(plain.get_unescaped_or("FB", "missing"), "FB");
+  CHECK_EQ(plain.get_unescaped_or(std::string_view("SV"), "missing"), "SV");
+
+  // Nested path with a fallback.
+  CHECK_EQ(root.get_unescaped_or("FB", "nested", "a", "b", "c"), "deep");
+  CHECK_EQ(root.get_unescaped_or("FB", "nested", "x"),           "FB");
+  CHECK_EQ(root.get_unescaped_or("FB", "nested", "a", "b", "c", "d"), "FB");
+
+  // Fallback does not substitute for a present empty string.
+  CHECK_EQ(plain.get_unescaped_or("NONEMPTY", "e"), "");
+
+  // Fallback on a non-string (guard assumption as above).
+  CHECK_EQ(misc.get_unescaped_or("FB", "n"), "FB");
+  CHECK_EQ(misc.get_unescaped_or("FB", "arr"), "FB");
+
+  // Return type is std::string, not a view.
+  static_assert(std::is_same_v<decltype(plain.get_unescaped("plain")),
+    std::string>);
+  static_assert(std::is_same_v<decltype(plain.get_unescaped_or("x", "plain")),
+    std::string>);
+}
+
 static void test_utf8()
 {
   SECTION("UTF-8");
@@ -1043,10 +1142,9 @@ static void test_character_classes()
       "bare word starting with '" + std::string(1, char(c)) + "'", __LINE__);
   }
 
-#ifdef NDEBUG
-  // Malformed bytes are rejected: the result is empty (with assertions on, the
-  // scanner aborts instead).  0x7F, 0xC0, 0xC1 and 0xF5..0xF7 are left out:
-  // whether they are accepted is not a rule worth pinning.
+  // Malformed bytes are rejected: the result is empty.  0x7F, 0xC0, 0xC1 and
+  // 0xF5..0xF7 are left out: whether they are accepted is not a rule worth
+  // pinning.
   for (int b = 0; b < 256; ++b)
   {
     if (b == '"' || b == '\\' || (b >= 32 && b <= 126) || b == 0x7F ||
@@ -1097,7 +1195,6 @@ static void test_character_classes()
     t::record(j50n(doc)["b"].is_empty(),
       "'" + std::string(1, char(c)) + "' cannot start a bare word", __LINE__);
   }
-#endif
 }
 
 static void test_whitespace_and_formatting()
@@ -1359,7 +1456,7 @@ static void test_scale_and_nesting()
 static void test_lazy_scanning()
 {
   // The scanner stops as soon as the requested value is complete, so damage
-  // *after* the target does not affect the result (in any build mode).
+  // *after* the target does not affect the result.
   SECTION("lazy scanning stops at the match");
 
   CHECK_EQ(j50n(R"j({"a":1,"b":"\x"})j")["a"], "1");
@@ -1370,11 +1467,9 @@ static void test_lazy_scanning()
 
 static void test_malformed()
 {
+  // The scanner reports malformed input by returning an empty view.
   SECTION("malformed input");
-#ifdef NDEBUG
-  // With assertions disabled the scanner reports malformed input by returning
-  // an empty view.  With assertions enabled it aborts instead (assert in
-  // j50n::S::find), so these cases cannot run in a normal debug build.
+
   CHECK(j50n(R"j({"a":"unterminated)j")["a"].is_empty());
   CHECK(j50n(R"j({"a":"bad\xesc","b":2})j")["b"].is_empty());
   CHECK(j50n("{\"a\":\"raw\nnewline\",\"b\":2}")["b"].is_empty());
@@ -1394,10 +1489,6 @@ static void test_malformed()
   CHECK(j50n("{\"a\":12")["a"].is_empty());                    // inside a bare word
   CHECK(j50n("{\"a")["a"].is_empty());                         // inside a key
   CHECK(j50n("[1,2")[1].is_empty());
-#else
-  std::cout << "  (skipped: build with -DNDEBUG to run the malformed-input "
-               "tests; with assertions enabled they abort by design)\n";
-#endif
 }
 
 static void test_misc_edge_cases()
@@ -1591,6 +1682,7 @@ int main(int argc, char** argv)
   test_path_access();
   test_strings_and_escapes();
   test_string_blanks();
+  test_unescape();
   test_utf8();
   test_character_classes();
   test_whitespace_and_formatting();

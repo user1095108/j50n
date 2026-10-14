@@ -63,7 +63,7 @@ class j50n
         if (one_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*p)) return p;
         else if (!range<32u, 126u>(static_cast<unsigned char>(*p))) return {};
 
-      return end;
+      return {};
     }
 
     static char const* token_end(char const* const p,
@@ -364,9 +364,34 @@ public:
     return std::pair(r, std::errc{} != ec || (sv.data() + sv.size()) != ptr);
   }
 
+  template <typename U>
+  auto get(auto&& ...a) const noexcept
+    requires(std::is_same_v<bool, U>)
+  {
+    auto const sv(view(std::forward<decltype(a)>(a)...).s_);
+
+    if (std::string_view("true", 4) == sv)
+      return std::pair(true, false);
+    else if (std::string_view("false", 5) == sv)
+      return std::pair(false, false);
+    else
+      return std::pair(false, true);
+  }
+
+  template <typename U>
+  U get_or(U const a, auto&& ...b) const noexcept
+  {
+    auto const [v, err](get<U>(std::forward<decltype(b)>(b)...));
+
+    return err ? a : v;
+  }
+
   std::string get_unescaped(auto&& ...a) const
   {
-    auto const sv(view(std::forward<decltype(a)>(a)...).get());
+    auto const v(view(std::forward<decltype(a)>(a)...));
+    if (!v.is_string()) return {};
+
+    auto const sv(v.get());
 
     std::string r;
     r.reserve(sv.size());
@@ -450,26 +475,11 @@ public:
     return r;
   }
 
-  template <typename U>
-  U get_or(U const a, auto&& ...b) const noexcept
+  std::string get_unescaped_or(std::string_view const a, auto&& ...b) const
   {
-    auto const [v, err](get<U>(std::forward<decltype(b)>(b)...));
+    auto const v(view(std::forward<decltype(b)>(b)...));
 
-    return err ? a : v;
-  }
-
-  template <typename U>
-  auto get(auto&& ...a) const noexcept
-    requires(std::is_same_v<bool, U>)
-  {
-    auto const sv(view(std::forward<decltype(a)>(a)...).s_);
-
-    if (std::string_view("true", 4) == sv)
-      return std::pair(true, false);
-    else if (std::string_view("false", 5) == sv)
-      return std::pair(false, false);
-    else
-      return std::pair(false, true);
+    return v.is_string() ? v.get_unescaped() : std::string(a);
   }
 
   //
