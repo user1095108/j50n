@@ -951,104 +951,103 @@ static void test_string_blanks()
 
 static void test_unescape()
 {
-  SECTION("get_unescaped / get_unescaped_or");
+  SECTION("j50n::unescape");
+
+  // Convenience: unescape a value, or return a fallback if the view is empty.
+  // Replaces the removed get_unescaped_or.
+  auto const or_ = [](std::string_view const fb, j50n const j) -> std::string
+  {
+    return j.is_empty() ? std::string(fb) : j50n::unescape(j.get());
+  };
 
   // The JSON_ESCAPED fixture carries each simple escape as its own field.
   j50n const esc(JSON_ESCAPED.data(), JSON_ESCAPED.size());
 
-  CHECK_EQ(esc.get_unescaped("quote"),     "say \"hello\"");
-  CHECK_EQ(esc.get_unescaped("backslash"), "one\\two");        // one\\two -> one\two
-  CHECK_EQ(esc.get_unescaped("newline"),   std::string("line1\nline2"));
-  CHECK_EQ(esc.get_unescaped("tab"),       std::string("col1\tcol2"));
-  CHECK_EQ(esc.get_unescaped("solidus"),   "a/b");
-  CHECK_EQ(esc.get_unescaped("unicode"),   "ABC");             // \u0041BC
+  CHECK_EQ(j50n::unescape(esc["quote"].get()),     "say \"hello\"");
+  CHECK_EQ(j50n::unescape(esc["backslash"].get()), "one\\two");
+  CHECK_EQ(j50n::unescape(esc["newline"].get()),   std::string("line1\nline2"));
+  CHECK_EQ(j50n::unescape(esc["tab"].get()),       std::string("col1\tcol2"));
+  CHECK_EQ(j50n::unescape(esc["solidus"].get()),   "a/b");
+  CHECK_EQ(j50n::unescape(esc["unicode"].get()),   "ABC");
 
   // All eight simple escapes back to back.
   j50n const simple(R"j({"s":"\"\\\/\b\f\n\r\t"})j");
-  CHECK_EQ(simple.get_unescaped("s"), std::string("\"\\/\b\f\n\r\t"));
+  CHECK_EQ(j50n::unescape(simple["s"].get()),
+    std::string("\"\\/\b\f\n\r\t"));
 
   // Unicode: 2-, 3- and 4-byte UTF-8 encodings, and a surrogate pair.
   j50n const uni(R"j({"e9":"\u00e9","euro":"\u20ac","rocket":"\ud83d\ude80","A":"\u0041"})j");
-  CHECK_EQ(uni.get_unescaped("e9"),     std::string("\xC3\xA9", 2));          // é
-  CHECK_EQ(uni.get_unescaped("euro"),   std::string("\xE2\x82\xAC", 3));      // €
-  CHECK_EQ(uni.get_unescaped("rocket"), std::string("\xF0\x9F\x9A\x80", 4));  // 🚀
-  CHECK_EQ(uni.get_unescaped("A"),      "A");                                 // \u0041
+  CHECK_EQ(j50n::unescape(uni["e9"].get()),     std::string("\xC3\xA9", 2));
+  CHECK_EQ(j50n::unescape(uni["euro"].get()),   std::string("\xE2\x82\xAC", 3));
+  CHECK_EQ(j50n::unescape(uni["rocket"].get()), std::string("\xF0\x9F\x9A\x80", 4));
+  CHECK_EQ(j50n::unescape(uni["A"].get()),      "A");
 
-  // NUL byte in the middle: std::string carries it; any .c_str()
-  // consumer would truncate at the NUL.
+  // NUL byte in the middle: std::string carries it.
   {
     j50n const n(R"j({"s":"a\u0000b"})j");
-    auto const s(n.get_unescaped("s"));
+    auto const s(j50n::unescape(n["s"].get()));
     CHECK_EQ(s.size(), 3u);
     CHECK(s[0] == 'a' && s[1] == '\0' && s[2] == 'b');
   }
 
-  // Malformed \u falls through to the literal remainder: the 'u' is
-  // emitted, then the remaining chars are re-processed as ordinary input.
+  // Malformed \u falls through to the literal remainder.
   j50n const bad(R"j({"a":"\uZZZZ","b":"\u12"})j");
-  CHECK_EQ(bad.get_unescaped("a"), "uZZZZ");
-  CHECK_EQ(bad.get_unescaped("b"), "u12");
+  CHECK_EQ(j50n::unescape(bad["a"].get()), "uZZZZ");
+  CHECK_EQ(j50n::unescape(bad["b"].get()), "u12");
 
-  // Lone surrogate: three-byte encoding (CESU-8-ish).  RFC 8259 says
-  // this is invalid input, but the decoder produces these bytes.
+  // Lone surrogate: three-byte CESU-8-style encoding.
   j50n const lone(R"j({"s":"\ud800"})j");
-  CHECK_EQ(lone.get_unescaped("s"), std::string("\xED\xA0\x80", 3));
+  CHECK_EQ(j50n::unescape(lone["s"].get()), std::string("\xED\xA0\x80", 3));
 
-  // Empty string and strings without escapes.
+  // Empty string, plain strings, and a string at the last position.
   j50n const plain(R"j({"e":"","plain":"hello","tail":"end"})j");
-  CHECK_EQ(plain.get_unescaped("e"),     "");
-  CHECK_EQ(plain.get_unescaped("plain"), "hello");
-  CHECK_EQ(plain.get_unescaped("tail"),  "end");
+  CHECK_EQ(j50n::unescape(plain["e"].get()),     "");
+  CHECK_EQ(j50n::unescape(plain["plain"].get()), "hello");
+  CHECK_EQ(j50n::unescape(plain["tail"].get()),  "end");
 
   // Path access: keys and indices.
   j50n const root(JSON.data(), JSON.size());
-  CHECK_EQ(root.get_unescaped("nested", "a", "b", "c"), "deep");
-  CHECK_EQ(root.get_unescaped("name"), "j50n-test");
+  CHECK_EQ(j50n::unescape(root.get("nested", "a", "b", "c")), "deep");
+  CHECK_EQ(j50n::unescape(root["name"].get()), "j50n-test");
 
   j50n const arr(R"j(["a\nb","c"])j");
-  CHECK_EQ(arr.get_unescaped(0), std::string("a\nb"));
-  CHECK_EQ(arr.get_unescaped(1), "c");
+  CHECK_EQ(j50n::unescape(arr[0].get()), std::string("a\nb"));
+  CHECK_EQ(j50n::unescape(arr[1].get()), "c");
 
-  // Missing key: get_unescaped returns an empty string.
-  CHECK_EQ(root.get_unescaped("does_not_exist"), "");
+  // Empty view unescapes to "".
+  CHECK_EQ(j50n::unescape(root["does_not_exist"].get()), "");
 
-  // Non-strings.  These assume the is_string() guard on get_unescaped
-  // returns "" for anything that is not a quoted string.  Remove or
-  // relax if the guard is not in the implementation.
+  // Non-strings: unescape operates on any bytes and passes through content
+  // that contains no backslashes.  No is_string() check.
   j50n const misc(R"j({"n":42,"b":true,"z":null,"arr":[1,2]})j");
-  CHECK(misc.get_unescaped("n").empty());
-  CHECK(misc.get_unescaped("b").empty());
-  CHECK(misc.get_unescaped("z").empty());
-  CHECK(misc.get_unescaped("arr").empty());
+  CHECK_EQ(j50n::unescape(misc["n"].get()),   "42");
+  CHECK_EQ(j50n::unescape(misc["b"].get()),   "true");
+  CHECK_EQ(j50n::unescape(misc["z"].get()),   "null");
+  CHECK_EQ(j50n::unescape(misc["arr"].get()), "[1,2]");
 
-  // A container whose contents happen to hold escapes: must not decode
-  // them.  With the guard in place, "" is returned.
+  // Because unescape walks raw bytes without a type check, a container
+  // token has its inner escapes decoded too.  This is the documented
+  // behaviour of the new API; callers who want string-only unescaping
+  // check is_string() themselves.
   j50n const nested_esc(R"j({"o":{"s":"x\ny"}})j");
-  CHECK(nested_esc.get_unescaped("o").empty());
+  CHECK_EQ(j50n::unescape(nested_esc["o"].get()),
+    std::string("{\"s\":\"x\ny\"}"));
 
-  // get_unescaped_or
-  CHECK_EQ(plain.get_unescaped_or("FB", "plain"),   "hello");
-  CHECK_EQ(plain.get_unescaped_or("FB", "e"),       "");       // present, empty
-  CHECK_EQ(plain.get_unescaped_or("FB", "missing"), "FB");
-  CHECK_EQ(plain.get_unescaped_or(std::string_view("SV"), "missing"), "SV");
-
-  // Nested path with a fallback.
-  CHECK_EQ(root.get_unescaped_or("FB", "nested", "a", "b", "c"), "deep");
-  CHECK_EQ(root.get_unescaped_or("FB", "nested", "x"),           "FB");
-  CHECK_EQ(root.get_unescaped_or("FB", "nested", "a", "b", "c", "d"), "FB");
-
-  // Fallback does not substitute for a present empty string.
-  CHECK_EQ(plain.get_unescaped_or("NONEMPTY", "e"), "");
-
-  // Fallback on a non-string (guard assumption as above).
-  CHECK_EQ(misc.get_unescaped_or("FB", "n"), "FB");
-  CHECK_EQ(misc.get_unescaped_or("FB", "arr"), "FB");
+  // Fallback helper (replaces get_unescaped_or).
+  CHECK_EQ(or_("FB", plain["plain"]),   "hello");
+  CHECK_EQ(or_("FB", plain["e"]),       "");     // present, empty
+  CHECK_EQ(or_("FB", plain["missing"]), "FB");
+  CHECK_EQ(or_("FB", misc["n"]),        "42");   // non-string, non-empty
+  CHECK_EQ(or_("FB", misc["arr"]),      "[1,2]");
 
   // Return type is std::string, not a view.
-  static_assert(std::is_same_v<decltype(plain.get_unescaped("plain")),
+  static_assert(std::is_same_v<decltype(j50n::unescape(std::string_view{})),
     std::string>);
-  static_assert(std::is_same_v<decltype(plain.get_unescaped_or("x", "plain")),
-    std::string>);
+
+  // unescape is callable on any string_view, not only j50n contents.
+  CHECK_EQ(j50n::unescape(R"(a\nb)"), std::string("a\nb"));
+  CHECK_EQ(j50n::unescape("plain"),   "plain");
+  CHECK_EQ(j50n::unescape(""),        "");
 }
 
 static void test_utf8()
@@ -1488,7 +1487,7 @@ static void test_malformed()
   CHECK(j50n("{\"a\":\"abc")["a"].is_empty());                // inside a string
   CHECK_EQ(j50n("{\"a\":12")["a"], "12");     // truncated object
   CHECK(j50n("{\"a")["a"].is_empty());                         // inside a key
-  CHECK_EQ(j50n("[1,2")[1], "2");             // truncated arra
+  CHECK_EQ(j50n("[1,2")[1], "2");             // truncated array
 }
 
 static void test_misc_edge_cases()

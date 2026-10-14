@@ -372,13 +372,8 @@ public:
     return err ? a : v;
   }
 
-  std::string get_unescaped(auto&& ...a) const
+  static std::string unescape(std::string_view const sv)
   {
-    auto const v(view(std::forward<decltype(a)>(a)...));
-    if (!v.is_string()) return {};
-
-    auto const sv(v.get());
-
     std::string r;
     r.reserve(sv.size());
 
@@ -417,7 +412,7 @@ public:
 
     for (auto p(sv.cbegin()); end != p;)
     {
-      char const c = *p++;
+      char const c(*p++);
       if ('\\' != c || p == end) { r += c; continue; }
 
       switch (char const e(*p++); e)
@@ -459,13 +454,6 @@ public:
     }
 
     return r;
-  }
-
-  std::string get_unescaped_or(std::string_view const a, auto&& ...b) const
-  {
-    auto const v(view(std::forward<decltype(b)>(b)...));
-
-    return v.is_string() ? v.get_unescaped() : std::string(a);
   }
 
   //
