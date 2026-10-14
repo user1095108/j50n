@@ -75,7 +75,12 @@ j50n j(R"({"msg":"say \"hello\""})");
 auto sv = j.get("msg");   // sv == R"(say \"hello\")"  — not  say "hello"
 ```
 
-If you need unescaping, try `unescape()`.
+If you need unescaping, try `unescape()`:
+
+```cpp
+j50n j(R"({"msg":"say \"hello\""})");
+auto s = j50n::unescape(j.get("msg"));   // s == say "hello"
+```
 
 ### Numeric extraction
 
