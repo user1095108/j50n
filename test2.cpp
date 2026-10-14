@@ -1983,6 +1983,121 @@ static void test_operator_bool()
     std::declval<j50n>())), bool>);
 }
 
+static void test_size()
+{
+  SECTION("size");
+
+  // Empty views and empty containers all report 0.
+  CHECK_EQ(j50n().size(),                    0u);
+  CHECK_EQ(j50n("").size(),                  0u);
+  CHECK_EQ(j50n("   \t\r\n").size(),         0u);
+  CHECK_EQ(j50n("{}").size(),                0u);
+  CHECK_EQ(j50n("[]").size(),                0u);
+  CHECK_EQ(j50n("{ }").size(),               0u);
+  CHECK_EQ(j50n("[ ]").size(),               0u);
+  CHECK_EQ(j50n("{       }").size(),         0u);  // interior whitespace
+  CHECK_EQ(j50n("[       ]").size(),         0u);
+  CHECK_EQ(j50n("{\n\t\r }").size(),         0u);
+  CHECK_EQ(j50n("[\n\t\r ]").size(),         0u);
+
+  // Scalars: no members, no elements.
+  CHECK_EQ(j50n("42").size(),                0u);
+  CHECK_EQ(j50n("-1.5").size(),              0u);
+  CHECK_EQ(j50n("true").size(),              0u);
+  CHECK_EQ(j50n("false").size(),             0u);
+  CHECK_EQ(j50n("null").size(),              0u);
+  CHECK_EQ(j50n("\"str\"").size(),           0u);
+  CHECK_EQ(j50n("\"\"").size(),              0u);
+
+  // Non-container subviews from a document report 0 as well.
+  j50n const root(JSON.data(), JSON.size());
+  CHECK_EQ(root["name"].size(),              0u);
+  CHECK_EQ(root["version"].size(),           0u);
+  CHECK_EQ(root["pi"].size(),                0u);
+  CHECK_EQ(root["active"].size(),            0u);
+  CHECK_EQ(root["ratio"].size(),             0u);
+  CHECK_EQ(root["does_not_exist"].size(),    0u);
+
+  // Single-element containers.
+  CHECK_EQ(j50n("[0]").size(),               1u);
+  CHECK_EQ(j50n("[null]").size(),            1u);
+  CHECK_EQ(j50n("[false]").size(),           1u);
+  CHECK_EQ(j50n("[[]]").size(),              1u);
+  CHECK_EQ(j50n(R"({})").size(),             0u);
+  CHECK_EQ(j50n(R"({"a":1})").size(),        1u);
+  CHECK_EQ(j50n(R"({"a":null})").size(),     1u);
+
+  // Multi-element arrays and objects.
+  CHECK_EQ(j50n("[1,2,3]").size(),           3u);
+  CHECK_EQ(j50n("[1,2,3,]").size(),          3u);  // trailing comma, lenient
+  CHECK_EQ(j50n(R"({"a":1,"b":2,"c":3})").size(), 3u);
+  CHECK_EQ(j50n(R"({"a":1,"b":2,"c":3,})").size(), 3u);
+
+  // The heterogeneous fixture and nested containers.
+  j50n const h(R"j([10,"two",true,null,{"x":1},[2,3],"",-4.5e1])j");
+  CHECK_EQ(h.size(), 8u);
+  CHECK_EQ(h[4].size(), 1u);     // {"x":1}
+  CHECK_EQ(h[5].size(), 2u);     // [2,3]
+
+  j50n const n(R"j([[1,2],[3],[],[[4]]])j");
+  CHECK_EQ(n.size(), 4u);
+  CHECK_EQ(n[0].size(), 2u);
+  CHECK_EQ(n[1].size(), 1u);
+  CHECK_EQ(n[2].size(), 0u);
+  CHECK_EQ(n[3].size(), 1u);
+  CHECK_EQ(n[3][0].size(), 1u);
+
+  // Object element counts from the fixture.
+  CHECK_EQ(root["numbers"].size(),           5u);
+  CHECK_EQ(root["objects"].size(),           3u);
+  CHECK_EQ(root["nested"].size(),            1u);
+  CHECK_EQ(root["nested"]["a"].size(),       1u);
+  CHECK_EQ(root["nested"]["a"]["b"].size(),  1u);
+  CHECK_EQ(root["empty_arr"].size(),         0u);
+  CHECK_EQ(root["empty_obj"].size(),         0u);
+  CHECK_EQ(root.size(),                     11u);  // object root
+
+  // Objects with many keys, counted with a loop for both sides.
+  {
+    constexpr int N = 100;
+    std::string s("{");
+    for (int i = 0; i < N; ++i)
+    {
+      if (i) s += ',';
+      s += "\"k" + std::to_string(i) + "\":" + std::to_string(i);
+    }
+    s += '}';
+    j50n const d(s);
+    CHECK_EQ(d.size(), std::size_t(N));
+  }
+
+  // size() is idempotent: repeated calls return the same value, and the
+  // view is not mutated.
+  {
+    j50n const arr("[1,2,3,4,5]");
+    auto const s0(arr.size());
+    auto const raw0(arr.get());
+    CHECK_EQ(arr.size(), 5u);
+    CHECK_EQ(arr.size(), 5u);
+    CHECK_EQ(arr.size(), s0);
+    CHECK(arr.get() == raw0);
+  }
+  {
+    j50n const obj(R"j({"a":1,"b":2})j");
+    CHECK_EQ(obj.size(), 2u);
+    CHECK_EQ(obj.size(), 2u);
+  }
+
+  // A subview reports only its own elements, not its descendants.
+  {
+    j50n const d(R"j({"a":{"b":{"c":1}}})j");
+    CHECK_EQ(d.size(),              1u);  // {"a": ...}
+    CHECK_EQ(d["a"].size(),         1u);  // {"b": ...}
+    CHECK_EQ(d["a"]["b"].size(),    1u);  // {"c": ...}
+    CHECK_EQ(d["a"]["b"]["c"].size(), 0u);  // 1, a scalar
+  }
+}
+
 // ── main ────────────────────────────────────────────────────────────────────
 
 int main(int argc, char** argv)
@@ -2025,6 +2140,7 @@ int main(int argc, char** argv)
   test_malformed();
   test_misc_edge_cases();
   test_more_coverage();
+  test_size();
 
   std::cout << "\n== Summary ==\n"
     << t::g.checks << " checks, " << t::g.failures << " failed";
