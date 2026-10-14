@@ -291,10 +291,7 @@ public:
     if (!is_string()) return false;
 
     auto const sv(get());
-    if (std::string_view::npos == sv.find('\\'))
-      return sv == v; // fast path
-
-    return v == unescape(sv);
+    return v == (std::string_view::npos == sv.find('\\') ? sv : unescape(sv));
   }
 
   explicit operator bool() const noexcept
