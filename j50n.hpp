@@ -359,7 +359,7 @@ public:
     if (!is_string()) return s_;
 
     auto r(s_.substr(1));
-    if (r.size() && ('"' == r.back()))
+    if (!r.empty() && ('"' == r.back()))
       r.remove_suffix(1); // drop quotes
 
     return r;
