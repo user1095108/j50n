@@ -286,10 +286,10 @@ public:
     if (!is_string()) return false;
 
     auto const sv(get());
-    if (sv.find('\\') == std::string_view::npos)
-      return sv == v; // fast path: no escapes to decode
+    if (std::string_view::npos == sv.find('\\'))
+      return sv == v; // fast path
 
-    return unescape(sv) == v;
+    return v == unescape(sv);
   }
 
   //
