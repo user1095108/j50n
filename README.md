@@ -123,7 +123,7 @@ Falsy values:
 * false
 * "" (empty string)
 * 0, -0, 0.0, 0e0, and every other numeric spelling of zero
-* [], {}, and empty containers with interior whitespace
+* [], {}
 
 Everything else is truthy: true, a non-empty string, a non-zero number, a non-empty container.
 
