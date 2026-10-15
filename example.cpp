@@ -3,10 +3,10 @@
 
 int main()
 {
-    j50n j = R"({
+    j50n j(R"({
         "user": { "id": 123, "name": "alice" },
         "values": [10, 20, 30]
-    })";
+    })");
 
     auto name = j.get("user", "name");
     std::cout << "Name: " << name << '\n';
@@ -16,15 +16,12 @@ int main()
 
     std::cout << j.get_or<int>(-1, "fail") << '\n';
 
-    j.feach([](std::string_view const k, j50n const e){
-        std::cout << k << ": " << e << '\n';
-    });
+    if (j.contains("values"))
+        std::cout << "values has " << j["values"].size() << " entries\n";
 
-    j["values"].feach([](j50n const e, std::size_t i){
+    j["values"].feach([](j50n e, std::size_t i){
         std::cout << i << ": " << e << '\n';
     });
-
-    std::cout << j50n(R"("\ud83c\udf08 \ud83e\udd8b \u2728 \ud83c\udf3b \ud83d\udc96")").get_unescaped() << std::endl;
 
     return 0;
 }
