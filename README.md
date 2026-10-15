@@ -106,8 +106,6 @@ j["enabled"] == true
 j["version"] <=> 2          // std::partial_ordering
 j["version"] < 3
 j["version"] >= 1
-j50n("true") == 1
-j50n("1") == true
 ```
 
 ### Truthiness
