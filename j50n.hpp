@@ -289,9 +289,9 @@ public:
     requires std::same_as<bool, std::remove_cv_t<decltype(a)>>
   {
     if (auto const [x, err](get<decltype(a)>()); !err)
-      return bool(x) <=> a;
+      return x <=> a;
     else if (auto const [x, err](get<double>()); !err)
-      return bool(x) <=> a;
+      return x <=> double(a);
 
     return std::partial_ordering::unordered;
   }
