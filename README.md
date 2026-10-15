@@ -119,13 +119,13 @@ if (j["flag"]) ...     // false for null, false, 0, 0.0, "", [], {}
 Falsy values:
 
 * empty view (missing key, absent index, default-constructed)
-* null
-* false
-* "" (empty string)
-* 0, -0, 0.0, 0e0, and every other numeric spelling of zero
-* [], {}
+* `null`
+* `false`
+* `""` (empty string)
+* `0`, `-0`, `0.0`, `0e0`, and every other numeric spelling of zero
+* `[]`, `{}`
 
-Everything else is truthy: true, a non-empty string, a non-zero number, a non-empty container.
+Everything else is truthy: `true`, a non-empty string, a non-zero number, a non-empty container.
 
 ### Iterating arrays and objects
 
