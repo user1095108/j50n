@@ -274,22 +274,14 @@ public:
   }
 
   std::partial_ordering operator<=>(auto const a) const noexcept
-    requires(std::is_arithmetic_v<decltype(a)> &&
-      !std::same_as<bool, std::remove_cv_t<decltype(a)>>)
+    requires(std::is_arithmetic_v<decltype(a)>)
   {
     if (auto const [x, err](get<decltype(a)>()); !err)
       return x <=> a;
-    if (auto const [x, err](get<double>()); !err)
-      return x <=> a;
 
-    return std::partial_ordering::unordered;
-  }
-
-  std::partial_ordering operator<=>(auto const a) const noexcept
-    requires std::same_as<bool, std::remove_cv_t<decltype(a)>>
-  {
-    if (auto const [x, err](get<decltype(a)>()); !err)
-      return x <=> a;
+    if constexpr(!std::same_as<bool, std::remove_cv_t<decltype(a)>>)
+      if (auto const [x, err](get<double>()); !err)
+        return x <=> a;
 
     return std::partial_ordering::unordered;
   }
