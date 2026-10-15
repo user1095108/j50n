@@ -420,7 +420,7 @@ public:
   }
 
   template <typename U>
-  U get_or(U const a, auto&& ...b) const noexcept
+  std::remove_cv_t<U> get_or(U const a, auto&& ...b) const noexcept
   {
     auto const [v, err](get<U>(std::forward<decltype(b)>(b)...));
 
