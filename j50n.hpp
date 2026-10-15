@@ -279,7 +279,7 @@ public:
     if (auto const [x, err](get<decltype(a)>()); !err)
       return x <=> a;
 
-    if constexpr(!std::same_as<bool, std::remove_cv_t<decltype(a)>>)
+    if constexpr(!std::is_same_v<bool, std::remove_cv_t<decltype(a)>>)
       if (auto const [x, err](get<double>()); !err)
         return x <=> a;
 
