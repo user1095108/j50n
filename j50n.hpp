@@ -445,9 +445,9 @@ public:
 
     auto const hex = [](char const c) noexcept -> unsigned
       {
-        return c >= '0' && c <= '9' ? unsigned(c - '0') :
-               c >= 'a' && c <= 'f' ? unsigned(c - 'a' + 10) :
-               c >= 'A' && c <= 'F' ? unsigned(c - 'A' + 10) : 16u;
+        return S::range<'0', '9'>(c) ? unsigned(c - '0') :
+               S::range<'a', 'f'>(c) ? unsigned(c - 'a' + 10) :
+               S::range<'A', 'F'>(c) ? unsigned(c - 'A' + 10) : 16u;
       };
 
     auto const utf8 = [&](unsigned cp) noexcept
