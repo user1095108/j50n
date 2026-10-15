@@ -82,8 +82,7 @@ class j50n
           continue;
         else if (one_of<'[', '{'>(*p))
         {
-          if (depth == 1) start = p;
-          ++depth;
+          if (depth++ == 1) start = p;
         }
         else if (one_of<']', '}'>(*p))
         {
