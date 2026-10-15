@@ -302,7 +302,7 @@ public:
 
   explicit operator bool() const noexcept
   {
-    if (is_empty() || is_null() || (std::string_view("false", 5) == s_))
+    if (is_empty() || is_null() || std::string_view("false", 5) == s_)
       return false;
     else if ('"' == s_.front()) return !get().empty();
     else if (auto const [v, err](get<double>()); !err)
