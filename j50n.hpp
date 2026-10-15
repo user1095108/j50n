@@ -4,6 +4,7 @@
 
 #include <cstddef> // std::size_t
 #include <charconv> // std::from_chars()
+#include <compare> // std::partial_ordering
 #include <ostream> // operator<<()
 #include <string_view>
 #include <type_traits>
@@ -541,7 +542,7 @@ public:
 };
 
 //////////////////////////////////////////////////////////////////////////////
-inline auto& operator<<(std::ostream& os, j50n const j)
+inline std::ostream& operator<<(std::ostream& os, j50n const j)
 { // !!!
   return os << j.get();
 }
