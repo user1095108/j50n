@@ -54,7 +54,7 @@ class j50n
           if (!n) break;
 
           for (; n; --n)
-            if ((end == ++p) || ((static_cast<unsigned char>(*p) & 192) != 128))
+            if ((end == ++p) || (((unsigned char)(*p) & 192) != 128))
               return {};
         }
       }
@@ -66,7 +66,7 @@ class j50n
     {
       for (; end != p; ++p)
         if (one_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*p)) return p;
-        else if (!range<32u, 126u>(static_cast<unsigned char>(*p))) return {};
+        else if (!range<32, 126>(*p)) return {};
 
       return end;
     }
