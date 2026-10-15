@@ -191,10 +191,10 @@ std::cout << j["name"] << '\n';  // prints: Alice
 
 int main()
 {
-    j50n j = R"({
+    j50n j(R"({
         "user": { "id": 123, "name": "alice" },
         "values": [10, 20, 30]
-    })";
+    })");
 
     auto name = j.get("user", "name");
     std::cout << "Name: " << name << '\n';
