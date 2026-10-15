@@ -271,12 +271,17 @@ public:
     return *this <=> a == 0;
   }
 
-  auto operator<=>(auto const a) const noexcept
+  std::partial_ordering operator<=>(auto const a) const noexcept
     requires std::is_arithmetic_v<decltype(a)>
   {
-    auto const [x, err](get<std::remove_cv_t<decltype(a)>>());
+    if (auto const [x, err](get<decltype(a)>()); !err)
+      return x <=> a;
+    else if (auto const [x, err](get<double>()); !err)
+      return x <=> double(a);
+    else if (auto const [x, err](get<bool>()); !err)
+      return x <=> bool(a);
 
-    return err ? std::partial_ordering::unordered : x <=> a;
+    return std::partial_ordering::unordered;
   }
 
   template <std::size_t N>
@@ -387,20 +392,20 @@ public:
   }
 
   template <typename U>
-  std::pair<U, bool> get(auto&& ...a) const noexcept
+  std::pair<std::remove_cv_t<U>, bool> get(auto&& ...a) const noexcept
     requires(std::is_arithmetic_v<U> &&
       !std::is_same_v<bool, std::remove_cv_t<U>>)
   {
     auto const sv(view(std::forward<decltype(a)>(a)...).s_);
 
-    U r{}; auto const end(sv.data() + sv.size());
+    std::remove_cv_t<U> r{}; auto const end(sv.data() + sv.size());
     auto const [ptr, ec](std::from_chars(sv.data(), end, r));
     return std::pair(r, std::errc{} != ec || end != ptr);
   }
 
   template <typename U>
-  auto get(auto&& ...a) const noexcept
-    requires(std::is_same_v<bool, U>)
+  std::pair<bool, bool> get(auto&& ...a) const noexcept
+    requires(std::is_same_v<bool, std::remove_cv_t<U>>)
   {
     auto const sv(view(std::forward<decltype(a)>(a)...).s_);
 

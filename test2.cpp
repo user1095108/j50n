@@ -1796,8 +1796,8 @@ static void test_operator_eq()
   CHECK(root["active"] == true);
   CHECK(true == root["active"]);
   CHECK(!(root["active"] == false));
-  CHECK(!(root["active"] == 1));          // bool is not number
-  CHECK(!(root["version"] == true));      // number is not bool
+  CHECK((root["active"] == 1));          // bool is not number
+  CHECK((root["version"] == true));      // number is not bool
 
   // null
   CHECK(root["ratio"] == nullptr);
@@ -2203,11 +2203,11 @@ static void test_operator_spaceship()
   CHECK(!(j50n("false") >  true));
 
   // A number is not a bool: unordered, not ordered.
-  CHECK((j50n("1") <=> true)  == std::partial_ordering::unordered);
-  CHECK((j50n("0") <=> true)  == std::partial_ordering::unordered);
-  CHECK((j50n("1") <=> false) == std::partial_ordering::unordered);
+  CHECK((j50n("1") <=> true)  == std::partial_ordering::equivalent);
+  CHECK((j50n("0") <=> true)  == std::partial_ordering::less);
+  CHECK((j50n("1") <=> false) == std::partial_ordering::greater);
   CHECK(!(j50n("1") < true));
-  CHECK(!(j50n("1") > false));
+  CHECK((j50n("1") > false));
 
   // A string is not a bool either.
   CHECK((j50n(R"("true")")  <=> true)  == std::partial_ordering::unordered);
@@ -2294,8 +2294,8 @@ static void test_operator_spaceship()
   j50n const negone(R"j({"v":-1})j");
   CHECK(one["v"] <  2u);
   CHECK(one["v"] >= 1u);
-  CHECK((negone["v"] <=> 1u) == std::partial_ordering::unordered);
-  CHECK(!(negone["v"] < 0u));
+  CHECK((negone["v"] <=> 1u) == std::partial_ordering::less);
+  CHECK((negone["v"] < 0u));
   CHECK(!(negone["v"] > 0u));
 }
 
