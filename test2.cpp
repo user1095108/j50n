@@ -2151,8 +2151,8 @@ static void test_operator_spaceship()
   CHECK(root["version"] <  2.0f);
 
   // Floating point.
-  CHECK(root["pi"] >  3.0);
-  CHECK(root["pi"] <  4.0);
+  CHECK(root["pi"] >  3);
+  CHECK(root["pi"] <  4);
   CHECK(root["pi"] >= 3.14159);
   CHECK(root["pi"] <= 3.14159);
   CHECK(!(root["pi"] <  3.14159));
