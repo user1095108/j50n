@@ -443,13 +443,6 @@ public:
     std::string r;
     r.reserve(sv.size());
 
-    auto const hex = [](char const c) noexcept -> unsigned
-      {
-        return S::range<'0', '9'>(c) ? unsigned(c - '0') :
-               S::range<'a', 'f'>(c) ? unsigned(c - 'a' + 10) :
-               S::range<'A', 'F'>(c) ? unsigned(c - 'A' + 10) : 16u;
-      };
-
     auto const utf8 = [&](unsigned cp) noexcept
       {
         int const n = cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
@@ -459,17 +452,15 @@ public:
         r.append(b, n);
       };
 
-    auto const hex4 = [&](auto& p) noexcept
+    auto const hex4 = [](auto& p) noexcept
       {
         unsigned v{};
 
         for (auto const end(p + 4); end != p; ++p)
-        {
-          auto const h(hex(*p));
-
-          if (h > 15) return std::pair(v, false);
-          v = (v << 4) | h;
-        }
+          if (v <<= 4; S::range<'0', '9'>(*p)) v |= (*p - '0');
+          else if (S::range<'a', 'f'>(*p)) v |= *p - 'a' + 10;
+          else if (S::range<'A', 'F'>(*p)) v |= *p - 'A' + 10;
+          else return std::pair(v, false);
 
         return std::pair(v, true);
       };
