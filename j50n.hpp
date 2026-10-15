@@ -37,19 +37,21 @@ class j50n
     {
       for (; end != p; ++p)
       {
-        if (auto const c(static_cast<unsigned char>(*p)); '"' == c)
+        if ('"' == *p)
           return p;
-        else if ('\\' == c)
+        else if ('\\' == *p)
         {
           if ((end == ++p) ||
             !one_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
-            return {};
+            break;
         }
-        else if (!range<32u, 127u>(c)) // 0x7F (DEL) is allowed unescaped per RFC 8259
+        else if (!range<32u, 127u>(*p)) // 0x7F (DEL) is allowed unescaped per RFC 8259
         {
-          auto n((c & 224) == 192 ? 1u :
-            (c & 240) == 224 ? 2u : (c & 248) == 240 ? 3u : 0u);
-          if (!n) return {};
+          auto n(((unsigned char)(*p) & 224) == 192 ? 1u :
+            ((unsigned char)(*p) & 240) == 224 ? 2u :
+            ((unsigned char)(*p) & 248) == 240 ? 3u : 0u);
+
+          if (!n) break;
 
           for (; n; --n)
             if ((end == ++p) || ((static_cast<unsigned char>(*p) & 192) != 128))
