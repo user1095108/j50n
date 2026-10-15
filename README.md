@@ -96,7 +96,7 @@ The second element is `true` on **failure** — always check `error` before usin
 
 ### Comparison operators
 
-j50n compares directly against arithmetic types, `bool`, `nullptr`, and other `j50n` views, without an explicit `get<U>()`.
+`j50n` compares directly against arithmetic types, `bool`, `nullptr`, and other `j50n` views, without an explicit `get<U>()`.
 
 ```cpp
 j["count"] == 0
