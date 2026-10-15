@@ -279,7 +279,7 @@ public:
     else if (auto const [x, err](get<double>()); !err)
       return x <=> double(a);
     else if (auto const [x, err](get<bool>()); !err)
-      return x <=> bool(a);
+      return x <=> a;
 
     return std::partial_ordering::unordered;
   }
