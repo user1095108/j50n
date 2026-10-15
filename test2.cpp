@@ -2201,6 +2201,7 @@ static void test_operator_spaceship()
   CHECK(j50n("false") <= false);
   CHECK(!(j50n("true")  <  true));
   CHECK(!(j50n("false") >  true));
+  CHECK(j50n("true")  <  2);
 
   // A number is not a bool: unordered, not ordered.
   CHECK((j50n("1") <=> true)  == std::partial_ordering::equivalent);
