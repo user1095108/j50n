@@ -281,8 +281,6 @@ public:
       return x <=> a;
     if (auto const [x, err](get<double>()); !err)
       return x <=> a;
-    if (auto const [x, err](get<bool>()); !err)
-      return decltype(a)(x) <=> a;
 
     return std::partial_ordering::unordered;
   }
@@ -292,8 +290,6 @@ public:
   {
     if (auto const [x, err](get<decltype(a)>()); !err)
       return x <=> a;
-    if (auto const [x, err](get<double>()); !err)
-      return x <=> double(a);
 
     return std::partial_ordering::unordered;
   }
