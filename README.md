@@ -94,21 +94,54 @@ The second element is `true` on **failure** — always check `error` before usin
 
 `get_or()` and `get_or<U>()` return a caller-supplied default on failure.
 
+### Comparison operators
+
+j50n compares directly against arithmetic types, `bool`, `nullptr`, and other `j50n` views, without an explicit `get<U>()`.
+
+```cpp
+j["count"] == 0
+j["ratio"] == nullptr       // null check
+j["name"] == "Alice"
+j["enabled"] == true
+j["version"] <=> 2          // std::partial_ordering
+j["version"] < 3
+j["version"] >= 1
+```
+
+### Truthiness
+
+`j50n` has an `explicit operator bool()`, so `if (j)` works directly:
+
+```cpp
+if (j["flag"]) ...     // false for null, false, 0, 0.0, "", [], {}
+```
+
+Falsy values:
+
+* empty view (missing key, absent index, default-constructed)
+* null
+* false
+* "" (empty string)
+* 0, -0, 0.0, 0e0, and every other numeric spelling of zero
+* [], {}, and empty containers with interior whitespace
+
+Everything else is truthy: true, a non-empty string, a non-zero number, a non-empty container.
+
 ### Iterating arrays and objects
 
 ```cpp
 // Without index
-j["scores"].feach([](j50n const& elem) {
+j["scores"].feach([](j50n elem) {
     std::cout << elem << '\n';
 });
 
 // With index
-j["scores"].feach([](j50n const& elem, std::size_t i) {
+j["scores"].feach([](j50n elem, std::size_t i) {
     std::cout << i << ": " << elem << '\n';
 });
 
 // With key/value
-j.feach([](std::string_view key, j50n const& elem) {
+j.feach([](std::string_view key, j50n elem) {
     std::cout << key << ": " << elem << '\n';
 });
 ```
@@ -116,7 +149,7 @@ j.feach([](std::string_view key, j50n const& elem) {
 Both overloads support early termination by returning `bool`:
 
 ```cpp
-j["scores"].feach([](j50n const& elem) -> bool {
+j["scores"].feach([](j50n elem) -> bool {
     if (elem.get() == "30") return true;  // stop iteration
     std::cout << elem << '\n';
     return false;
@@ -171,7 +204,10 @@ int main()
 
     std::cout << j.get_or<int>(-1, "fail") << '\n';
 
-    j["values"].feach([](j50n const& e, std::size_t i){
+    if (j.contains("values"))
+        std::cout << "values has " << j["values"].size() << " entries\n";
+
+    j["values"].feach([](j50n e, std::size_t i){
         std::cout << i << ": " << e << '\n';
     });
 
