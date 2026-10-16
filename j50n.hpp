@@ -362,6 +362,7 @@ public:
   //
   bool is_empty() const noexcept { return s_.empty(); }
   bool is_array() const noexcept { return s_.size() && ('[' == s_.front()); }
+  bool is_bool() const noexcept { return S::any_of<"true", "false">(s_); }
   bool is_object() const noexcept { return s_.size() && ('{' == s_.front()); }
   bool is_string() const noexcept { return s_.size() && ('"' == s_.front()); }
   bool is_null() const noexcept { return msv("null") == s_; }
@@ -370,11 +371,6 @@ public:
   bool is_bare() const noexcept
   {
     return s_.size() && !S::any_of<'[', '{', '"'>(s_.front());
-  }
-
-  bool is_bool() const noexcept
-  {
-    return S::any_of<"true", "false">(s_);
   }
 
   //
