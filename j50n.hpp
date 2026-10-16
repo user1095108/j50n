@@ -442,7 +442,7 @@ public:
   {
     auto const ndx(S::index_of<"false", "true">(
       view(std::forward<decltype(a)>(a)...).s_));
-    return {ndx, 2u == ndx};
+    return {1u == ndx, 2u == ndx};
   }
 
   template <typename U>
