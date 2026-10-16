@@ -95,8 +95,8 @@ class j50n
         else
         { // delimit token
           auto const e(('"' == *p) ? str_end(p + 1, end) :
-            (('-' == *p || range<'0', '9'>(*p) || range<'A', 'Z'>(*p) ||
-            range<'a', 'z'>(*p)) ? bare_end(p, end) : nullptr));
+            ('-' == *p || range<'0', '9'>(*p) || range<'A', 'Z'>(*p) ||
+            range<'a', 'z'>(*p) ? bare_end(p, end) : nullptr));
 
           if (!e || (depth == 1 && cb(p, e, '"' == *p)) || (end == e))
             return;
