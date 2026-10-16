@@ -113,7 +113,8 @@ class j50n
         }
         else if (any_of<']', '}'>(*p))
         {
-          if (--depth == 1 && start)
+          if (!depth) return;
+          else if (--depth == 1 && start)
           {
             if (cb(start, p, true)) return;
             start = {};
