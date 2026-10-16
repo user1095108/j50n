@@ -51,7 +51,7 @@ class j50n
     static constexpr std::size_t index_of(std::string_view const sv) noexcept
     {
       std::size_t ndx{};
-      (void)((sv == Strings || (++ndx, false)) || ...);
+      (void)((sv == Strings || !++ndx) || ...);
       return ndx;
     }
 
