@@ -431,9 +431,9 @@ public:
   std::pair<bool, bool> get(auto&& ...a) const noexcept
     requires(std::is_same_v<bool, std::remove_cv_t<U>>)
   {
-    auto const ndx(S::index_of<"false", "true">(
+    auto const ndx(S::index_of<"true", "false">(
       view(std::forward<decltype(a)>(a)...).s_));
-    return {1u == ndx, 2u == ndx};
+    return {!ndx, 2u == ndx};
   }
 
   template <typename U>
