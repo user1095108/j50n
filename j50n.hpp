@@ -254,6 +254,13 @@ class j50n
     }
   };
 
+  explicit j50n(int, auto&& ...a)
+    noexcept(noexcept(decltype(s_)(std::forward<decltype(a)>(a)...)))
+    requires std::is_constructible_v<decltype(s_), decltype(a)&&...>:
+    s_(std::forward<decltype(a)>(a)...)
+  {
+  }
+
 public:
   j50n() = default;
 
@@ -269,13 +276,6 @@ public:
     s_(std::forward<decltype(a)>(a)...)
   {
     S::trim(s_);
-  }
-
-  explicit j50n(int, auto&& ...a)
-    noexcept(noexcept(decltype(s_)(std::forward<decltype(a)>(a)...)))
-    requires std::is_constructible_v<decltype(s_), decltype(a)&&...>:
-    s_(std::forward<decltype(a)>(a)...)
-  {
   }
 
   //
