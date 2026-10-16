@@ -33,9 +33,6 @@ class j50n
       {
         return {value.data(), N - 1};
       }
-
-      constexpr bool operator==(fixed_string const&) const = default;
-      constexpr auto operator<=>(fixed_string const&) const = default;
     };
 
     template <auto lo, decltype(lo) hi>
@@ -251,7 +248,10 @@ class j50n
   };
 
   template <std::size_t N>
-  using fs = S::fixed_string<N>;
+  static std::string_view msv(char const(&s)[N]) noexcept
+  {
+    return {s, N - 1};
+  }
 
 public:
   j50n() = default;
@@ -329,7 +329,7 @@ public:
 
   explicit operator bool() const noexcept
   {
-    if (is_empty() || is_null() || fs("false") == s_)
+    if (is_empty() || is_null() || msv("false") == s_)
       return false;
     else if ('"' == s_.front()) return !get().empty();
     else if (auto const [v, err](get<double>()); !err)
@@ -358,7 +358,7 @@ public:
   bool is_array() const noexcept { return s_.size() && ('[' == s_.front()); }
   bool is_object() const noexcept { return s_.size() && ('{' == s_.front()); }
   bool is_string() const noexcept { return s_.size() && ('"' == s_.front()); }
-  bool is_null() const noexcept { return fs("null") == s_; }
+  bool is_null() const noexcept { return msv("null") == s_; }
   bool is_number() const noexcept { return !get<double>().second; }
 
   bool is_bare() const noexcept
@@ -436,9 +436,9 @@ public:
   {
     auto const sv(view(std::forward<decltype(a)>(a)...).s_);
 
-    if (fs("true") == sv)
+    if (msv("true") == sv)
       return std::pair(true, false);
-    else if (fs("false") == sv)
+    else if (msv("false") == sv)
       return std::pair(false, false);
     else
       return std::pair(false, true);
