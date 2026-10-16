@@ -24,7 +24,7 @@ class j50n
     {
       std::array<char, N> const value;
 
-      constexpr fixed_string(char const(&s)[N]) noexcept:
+      consteval fixed_string(char const(&s)[N]) noexcept:
         value(std::to_array(s))
       {
       }
@@ -43,13 +43,13 @@ class j50n
     }
 
     template <fixed_string... Strings>
-    static constexpr bool one_of(std::string_view const sv) noexcept
+    static constexpr bool any_of(std::string_view const sv) noexcept
     {
       return ((sv == Strings) || ...);
     }
 
     template <char... Chars>
-    static constexpr bool one_of(char const c) noexcept
+    static constexpr bool any_of(char const c) noexcept
     {
       return ((c == Chars) || ...);
     }
@@ -63,7 +63,7 @@ class j50n
         else if ('\\' == *p)
         {
           if ((end == ++p) ||
-            !one_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
+            !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
             break;
         }
         else if (!range<32u, 127u>(*p)) // 0x7F (DEL) is allowed unescaped per RFC 8259
@@ -86,7 +86,7 @@ class j50n
     static char const* bare_end(char const* p, char const* const end) noexcept
     {
       for (; end != p; ++p)
-        if (one_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*p)) return p;
+        if (any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*p)) return p;
         else if (!range<32, 126>(*p)) return {};
 
       return end;
@@ -99,13 +99,13 @@ class j50n
 
       for (auto p(s.data()); end != p; ++p)
       {
-        if (one_of<' ', '\t', '\r', '\n', ':', ','>(*p))
+        if (any_of<' ', '\t', '\r', '\n', ':', ','>(*p))
           continue;
-        else if (one_of<'[', '{'>(*p))
+        else if (any_of<'[', '{'>(*p))
         {
           if (depth++ == 1) start = p;
         }
-        else if (one_of<']', '}'>(*p))
+        else if (any_of<']', '}'>(*p))
         {
           if (--depth == 1 && start)
           {
@@ -335,7 +335,7 @@ public:
     else if (auto const [v, err](get<double>()); !err)
       return v;
     else 
-      return !S::one_of<'[', '{'>(s_.front()) || size();
+      return !S::any_of<'[', '{'>(s_.front()) || size();
   }
 
   //
@@ -363,12 +363,12 @@ public:
 
   bool is_bare() const noexcept
   {
-    return s_.size() && !S::one_of<'[', '{', '"'>(s_.front());
+    return s_.size() && !S::any_of<'[', '{', '"'>(s_.front());
   }
 
   bool is_bool() const noexcept
   {
-    return S::one_of<"true", "false">(s_);
+    return S::any_of<"true", "false">(s_);
   }
 
   //
