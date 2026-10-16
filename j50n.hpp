@@ -254,12 +254,6 @@ class j50n
     }
   };
 
-  template <std::size_t N>
-  static std::string_view msv(char const(&s)[N]) noexcept
-  {
-    return {s, N - 1};
-  }
-
 public:
   j50n() = default;
 
@@ -336,7 +330,7 @@ public:
 
   explicit operator bool() const noexcept
   {
-    if (is_empty() || is_null() || msv("false") == s_)
+    if (is_empty() || is_null() || S::any_of<"false">(s_))
       return false;
     else if ('"' == s_.front()) return !get().empty();
     else if (auto const [v, err](get<double>()); !err)
@@ -366,7 +360,7 @@ public:
   bool is_bool() const noexcept { return S::any_of<"true", "false">(s_); }
   bool is_object() const noexcept { return s_.size() && ('{' == s_.front()); }
   bool is_string() const noexcept { return s_.size() && ('"' == s_.front()); }
-  bool is_null() const noexcept { return msv("null") == s_; }
+  bool is_null() const noexcept { return S::any_of<"null">(s_); }
   bool is_number() const noexcept { return !get<double>().second; }
 
   bool is_bare() const noexcept
