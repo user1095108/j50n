@@ -2304,40 +2304,21 @@ static void test_get_or_overloads()
 
   j50n const root(JSON.data(), JSON.size());
 
-  // Compile-time pins.  These come first so that, with the current header,
-  // the compiler reports a clear type mismatch here rather than a deep
-  // instantiation error inside get<std::string>.
-
-  // A std::string default must reach the string_view overload, not the
-  // arithmetic template.  With the current header, the template is chosen
-  // (exact match beats user-defined conversion), U deduces to std::string,
-  // and the return type becomes std::string — failing this assertion.
   static_assert(std::is_same_v<
     decltype(std::declval<j50n const>().get_or(std::string("x"), "k")),
     std::string_view>,
     "std::string default must reach the string_view overload");
-
-  // Same for char const*.
   static_assert(std::is_same_v<
     decltype(std::declval<j50n const>().get_or(
       std::declval<char const*>(), "k")),
     std::string_view>,
     "char const* default must reach the string_view overload");
-
-  // std::string_view is exact-match for the non-template overload, which
-  // beats the template by the non-template-first tie-break.  Already works.
   static_assert(std::is_same_v<
     decltype(std::declval<j50n const>().get_or(std::string_view("x"), "k")),
     std::string_view>);
-
-  // Char array binds by reference to the array overload, which beats the
-  // template by the same tie-break.  Already works.
   static_assert(std::is_same_v<
     decltype(std::declval<j50n const>().get_or("x", "k")),
     std::string_view>);
-
-  // Arithmetic defaults must reach the arithmetic template, and its
-  // return type must be the cv-stripped U.
   static_assert(std::is_same_v<
     decltype(std::declval<j50n const>().get_or(-1, "k")),
     int>);
@@ -2347,11 +2328,6 @@ static void test_get_or_overloads()
   static_assert(std::is_same_v<
     decltype(std::declval<j50n const>().get_or(true, "k")),
     bool>);
-
-  // Runtime calls for every form.  With the current header, the two
-  // std::string / char const* calls below fail to compile because the
-  // template wins overload resolution and then get<std::string> /
-  // get<char const*> is not a valid instantiation.
 
   // String-like defaults.
   CHECK_EQ(root.get_or("FB", "name"),                   "j50n-test");
