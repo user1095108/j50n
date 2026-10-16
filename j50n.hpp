@@ -271,6 +271,13 @@ public:
     S::trim(s_);
   }
 
+  explicit j50n(int, auto&& ...a)
+    noexcept(noexcept(decltype(s_)(std::forward<decltype(a)>(a)...)))
+    requires std::is_constructible_v<decltype(s_), decltype(a)&&...>:
+    s_(std::forward<decltype(a)>(a)...)
+  {
+  }
+
   //
   j50n& operator=(j50n const&) = default;
   j50n& operator=(j50n&&) = default;
@@ -344,21 +351,21 @@ public:
   template <std::size_t N>
   j50n operator[](char const(&a)[N]) const noexcept
   {
-    return j50n(S::find(s_, std::string_view(a, N - 1)));
+    return j50n(1, S::find(s_, std::string_view(a, N - 1)));
   }
 
   j50n operator[](auto&& a) const noexcept
   {
     if constexpr(std::is_convertible_v<decltype(a), std::string_view>)
-      return j50n(S::find(s_, std::forward<decltype(a)>(a)));
+      return j50n(1, S::find(s_, std::forward<decltype(a)>(a)));
     else
-      return j50n(S::find(s_, {}, std::forward<decltype(a)>(a), false));
+      return j50n(1, S::find(s_, {}, std::forward<decltype(a)>(a), false));
   }
 
   //
-  bool is_empty() const noexcept { return s_.empty(); }
   bool is_array() const noexcept { return s_.size() && ('[' == s_.front()); }
   bool is_bool() const noexcept { return S::any_of<"true", "false">(s_); }
+  bool is_empty() const noexcept { return s_.empty(); }
   bool is_object() const noexcept { return s_.size() && ('{' == s_.front()); }
   bool is_string() const noexcept { return s_.size() && ('"' == s_.front()); }
   bool is_null() const noexcept { return S::any_of<"null">(s_); }
@@ -366,7 +373,7 @@ public:
 
   bool is_bare() const noexcept
   {
-    return s_.size() && !S::any_of<'[', '{', '"'>(s_.front());
+    return !s_.empty() && !S::any_of<'[', '{', '"'>(s_.front());
   }
 
   //
