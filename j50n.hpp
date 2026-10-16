@@ -3,14 +3,13 @@
 # pragma once
 
 #include <cstddef> // std::size_t
+#include <algorithm>
 #include <charconv> // std::from_chars()
 #include <compare> // std::partial_ordering
 #include <ostream> // operator<<()
 #include <string_view>
 #include <type_traits>
 #include <utility> // std::forward()
-
-using namespace std::literals::string_view_literals;
 
 class j50n
 {
@@ -20,6 +19,22 @@ class j50n
   {
     using size_type = std::string_view::size_type;
 
+    template <std::size_t N>
+    struct fixed_string
+    {
+      char value[N];
+
+      constexpr fixed_string(const char (&s)[N]) noexcept
+      {
+        std::copy_n(s, N, value);
+      }
+
+      constexpr operator std::string_view() const noexcept
+      {
+        return {value, N - 1};
+      }
+    };
+
     template <auto lo, decltype(lo) hi>
     static constexpr bool range(auto const c) noexcept
     {
@@ -27,10 +42,16 @@ class j50n
       return c >= lo && c <= hi;
     }
 
-    template <char... chars>
-    static bool one_of(char const c) noexcept
+    template <fixed_string... Strings>
+    static constexpr bool one_of(std::string_view const sv) noexcept
     {
-      return ((c == chars) || ...);
+      return ((sv == Strings) || ...);
+    }
+
+    template <char... Chars>
+    static constexpr bool one_of(char const c) noexcept
+    {
+      return ((c == Chars) || ...);
     }
 
     static char const* str_end(char const* p, char const* const end) noexcept
@@ -226,6 +247,9 @@ class j50n
     }
   };
 
+  template <std::size_t N>
+  using fs = S::fixed_string<N>;
+
 public:
   j50n() = default;
 
@@ -302,13 +326,13 @@ public:
 
   explicit operator bool() const noexcept
   {
-    if (is_empty() || is_null() || std::string_view("false", 5) == s_)
+    if (is_empty() || is_null() || fs("false") == s_)
       return false;
     else if ('"' == s_.front()) return !get().empty();
     else if (auto const [v, err](get<double>()); !err)
       return v;
     else 
-      return ('[' != s_.front() && '{' != s_.front()) || size();
+      return !S::one_of<'[', '{'>(s_.front()) || size();
   }
 
   //
@@ -331,19 +355,17 @@ public:
   bool is_array() const noexcept { return s_.size() && ('[' == s_.front()); }
   bool is_object() const noexcept { return s_.size() && ('{' == s_.front()); }
   bool is_string() const noexcept { return s_.size() && ('"' == s_.front()); }
-  bool is_null() const noexcept { return std::string_view("null", 4) == s_; }
+  bool is_null() const noexcept { return fs("null") == s_; }
   bool is_number() const noexcept { return !get<double>().second; }
 
   bool is_bare() const noexcept
   {
-    return s_.size() && ('[' != s_.front()) && ('{' != s_.front()) &&
-      ('"' != s_.front());
+    return s_.size() && !S::one_of<'[', '{', '"'>(s_.front());
   }
 
   bool is_bool() const noexcept
   {
-    return (std::string_view("true", 4) == s_) ||
-      (std::string_view("false", 5) == s_);
+    return S::one_of<"true", "false">(s_);
   }
 
   //
@@ -411,9 +433,9 @@ public:
   {
     auto const sv(view(std::forward<decltype(a)>(a)...).s_);
 
-    if (std::string_view("true", 4) == sv)
+    if (fs("true") == sv)
       return std::pair(true, false);
-    else if (std::string_view("false", 5) == sv)
+    else if (fs("false") == sv)
       return std::pair(false, false);
     else
       return std::pair(false, true);
