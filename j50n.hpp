@@ -101,7 +101,7 @@ class j50n
     static void each_item(std::string_view const s, auto const cb) noexcept
     {
       char const *start{}, *end(s.data() + s.size());
-      int depth{};
+      unsigned depth{};
 
       for (auto p(s.data()); end != p; ++p)
       {
