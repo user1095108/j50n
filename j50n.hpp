@@ -315,7 +315,8 @@ public:
   }
 
   template <std::size_t N>
-  bool operator==(char const(&a)[N]) const noexcept
+  bool operator==(char const(&a)[N]) const
+    noexcept(noexcept(operator==(std::string_view(a, N - 1))))
   {
     return operator==(std::string_view(a, N - 1));
   }
@@ -438,6 +439,7 @@ public:
 
   template <typename U>
   std::remove_cv_t<U> get_or(U const a, auto&& ...b) const noexcept
+    requires(std::is_arithmetic_v<U>)
   {
     auto const [v, err](get<U>(std::forward<decltype(b)>(b)...));
 
