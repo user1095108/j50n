@@ -35,13 +35,6 @@ class j50n
       }
     };
 
-    template <auto lo, decltype(lo) hi>
-    static constexpr bool range(auto const c) noexcept
-    {
-      static_assert(lo <= hi, "range bounds must be ordered");
-      return c >= lo && c <= hi;
-    }
-
     template <fixed_string... Strings>
     static constexpr bool any_of(std::string_view const sv) noexcept
     {
@@ -52,6 +45,21 @@ class j50n
     static constexpr bool any_of(char const c) noexcept
     {
       return ((c == Chars) || ...);
+    }
+
+    template <fixed_string... Strings>
+    static constexpr std::size_t index_of(std::string_view const sv) noexcept
+    {
+      std::size_t ndx{};
+      (void)((sv == Strings || (++ndx, false)) || ...);
+      return ndx;
+    }
+
+    template <auto lo, decltype(lo) hi>
+    static constexpr bool range(auto const c) noexcept
+    {
+      static_assert(lo <= hi, "range bounds must be ordered");
+      return c >= lo && c <= hi;
     }
 
     static char const* str_end(char const* p, char const* const end) noexcept
@@ -66,7 +74,7 @@ class j50n
             !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
             break;
         }
-        else if (!range<32u, 127u>(*p)) // 0x7F (DEL) is allowed unescaped per RFC 8259
+        else if (!range<32, 127>(*p)) // 0x7F (DEL) is allowed unescaped per RFC 8259
         {
           auto n(((unsigned char)(*p) & 224) == 192 ? 1u :
             ((unsigned char)(*p) & 240) == 224 ? 2u :
@@ -435,13 +443,8 @@ public:
     requires(std::is_same_v<bool, std::remove_cv_t<U>>)
   {
     auto const sv(view(std::forward<decltype(a)>(a)...).s_);
-
-    if (msv("true") == sv)
-      return std::pair(true, false);
-    else if (msv("false") == sv)
-      return std::pair(false, false);
-    else
-      return std::pair(false, true);
+    auto const ndx(S::index_of<"false", "true">(sv));
+    return {ndx, 2u == ndx};
   }
 
   template <typename U>
