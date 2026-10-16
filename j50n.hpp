@@ -437,7 +437,7 @@ public:
 
   template <typename U>
   std::pair<bool, bool> get(auto&& ...a) const noexcept
-    requires(std::is_same_v<bool, std::remove_cv_t<U>>)
+    requires std::is_same_v<bool, std::remove_cv_t<U>>
   {
     auto const ndx(S::index_of<"true", "false">(
       view(std::forward<decltype(a)>(a)...).s_));
@@ -446,7 +446,7 @@ public:
 
   template <typename U>
   std::remove_cv_t<U> get_or(U const a, auto&& ...b) const noexcept
-    requires(std::is_arithmetic_v<U>)
+    requires std::is_arithmetic_v<U>
   {
     auto const [v, err](get<U>(std::forward<decltype(b)>(b)...));
 
