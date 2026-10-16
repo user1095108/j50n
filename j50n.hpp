@@ -440,8 +440,8 @@ public:
   std::pair<bool, bool> get(auto&& ...a) const noexcept
     requires(std::is_same_v<bool, std::remove_cv_t<U>>)
   {
-    auto const sv(view(std::forward<decltype(a)>(a)...).s_);
-    auto const ndx(S::index_of<"false", "true">(sv));
+    auto const ndx(S::index_of<"false", "true">(
+      view(std::forward<decltype(a)>(a)...).s_));
     return {ndx, 2u == ndx};
   }
 
