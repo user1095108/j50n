@@ -65,7 +65,6 @@ class j50n
     static char const* str_end(char const* p, char const* const end) noexcept
     {
       for (; end != p; ++p)
-      {
         if ('"' == *p)
           return p;
         else if ('\\' == *p)
@@ -86,7 +85,6 @@ class j50n
             if ((end == ++p) || (((unsigned char)(*p) & 192) != 128))
               return {};
         }
-      }
 
       return {};
     }
