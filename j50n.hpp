@@ -3,7 +3,7 @@
 # pragma once
 
 #include <cstddef> // std::size_t
-#include <algorithm>
+#include <array>
 #include <charconv> // std::from_chars()
 #include <compare> // std::partial_ordering
 #include <ostream> // operator<<()
@@ -22,17 +22,20 @@ class j50n
     template <std::size_t N>
     struct fixed_string
     {
-      char value[N];
+      std::array<char, N> const value;
 
-      constexpr fixed_string(const char (&s)[N]) noexcept
+      constexpr fixed_string(char const(&s)[N]) noexcept:
+        value(std::to_array(s))
       {
-        std::copy_n(s, N, value);
       }
 
       constexpr operator std::string_view() const noexcept
       {
-        return {value, N - 1};
+        return {value.data(), N - 1};
       }
+
+      constexpr bool operator==(fixed_string const&) const = default;
+      constexpr auto operator<=>(fixed_string const&) const = default;
     };
 
     template <auto lo, decltype(lo) hi>
