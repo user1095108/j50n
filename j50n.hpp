@@ -31,7 +31,7 @@ class j50n
       {
       }
 
-      constexpr operator std::string_view() const noexcept
+      [[nodiscard]] constexpr operator std::string_view() const noexcept
       {
         return {value.data, N - 1};
       }
