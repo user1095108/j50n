@@ -229,7 +229,7 @@ class j50n
           noexcept(noexcept(f(std::declval<std::string_view>(),
             std::declval<j50n>()))) -> bool
           {
-            if (expecting_key ^= 1; expecting_key)
+            if (expecting_key ^= 1)
             {
               k_ptr = p; k_end = e;
               return false;
