@@ -18,7 +18,7 @@ class j50n
   {
     using size_type = std::string_view::size_type;
 
-    template <std::size_t N>
+    template <std::size_t N> requires(!!N)
     struct fixed_string
     {
       struct { char const data[N - 1]; } const value;
