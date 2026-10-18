@@ -3,7 +3,6 @@
 # pragma once
 
 #include <cstddef> // std::size_t
-#include <array>
 #include <charconv> // std::from_chars()
 #include <compare> // std::partial_ordering
 #include <ostream> // operator<<()
@@ -22,16 +21,19 @@ class j50n
     template <std::size_t N>
     struct fixed_string
     {
-      std::array<char, N> const value;
+      struct ArrayWrapper { char const data[N - 1]; } const value;
 
-      consteval fixed_string(char const(&s)[N]) noexcept:
-        value(std::to_array(s))
+      consteval fixed_string(char const(&s)[N]) noexcept :
+        value{[&]<auto ...Is>(std::index_sequence<Is...>) noexcept
+          {
+            return decltype(value){s[Is]...};
+          }(std::make_index_sequence<N - 1>())}
       {
       }
 
       constexpr operator std::string_view() const noexcept
       {
-        return {value.data(), N - 1};
+        return {value.data, N - 1};
       }
     };
 
