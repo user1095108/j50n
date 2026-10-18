@@ -21,7 +21,7 @@ class j50n
     template <std::size_t N>
     struct fixed_string
     {
-      struct ArrayWrapper { char const data[N - 1]; } const value;
+      struct { char const data[N - 1]; } const value;
 
       consteval fixed_string(char const(&s)[N]) noexcept :
         value{[&]<auto ...Is>(std::index_sequence<Is...>) noexcept
