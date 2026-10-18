@@ -222,20 +222,18 @@ class j50n
       if (s.empty() || '{' != s.front()) return; // objects only
 
       char const *k_ptr{}, *k_end{};
-      bool expecting_key{true};
+      bool expecting_key{};
 
       each_item(s,
         [&](char const* const p, char const* const e, bool const incl)
           noexcept(noexcept(f(std::declval<std::string_view>(),
             std::declval<j50n>()))) -> bool
           {
-            if (expecting_key)
+            if (expecting_key ^= 1; expecting_key)
             {
               k_ptr = p; k_end = e;
-              return expecting_key = false;
+              return false;
             }
-
-            expecting_key = true;
 
             bool const quoted('"' == *k_ptr);
             std::string_view const key(k_ptr + quoted,
