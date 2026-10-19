@@ -177,7 +177,8 @@ class j50n
       bool val_incl;
 
       each_item(s,
-        [&](char const* p, char const* e, bool incl) noexcept -> bool
+        [&](char const* const p, char const* const e,
+          bool const incl) noexcept -> bool
         {
           return index ? --index, false :
             (val = p, val_end = e, val_incl = incl, true);
