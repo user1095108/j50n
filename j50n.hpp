@@ -137,18 +137,40 @@ class j50n
     }
 
     [[nodiscard]] static std::string_view find(std::string_view const s,
-      std::string_view const k, std::size_t index = 1,
-      bool const keyed = true) noexcept
+      std::string_view const key) noexcept
     {
-      enum state : std::size_t
-      {
-        search_key = 1,
-        key_found  = 0,
-        skip_value = 2
-      };
+      if (s.empty() || ('{' != s.front())) return {};
 
-      if (s.empty() || (keyed ? '{' != s.front() : '[' != s.front()))
-        return {};
+      char const *val{}, *val_end;
+      bool val_incl, expecting_key{}, key_found{};
+
+      each_item(s,
+        [&](char const* p, char const* e, bool incl) noexcept -> bool
+        {
+          if ((expecting_key = !expecting_key))
+          {
+            if (bool const quoted('"' == *p); expecting_key &&
+              std::string_view(p + quoted, size_type(e - p) - quoted) == key)
+              key_found = true;
+          }
+          else if (key_found)
+          {
+            val = p; val_end = e; val_incl = incl;
+            return true;
+          }
+
+          return false;
+        });
+
+      return val ?
+        std::string_view(val, size_type(val_end - val) + val_incl) :
+        std::string_view();
+    }
+
+    [[nodiscard]] static std::string_view find(std::string_view const s,
+      std::size_t index) noexcept
+    {
+      if (s.empty() || ('[' != s.front())) return {};
 
       char const *val{}, *val_end;
       bool val_incl;
@@ -156,21 +178,8 @@ class j50n
       each_item(s,
         [&](char const* p, char const* e, bool incl) noexcept -> bool
         {
-          if (keyed && search_key == index)
-          {
-            bool const quoted('"' == *p);
-            index = k == std::string_view(p + quoted,
-              size_type(e - p) - quoted) ? key_found : skip_value;
-          }
-          else if (key_found == index)
-          {
-            val = p; val_end = e; val_incl = incl;
-            return true;
-          }
-          else
-            --index;
-
-          return false;
+          return index ? --index, false :
+            (val = p, val_end = e, val_incl = incl, true);
         });
 
       return val ?
@@ -356,10 +365,7 @@ public:
 
   [[nodiscard]] j50n operator[](auto&& a) const noexcept
   {
-    if constexpr(std::is_convertible_v<decltype(a), std::string_view>)
-      return j50n(1, S::find(s_, std::forward<decltype(a)>(a)));
-    else
-      return j50n(1, S::find(s_, {}, std::forward<decltype(a)>(a), false));
+    return j50n(1, S::find(s_, std::forward<decltype(a)>(a)));
   }
 
   //
