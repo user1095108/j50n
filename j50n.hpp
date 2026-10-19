@@ -377,21 +377,22 @@ public:
   }
 
   //
-  j50n const& view() const noexcept { return *this; }
+  [[nodiscard]] j50n const& view() const noexcept { return *this; }
 
-  j50n view(auto&& a, auto&& ...b) const noexcept
+  [[nodiscard]] j50n view(auto&& a, auto&& ...b) const noexcept
   {
     auto r((*this)[std::forward<decltype(a)>(a)]);
 
     return ((r = r[std::forward<decltype(b)>(b)]), ...), r; // !!!
   }
 
-  bool contains(auto&& ...a) const noexcept requires(!!sizeof...(a))
+  [[nodiscard]] bool contains(auto&& ...a) const noexcept
+    requires(!!sizeof...(a))
   {
     return !view(std::forward<decltype(a)>(a)...).is_empty();
   }
 
-  std::string_view get() const noexcept
+  [[nodiscard]] std::string_view get() const noexcept
   {
     if (!is_string()) return s_;
 
@@ -403,20 +404,22 @@ public:
   }
 
   template <int = 0>
-  std::string_view get(auto&& ...a) const noexcept
+  [[nodiscard]] std::string_view get(auto&& ...a) const noexcept
   {
     return view(std::forward<decltype(a)>(a)...).get();
   }
 
   template <std::size_t N>
-  std::string_view get_or(char const (&a)[N], auto&& ...b) const noexcept
+  [[nodiscard]] std::string_view get_or(char const (&a)[N],
+    auto&& ...b) const noexcept
   {
     auto const v(view(std::forward<decltype(b)>(b)...));
 
     return v.is_empty() ? std::string_view(a, N - 1) : v.get();
   }
 
-  std::string_view get_or(std::string_view const a,auto&& ...b) const noexcept
+  [[nodiscard]] std::string_view get_or(std::string_view const a,
+    auto&& ...b) const noexcept
   {
     auto const v(view(std::forward<decltype(b)>(b)...));
 
@@ -424,7 +427,8 @@ public:
   }
 
   template <typename U>
-  std::pair<std::remove_cv_t<U>, bool> get(auto&& ...a) const noexcept
+  [[nodiscard]] std::pair<std::remove_cv_t<U>, bool> get(
+    auto&& ...a) const noexcept
     requires(std::is_arithmetic_v<U> &&
       !std::is_same_v<bool, std::remove_cv_t<U>>)
   {
@@ -436,7 +440,7 @@ public:
   }
 
   template <typename U>
-  std::pair<bool, bool> get(auto&& ...a) const noexcept
+  [[nodiscard]] std::pair<bool, bool> get(auto&& ...a) const noexcept
     requires std::is_same_v<bool, std::remove_cv_t<U>>
   {
     auto const ndx(S::index_of<"true", "false">(
@@ -445,7 +449,8 @@ public:
   }
 
   template <typename U>
-  std::remove_cv_t<U> get_or(U const a, auto&& ...b) const noexcept
+  [[nodiscard]] std::remove_cv_t<U> get_or(U const a,
+    auto&& ...b) const noexcept
     requires std::is_arithmetic_v<U>
   {
     auto const [v, err](get<U>(std::forward<decltype(b)>(b)...));
