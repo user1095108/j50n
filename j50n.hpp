@@ -100,7 +100,7 @@ class j50n
       return end;
     }
 
-    static void each_item(std::string_view const s, auto const cb) noexcept
+    static void each_item(std::string_view const s, auto cb) noexcept
     {
       char const *start{}, *end(s.data() + s.size());
       unsigned depth{};
@@ -142,10 +142,12 @@ class j50n
       if (s.empty() || ('{' != s.front())) return {};
 
       char const *val{}, *val_end;
-      bool val_incl, expecting_key{}, key_found{};
+      bool val_incl;
 
       each_item(s,
-        [&](char const* p, char const* e, bool incl) noexcept -> bool
+        [&key, &val, &val_end, &val_incl, expecting_key = false,
+          key_found = false](char const* p, char const* e,
+          bool incl) mutable noexcept -> bool
         {
           if ((expecting_key = !expecting_key))
           {
