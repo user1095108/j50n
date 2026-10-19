@@ -145,9 +145,8 @@ class j50n
       bool val_incl;
 
       each_item(s,
-        [&key, &val, &val_end, &val_incl, expecting_key = false,
-          key_found = false](char const* p, char const* e,
-          bool incl) mutable noexcept -> bool
+        [&, expecting_key = false, key_found = false](char const* p,
+          char const* e, bool incl) mutable noexcept -> bool
         {
           if ((expecting_key = !expecting_key))
           {
