@@ -349,12 +349,12 @@ public:
 
   //
   template <std::size_t N>
-  j50n operator[](char const(&a)[N]) const noexcept
+  [[nodiscard]] j50n operator[](char const(&a)[N]) const noexcept
   {
     return j50n(1, S::find(s_, std::string_view(a, N - 1)));
   }
 
-  j50n operator[](auto&& a) const noexcept
+  [[nodiscard]] j50n operator[](auto&& a) const noexcept
   {
     if constexpr(std::is_convertible_v<decltype(a), std::string_view>)
       return j50n(1, S::find(s_, std::forward<decltype(a)>(a)));
