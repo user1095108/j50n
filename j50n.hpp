@@ -363,17 +363,44 @@ public:
   }
 
   //
-  bool is_array() const noexcept { return s_.size() && ('[' == s_.front()); }
-  bool is_bool() const noexcept { return S::any_of<"true", "false">(s_); }
-  bool is_empty() const noexcept { return s_.empty(); }
-  bool is_object() const noexcept { return s_.size() && ('{' == s_.front()); }
-  bool is_string() const noexcept { return s_.size() && ('"' == s_.front()); }
-  bool is_null() const noexcept { return S::any_of<"null">(s_); }
-  bool is_number() const noexcept { return !get<double>().second; }
+  [[nodiscard]] bool is_array() const noexcept
+  {
+    return !s_.empty() && ('[' == s_.front());
+  }
 
-  bool is_bare() const noexcept
+  [[nodiscard]] bool is_bare() const noexcept
   {
     return !s_.empty() && !S::any_of<'[', '{', '"'>(s_.front());
+  }
+
+  [[nodiscard]] bool is_bool() const noexcept
+  {
+    return S::any_of<"true", "false">(s_);
+  }
+
+  [[nodiscard]] bool is_empty() const noexcept
+  {
+    return s_.empty();
+  }
+
+  [[nodiscard]] bool is_object() const noexcept
+  {
+    return !s_.empty() && ('{' == s_.front());
+  }
+
+  [[nodiscard]] bool is_string() const noexcept
+  {
+    return !s_.empty() && ('"' == s_.front());
+  }
+
+  [[nodiscard]] bool is_null() const noexcept
+  {
+    return S::any_of<"null">(s_);
+  }
+
+  [[nodiscard]] bool is_number() const noexcept
+  {
+    return !get<double>().second;
   }
 
   //
