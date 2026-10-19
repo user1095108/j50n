@@ -150,7 +150,7 @@ class j50n
       if (s.empty() || (keyed ? '{' != s.front() : '[' != s.front()))
         return {};
 
-      char const *val{}, *val_end{};
+      char const *val{}, *val_end;
       bool val_incl{};
 
       each_item(s,
