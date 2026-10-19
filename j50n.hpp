@@ -136,7 +136,7 @@ class j50n
       }
     }
 
-    static std::string_view find(std::string_view const s,
+    [[nodiscard]] static std::string_view find(std::string_view const s,
       std::string_view const k, std::size_t index = 1,
       bool const keyed = true) noexcept
     {
