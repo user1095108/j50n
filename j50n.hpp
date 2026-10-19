@@ -151,7 +151,7 @@ class j50n
         return {};
 
       char const *val{}, *val_end;
-      bool val_incl{};
+      bool val_incl;
 
       each_item(s,
         [&](char const* p, char const* e, bool incl) noexcept -> bool
