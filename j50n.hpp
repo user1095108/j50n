@@ -240,7 +240,7 @@ class j50n
               size_type(k_end - k_ptr) - quoted);
             j50n const val(p, size_type(e - p) + incl);
 
-            if constexpr (requires { bool(f(key, val)); }) return f(key, val);
+            if constexpr(requires{bool(f(key, val));}) return f(key, val);
             else { f(key, val); return false; }
           }
       );
