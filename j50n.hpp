@@ -221,7 +221,7 @@ class j50n
     {
       if (s.empty() || '{' != s.front()) return; // objects only
 
-      char const *k_ptr{}, *k_end{};
+      char const *k_ptr, *k_end;
       bool expecting_key{};
 
       each_item(s,
