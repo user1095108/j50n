@@ -229,7 +229,7 @@ class j50n
           noexcept(noexcept(f(std::declval<std::string_view>(),
             std::declval<j50n>()))) -> bool
           {
-            if (expecting_key = !expecting_key)
+            if ((expecting_key = !expecting_key))
             {
               k_ptr = p; k_end = e;
               return false;
@@ -453,7 +453,7 @@ public:
     return err ? a : v;
   }
 
-  static std::string unescape(std::string_view const sv)
+  [[nodiscard]] static std::string unescape(std::string_view const sv)
   {
     std::string r;
     r.reserve(sv.size());
@@ -529,7 +529,7 @@ public:
   }
 
   //
-  std::size_t size() const noexcept
+  [[nodiscard]] std::size_t size() const noexcept
   {
     std::size_t sz{};
 
