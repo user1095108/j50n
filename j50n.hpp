@@ -336,7 +336,7 @@ public:
     return v == (std::string_view::npos == sv.find('\\') ? sv : unescape(sv));
   }
 
-  explicit operator bool() const noexcept
+  [[nodiscard]] explicit operator bool() const noexcept
   {
     if (is_empty() || is_null() || S::any_of<"false">(s_))
       return false;
