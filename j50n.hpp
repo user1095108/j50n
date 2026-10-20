@@ -85,7 +85,7 @@ class j50n
         {
           if (((unsigned char)*p - 0xC2u) > 0x32u) break;
 
-          unsigned char n(1 + ((unsigned char)*p >= 0xE0u) +
+          unsigned char n(2 + ((unsigned char)*p >= 0xE0u) +
             ((unsigned char)*p >= 0xF0u));
 
           unsigned char lo((unsigned char)*p == 0xE0 ? 0xA0 :
@@ -93,7 +93,7 @@ class j50n
           unsigned char hi((unsigned char)*p == 0xED ? 0x9F :
             (unsigned char)*p == 0xF4 ? 0x8F : 0xBF);
 
-          while (n--)
+          while (--n)
           {
             if ((++p == end) || (unsigned char)*p < lo ||
               (unsigned char)*p > hi) return {};
