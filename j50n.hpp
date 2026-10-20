@@ -548,20 +548,25 @@ public:
         case 't':  r += '\t'; break;
         case 'u':
         {
-          if (end - p < 4) { r += 'u'; break; }
+          if (end - p < 4) { (r += '\\') += 'u'; break; }
           auto const p0 = p;
           auto const [cp, ok] = hex4(p);
-          if (!ok) { p = p0; r += 'u'; break; }
+          if (!ok) { p = p0; (r += '\\') += 'u'; break; }
+
           unsigned u = cp;
-          if (cp >= 0xD800 && cp <= 0xDBFF && end - p >= 6 &&
-              *p == '\\' && *(p + 1) == 'u')
+          if (cp >= 0xD800 && cp <= 0xDFFF)
           {
-            auto q = p + 2;
-            auto const [lo, ok2] = hex4(q);
-            if (ok2 && lo >= 0xDC00 && lo <= 0xDFFF)
+            u = 0xFFFD;
+            if (cp <= 0xDBFF && end - p >= 6 &&
+                *p == '\\' && *(p + 1) == 'u')
             {
-              u = 0x10000u + ((cp - 0xD800u) << 10) + (lo - 0xDC00u);
-              p += 6;
+              auto q = p + 2;
+              auto const [lo, ok2] = hex4(q);
+              if (ok2 && lo >= 0xDC00 && lo <= 0xDFFF)
+              {
+                u = 0x10000u + ((cp - 0xD800u) << 10) + (lo - 0xDC00u);
+                p += 6;
+              }
             }
           }
           utf8(u);

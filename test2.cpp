@@ -1115,12 +1115,12 @@ static void test_unescape()
 
   // Malformed \u falls through to the literal remainder.
   j50n const bad(R"j({"a":"\uZZZZ","b":"\u12"})j");
-  CHECK_EQ(j50n::unescape(bad["a"].get()), "uZZZZ");
-  CHECK_EQ(j50n::unescape(bad["b"].get()), "u12");
+  CHECK_EQ(j50n::unescape(bad["a"].get()), R"(\uZZZZ)");
+  CHECK_EQ(j50n::unescape(bad["b"].get()), R"(\u12)");
 
   // Lone surrogate: three-byte CESU-8-style encoding.
   j50n const lone(R"j({"s":"\ud800"})j");
-  CHECK_EQ(j50n::unescape(lone["s"].get()), std::string("\xED\xA0\x80", 3));
+  CHECK_EQ(j50n::unescape(lone["s"].get()), std::string("\xEF\xBF\xBD", 3));
 
   // Empty string, plain strings, and a string at the last position.
   j50n const plain(R"j({"e":"","plain":"hello","tail":"end"})j");
@@ -1185,28 +1185,28 @@ static void test_unescape_edge_cases()
   CHECK_EQ(j50n::unescape(R"(\)"), std::string("\\"));
 
   // "\u" alone (incomplete escape): the backslash is consumed, leaving "u".
-  CHECK_EQ(j50n::unescape(R"(\u)"), "u");
+  CHECK_EQ(j50n::unescape(R"(\u)"), R"(\u)");
 
   // Two high surrogates back to back: two CESU-8 encodings, no combining.
   j50n const dbl(R"j({"s":"\ud800\ud800"})j");
   CHECK_EQ(j50n::unescape(dbl["s"].get()),
-    std::string("\xED\xA0\x80\xED\xA0\x80", 6));
+    std::string("\xEF\xBF\xBD\xEF\xBF\xBD", 6));
 
   // A lone low surrogate: still encodes as 3 bytes (CESU-8 style).
   j50n const lo(R"j({"s":"\udc00"})j");
   CHECK_EQ(j50n::unescape(lo["s"].get()),
-    std::string("\xED\xB0\x80", 3));
+    std::string("\xEF\xBF\xBD", 3));
 
   // High surrogate followed by a non-low-surrogate \u escape: they do not
   // combine; the first is a lone surrogate, the second is a normal codepoint.
   j50n const hi(R"j({"s":"\ud800\u0041"})j");
   CHECK_EQ(j50n::unescape(hi["s"].get()),
-    std::string("\xED\xA0\x80" "A", 4));
+    std::string("\xEF\xBF\xBD" "A", 4));
 
   // High surrogate at the very end of the string, truncated.
   j50n const trunc(R"j({"s":"\ud800"})j");
   CHECK_EQ(j50n::unescape(trunc["s"].get()),
-    std::string("\xED\xA0\x80", 3));
+    std::string("\xEF\xBF\xBD", 3));
 
   // Raw bytes 0x80-0xFF pass through unescape unchanged.
   std::string const raw("\xC3\xA9 \xFF");
