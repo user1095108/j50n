@@ -95,7 +95,7 @@ class j50n
 
             if ((++p == end) || (unsigned char)*p < lo ||
               (unsigned char)*p > hi)
-              return {};
+              break;
           }
 
           for (unsigned char n((b >= 0xE0u) + (b >= 0xF0u)); n; --n)
