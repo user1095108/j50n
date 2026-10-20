@@ -84,7 +84,6 @@ class j50n
         else if (!range<uc(32), uc(127)>((unsigned char)*p))
         {
           auto const b((unsigned char)*p);
-
           if ((b - 0xC2u) > 0x32u) break;
 
           {
