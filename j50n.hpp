@@ -381,6 +381,11 @@ public:
     return s_.empty();
   }
 
+  [[nodiscard]] bool is_empty_string() const noexcept
+  {
+    return S::any_of<"\"\"">(s_);
+  }
+
   [[nodiscard]] bool is_object() const noexcept
   {
     return !s_.empty() && ('{' == s_.front());
