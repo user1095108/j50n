@@ -80,19 +80,18 @@ class j50n
           if ((end == ++p) ||
             !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
             break;
-        }
+        } // 0x7F (DEL) is allowed unescaped per RFC 8259
         else if (!range<uc(32), uc(127)>((unsigned char)*p))
-        { // 0x7F (DEL) is allowed unescaped per RFC 8259
+        {
           if (((unsigned char)*p - 0xC2u) > 0x32u) break;
 
-          unsigned char n = 1 + ((unsigned char)*p >= 0xE0u) +
-            ((unsigned char)*p >= 0xF0u);
-          unsigned char lo2 = 0x80, hi2 = 0xBF;
+          unsigned char n(1 + ((unsigned char)*p >= 0xE0u) +
+            ((unsigned char)*p >= 0xF0u));
 
-          if ((unsigned char)*p == 0xE0) lo2 = 0xA0;
-          else if ((unsigned char)*p == 0xED) hi2 = 0x9F;
-          else if ((unsigned char)*p == 0xF0) lo2 = 0x90;
-          else if ((unsigned char)*p == 0xF4) hi2 = 0x8F;
+          unsigned char lo2((unsigned char)*p == 0xE0 ? 0xA0 :
+            (unsigned char)*p == 0xF0 ? 0x90 : 0x80);
+          unsigned char hi2((unsigned char)*p == 0xED ? 0x9F :
+            (unsigned char)*p == 0xF4 ? 0x8F : 0xBF);
 
           while (n--)
           {
