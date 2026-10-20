@@ -119,7 +119,6 @@ class j50n
       unsigned depth{};
 
       for (auto p(s.data()); end != p; ++p)
-      {
         if (any_of<' ', '\t', '\r', '\n', ':', ','>(*p))
           continue;
         else if (any_of<'[', '{'>(*p))
@@ -146,7 +145,6 @@ class j50n
 
           p = e - ('"' != *p);
         }
-      }
     }
 
     [[nodiscard]] static std::string_view find(std::string_view const s,
