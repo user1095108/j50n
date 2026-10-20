@@ -171,7 +171,8 @@ class j50n
           }
 
           return false;
-        });
+        }
+      );
 
       return val;
     }
@@ -189,7 +190,8 @@ class j50n
         {
           return index ? --index, false :
             (val = {p, size_type(e - p) + incl}, true);
-        });
+        }
+      );
 
       return val;
     }
