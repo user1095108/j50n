@@ -81,17 +81,13 @@ class j50n
             !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
             break;
         } // 0x7F (DEL) is allowed unescaped per RFC 8259
-        else if (!range<uc(32), uc(127)>((unsigned char)(*p)))
+        else if (!range<uc(32), uc(127)>((unsigned char)*p))
         {
-          unsigned char n;
+          if (((unsigned char)*p - 0xC0u) > 0x37u) break; /* in range [0xC0,0xF7] */
 
-          if (((unsigned char)(*p) & 224) == 192) n = 1;
-          else if (((unsigned char)(*p) & 240) == 224) n = 2;
-          else if (((unsigned char)(*p) & 248) == 240) n = 3;
-          else break;
-
-          for (; n; --n)
-            if ((end == ++p) || (((unsigned char)(*p) & 192) != 128))
+          for (unsigned char n(1 + ((unsigned char)*p >= 0xE0u) +
+            ((unsigned char)*p >= 0xF0u)); n; --n)
+            if ((end == ++p) || (((unsigned char)*p & 192) != 128))
               return {};
         }
 
@@ -102,7 +98,7 @@ class j50n
     {
       for (; end != p; ++p)
         if (any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*p)) return p;
-        else if (!range<uc(32), uc(126)>((unsigned char)(*p))) return {};
+        else if (!range<uc(32), uc(126)>((unsigned char)*p)) return {};
 
       return end;
     }
