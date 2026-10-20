@@ -1265,12 +1265,21 @@ static void test_character_classes()
   for (int b = 0xC2; b <= 0xF4; ++b)
   {
     int const need((b <= 0xDF) ? 1 : (b <= 0xEF) ? 2 : 3);
-    std::string const body(std::string(1, char(b)) + std::string(need, '\x80'));
+
+    // Minimal first continuation that yields a non-overlong code point.
+    unsigned char first = 0x80;
+    if (b == 0xE0) first = 0xA0;   // U+0800, smallest 3-byte
+    else if (b == 0xF0) first = 0x90;   // U+10000, smallest 4-byte
+
+    std::string const body(
+      std::string(1, char(b)) +
+      std::string(1, char(first)) +
+      std::string(need - 1, '\x80'));
+
     std::string const doc("{\"" + body + "\":\"" + body + "\",\"c\":2}");
     j50n const j(doc);
-
     t::record(j[body].get() == body && j["c"].get() == "2",
-      "UTF-8 sequence with lead byte " + std::to_string(b), __LINE__);
+              "UTF-8 sequence with lead byte " + std::to_string(b), __LINE__);
   }
 
   // bare words (numbers, true, ...): a bare word runs up to a blank or one of

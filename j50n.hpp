@@ -80,15 +80,26 @@ class j50n
           if ((end == ++p) ||
             !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
             break;
-        } // 0x7F (DEL) is allowed unescaped per RFC 8259
+        }
         else if (!range<uc(32), uc(127)>((unsigned char)*p))
-        {
-          if (((unsigned char)*p - 0xC0u) > 0x37u) break; /* in range [0xC0,0xF7] */
+        { // 0x7F (DEL) is allowed unescaped per RFC 8259
+          if (((unsigned char)*p - 0xC2u) > 0x32u) break;
 
-          for (unsigned char n(1 + ((unsigned char)*p >= 0xE0u) +
-            ((unsigned char)*p >= 0xF0u)); n; --n)
-            if ((end == ++p) || (((unsigned char)*p & 192) != 128))
-              return {};
+          unsigned char n = 1 + ((unsigned char)*p >= 0xE0u) +
+            ((unsigned char)*p >= 0xF0u);
+          unsigned char lo2 = 0x80, hi2 = 0xBF;
+
+          if ((unsigned char)*p == 0xE0) lo2 = 0xA0;
+          else if ((unsigned char)*p == 0xED) hi2 = 0x9F;
+          else if ((unsigned char)*p == 0xF0) lo2 = 0x90;
+          else if ((unsigned char)*p == 0xF4) hi2 = 0x8F;
+
+          while (n--)
+          {
+            if (++p == end) return {};
+            if ((unsigned char)*p < lo2 || (unsigned char)*p > hi2) return {};
+            lo2 = 0x80; hi2 = 0xBF;
+          }
         }
 
       return {};
