@@ -226,23 +226,22 @@ class j50n
     {
       if (s.empty() || '{' != s.front()) return; // objects only
 
-      char const *k_ptr, *k_end;
-      bool expecting_key{};
+      std::string_view key;
 
       each_item(s,
-        [&](char const* const p, char const* const e, bool const incl)
+        [&, expecting_key = false](char const* const p, char const* const e,
+          bool const incl) mutable
           noexcept(noexcept(f(std::declval<std::string_view>(),
             std::declval<j50n>()))) -> bool
           {
             if ((expecting_key = !expecting_key))
             {
-              k_ptr = p; k_end = e;
+              bool const quoted('"' == *p);
+              key = {p + quoted, size_type(e - p) - quoted};
+
               return false;
             }
 
-            bool const quoted('"' == *k_ptr);
-            std::string_view const key(k_ptr + quoted,
-              size_type(k_end - k_ptr) - quoted);
             j50n const val(p, size_type(e - p) + incl);
 
             if constexpr(requires{bool(f(key, val));}) return f(key, val);
