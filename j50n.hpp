@@ -74,8 +74,8 @@ class j50n
           if ((end == ++p) ||
             !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
             break;
-        }
-        else if (!range<32, 127>(*p)) // 0x7F (DEL) is allowed unescaped per RFC 8259
+        } // 0x7F (DEL) is allowed unescaped per RFC 8259
+        else if (!range<32u, 127u>((unsigned char)(*p)))
         {
           auto n(((unsigned char)(*p) & 224) == 192 ? 1u :
             ((unsigned char)(*p) & 240) == 224 ? 2u :
