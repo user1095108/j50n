@@ -225,11 +225,9 @@ class j50n
     {
       if (s.empty() || '{' != s.front()) return; // objects only
 
-      std::string_view key;
-
       each_item(s,
-        [&, expecting_key = false](char const* const p, char const* const e,
-          bool const incl) mutable
+        [&, expecting_key = false, key = std::string_view()](
+          char const* const p, char const* const e, bool const incl) mutable
           noexcept(noexcept(f(std::declval<std::string_view>(),
             std::declval<j50n>()))) -> bool
           {
