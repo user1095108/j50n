@@ -139,7 +139,7 @@ class j50n
     [[nodiscard]] static std::string_view find(std::string_view const s,
       std::string_view const key) noexcept
     {
-      if (s.empty() || ('{' != s.front())) return {};
+      if (s.empty() || '{' != s.front()) return {};
 
       char const *val{}, *val_end;
       bool val_incl;
@@ -171,7 +171,7 @@ class j50n
     [[nodiscard]] static std::string_view find(std::string_view const s,
       std::size_t index) noexcept
     {
-      if (s.empty() || ('[' != s.front())) return {};
+      if (s.empty() || '[' != s.front()) return {};
 
       char const *val{}, *val_end;
       bool val_incl;
