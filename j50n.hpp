@@ -95,7 +95,7 @@ class j50n
     {
       for (; end != p; ++p)
         if (any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*p)) return p;
-        else if (!range<32, 126>(*p)) return {};
+        else if (!range<32u, 126u>((unsigned char)(*p))) return {};
 
       return end;
     }
