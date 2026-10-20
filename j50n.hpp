@@ -58,16 +58,16 @@ class j50n
     }
 
     template <typename U>
-    static constexpr unsigned char uc(U const val) noexcept
+    static consteval unsigned char uc(U const val) noexcept
     {
       return static_cast<unsigned char>(val);
     }
 
-    template <unsigned char lo, decltype(lo) hi>
-    static constexpr bool range(unsigned char const c) noexcept
+    template <auto lo, decltype(lo) hi>
+    static constexpr bool range(auto const c) noexcept
     {
       static_assert(lo <= hi, "range bounds must be ordered");
-      return uc(c - lo) <= uc(hi - lo);
+      return c >= lo && c <= hi;
     }
 
     static char const* str_end(char const* p, char const* const end) noexcept
