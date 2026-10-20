@@ -96,8 +96,8 @@ class j50n
 
           while (n--)
           {
-            if (++p == end) return {};
-            if ((unsigned char)*p < lo2 || (unsigned char)*p > hi2) return {};
+            if ((++p == end) || (unsigned char)*p < lo2 ||
+              (unsigned char)*p > hi2) return {};
             lo2 = 0x80; hi2 = 0xBF;
           }
         }
