@@ -57,6 +57,12 @@ class j50n
       return ndx;
     }
 
+    template <typename U>
+    static constexpr unsigned char uc(U const val) noexcept
+    {
+      return static_cast<unsigned char>(val);
+    }
+
     template <auto lo, decltype(lo) hi>
     static constexpr bool range(auto const c) noexcept
     {
@@ -75,13 +81,14 @@ class j50n
             !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
             break;
         } // 0x7F (DEL) is allowed unescaped per RFC 8259
-        else if (!range<32u, 127u>((unsigned char)(*p)))
+        else if (!range<uc(32), uc(127)>((unsigned char)(*p)))
         {
-          auto n(((unsigned char)(*p) & 224) == 192 ? 1u :
-            ((unsigned char)(*p) & 240) == 224 ? 2u :
-            ((unsigned char)(*p) & 248) == 240 ? 3u : 0u);
+          unsigned char n;
 
-          if (!n) break;
+          if (((unsigned char)(*p) & 224) == 192) n = 1;
+          else if (((unsigned char)(*p) & 240) == 224) n = 2;
+          else if (((unsigned char)(*p) & 248) == 240) n = 3;
+          else break;
 
           for (; n; --n)
             if ((end == ++p) || (((unsigned char)(*p) & 192) != 128))
@@ -95,7 +102,7 @@ class j50n
     {
       for (; end != p; ++p)
         if (any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*p)) return p;
-        else if (!range<32u, 126u>((unsigned char)(*p))) return {};
+        else if (!range<uc(32), uc(126)>((unsigned char)(*p))) return {};
 
       return end;
     }
