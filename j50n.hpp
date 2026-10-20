@@ -507,7 +507,7 @@ public:
     std::string r;
     r.reserve(sv.size());
 
-    auto const utf8 = [&](unsigned cp) noexcept
+    auto const utf8 = [&](unsigned cp)
       {
         int const n = cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
         char b[4];
