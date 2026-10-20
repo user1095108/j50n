@@ -81,7 +81,7 @@ class j50n
             !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
             break;
         } // 0x7F (DEL) is allowed unescaped per RFC 8259
-        else if (!range<uc(32), uc(127)>(b)) [[unlikely]]
+        else if (!range<uc(32), uc(127)>(b))
         {
           if ((b - 0xC2u) > 0x32u) break;
 
