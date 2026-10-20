@@ -83,22 +83,24 @@ class j50n
         } // 0x7F (DEL) is allowed unescaped per RFC 8259
         else if (!range<uc(32), uc(127)>((unsigned char)*p))
         {
-          if (((unsigned char)*p - 0xC2u) > 0x32u) break;
+          auto const b((unsigned char)*p);
 
-          unsigned char n(2 + ((unsigned char)*p >= 0xE0u) +
-            ((unsigned char)*p >= 0xF0u));
+          if ((b - 0xC2u) > 0x32u) break;
 
-          unsigned char lo((unsigned char)*p == 0xE0 ? 0xA0 :
-            (unsigned char)*p == 0xF0 ? 0x90 : 0x80);
-          unsigned char hi((unsigned char)*p == 0xED ? 0x9F :
-            (unsigned char)*p == 0xF4 ? 0x8F : 0xBF);
-
-          while (--n)
           {
+            unsigned char const lo(b == 0xE0 ? 0xA0 :
+              b == 0xF0 ? 0x90 : 0x80);
+            unsigned char const hi(b == 0xED ? 0x9F :
+              b == 0xF4 ? 0x8F : 0xBF);
+
             if ((++p == end) || (unsigned char)*p < lo ||
-              (unsigned char)*p > hi) return {};
-            lo = 0x80; hi = 0xBF;
+              (unsigned char)*p > hi)
+              return {};
           }
+
+          for (unsigned char n((b >= 0xE0u) + (b >= 0xF0u)); n; --n)
+            if ((++p == end) || ((unsigned char)*p & 0xC0) != 0x80)
+              return {};
         }
 
       return {};
