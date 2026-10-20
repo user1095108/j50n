@@ -67,7 +67,7 @@ class j50n
     static constexpr bool range(auto const c) noexcept
     {
       static_assert(lo <= hi, "range bounds must be ordered");
-      return c >= lo && c <= hi;
+      return uc(c - lo) <= uc(hi - lo);
     }
 
     static char const* str_end(char const* p, char const* const end) noexcept
