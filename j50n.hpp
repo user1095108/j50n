@@ -73,8 +73,8 @@ class j50n
     static char const* str_end(char const* p, char const* const end) noexcept
     {
       for (; end != p; ++p)
-        if (auto const b((unsigned char)*p);
-          '"' == b) [[unlikely]] return p;
+        if (auto const b((unsigned char)*p); '"' == b) [[unlikely]]
+          return p;
         else if ('\\' == b) [[unlikely]]
         {
           if ((end == ++p) ||
