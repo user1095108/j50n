@@ -203,11 +203,10 @@ class j50n
     {
       if (s.empty() || '[' != s.front()) return; // arrays only
 
-      std::size_t i{};
-
       each_item(s,
-        [&](char const* const p, char const* const e,
-          bool const incl) noexcept(feach_noexcept<decltype(f)>()) -> bool
+        [&, i = std::size_t{}](char const* const p, char const* const e,
+          bool const incl) mutable
+          noexcept(feach_noexcept<decltype(f)>()) -> bool
           {
             j50n const item(p, size_type(e - p) + incl);
             if constexpr(requires{bool(f(item, i));}) return f(item, i++);
