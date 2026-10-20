@@ -2561,6 +2561,463 @@ static void test_numeric_overflow()
   CHECK(!over.get<std::uint64_t>("v").second);        // fits in uint64_t
 }
 
+// ── additional coverage: object feach, streaming truncation, control
+//    bytes, number spellings, unescape surrogates, misc ─────────────────────
+
+// feach propagates the callback's noexcept-ness in both directions
+namespace feach_noexcept_checks
+{
+  constexpr auto nh_element = [](j50n) noexcept { };
+  constexpr auto nh_indexed = [](j50n, std::size_t) noexcept { };
+  constexpr auto nh_member  = [](std::string_view, j50n) noexcept { };
+  constexpr auto th_element = [](j50n) { };
+  constexpr auto th_member  = [](std::string_view, j50n) { };
+
+  static_assert(noexcept(std::declval<j50n&>().feach(nh_element)));
+  static_assert(noexcept(std::declval<j50n&>().feach(nh_indexed)));
+  static_assert(noexcept(std::declval<j50n&>().feach(nh_member)));
+  static_assert(!noexcept(std::declval<j50n&>().feach(th_element)));
+  static_assert(!noexcept(std::declval<j50n&>().feach(th_member)));
+}
+
+static void test_object_feach()
+{
+  // The (key, value) feach overload: every depth-1 member is visited once,
+  // in document order, with the raw (still escaped) key text and the value
+  // as a navigable sub-view.
+  SECTION("object feach (key, value)");
+
+  j50n const o(R"j({"a":1,"b":"x","c":null,"d":[1,2],"e":{"k":9},"last":-2})j");
+
+  // keys in document order, values as their raw text
+  {
+    std::string seen;
+    o.feach([&](std::string_view const k, j50n const v)
+      { seen += std::string(k) + '=' + std::string(v.get()) + ';'; });
+    CHECK_EQ(seen, R"j(a=1;b=x;c=null;d=[1,2];e={"k":9};last=-2;)j");
+  }
+
+  // the visit count agrees with size()
+  {
+    std::size_t n{};
+    o.feach([&](std::string_view, j50n) { ++n; });
+    CHECK_EQ(n, 6u);
+    CHECK_EQ(n, o.size());
+  }
+
+  // each value keeps its type
+  {
+    std::size_t i{};
+    o.feach([&](std::string_view const k, j50n const v)
+      {
+        switch (i++)
+        {
+        case 0:  CHECK(k == "a"    && v.is_number()); break;
+        case 1:  CHECK(k == "b"    && v.is_string()); break;
+        case 2:  CHECK(k == "c"    && v.is_null());   break;
+        case 3:  CHECK(k == "d"    && v.is_array());  break;
+        case 4:  CHECK(k == "e"    && v.is_object()); break;
+        case 5:  CHECK(k == "last" && v.is_number()); break;
+        default: CHECK(false);
+        }
+      });
+    CHECK_EQ(i, 6u);
+  }
+
+  // early exit: returning true stops the iteration
+  {
+    std::size_t count{};
+    o.feach([&](std::string_view, j50n) -> bool { return ++count == 2; });
+    CHECK_EQ(count, 2u);
+  }
+  {
+    std::size_t count{};                     // stop on the first member
+    o.feach([&](std::string_view, j50n) -> bool { ++count; return true; });
+    CHECK_EQ(count, 1u);
+  }
+  {
+    std::size_t count{};                     // never stop
+    o.feach([&](std::string_view, j50n) -> bool { ++count; return false; });
+    CHECK_EQ(count, 6u);
+  }
+
+  // keys come back raw (still escaped); duplicate keys are both visited
+  j50n const esc(R"j({"a\"b":1,"a":2,"a":3})j");
+  {
+    std::string seen;
+    std::size_t n{};
+    esc.feach([&](std::string_view const k, j50n const v)
+      { seen += std::string(k) + '=' + std::string(v.get()) + ';'; ++n; });
+    CHECK_EQ(seen, R"j(a\"b=1;a=2;a=3;)j");
+    CHECK_EQ(n, 3u);
+    CHECK_EQ(esc.size(), 3u);
+    CHECK_EQ(esc["a"], "2");                 // lookups take the first match
+  }
+
+  // nested containers are visited once each, as opaque but navigable values
+  j50n const nest(R"j({"o":{"in":[1,{"deep":2}]},"after":true})j");
+  {
+    std::size_t pairs{};
+    nest.feach([&](std::string_view const k, j50n const v)
+      {
+        ++pairs;
+        if (k == "o")
+        {
+          CHECK(v.is_object());
+          CHECK_EQ(v.get(), R"j({"in":[1,{"deep":2}]})j");
+          CHECK_EQ(v["in"][1]["deep"], "2");
+        }
+        else
+          CHECK(k == "after" && v.is_bool());
+      });
+    CHECK_EQ(pairs, 2u);                     // "in" / "deep" are not visited
+  }
+
+  // members padded with whitespace behave like tight ones
+  j50n const w("{ \"a\" : 1 ,\n\t \"b\" : [ 2 ] }");
+  {
+    std::string seen;
+    w.feach([&](std::string_view const k, j50n const v)
+      { seen += std::string(k) + '=' + std::string(v.get()) + ';'; });
+    CHECK_EQ(seen, "a=1;b=[ 2 ];");
+  }
+
+  // keys and values with structural characters inside
+  j50n const st(R"j({"k,}":1,"a:b":2,"[x]":3})j");
+  {
+    std::string seen;
+    st.feach([&](std::string_view const k, j50n const v)
+      { seen += std::string(k) + '=' + std::string(v.get()) + ';'; });
+    CHECK_EQ(seen, R"j(k,}=1;a:b=2;[x]=3;)j");
+  }
+
+  // ':' inside a quoted value must not derail the key/value pairing
+  j50n const colon(R"j({"a":"x:y","b":1})j");
+  {
+    std::string seen;
+    colon.feach([&](std::string_view const k, j50n const v)
+      { seen += std::string(k) + '=' + std::string(v.get()) + ';'; });
+    CHECK_EQ(seen, "a=x:y;b=1;");
+  }
+
+  // works on object subviews of a larger document
+  j50n const root(JSON.data(), JSON.size());
+  {
+    std::string seen;
+    root["objects"][0].feach([&](std::string_view const k, j50n const v)
+      { seen += std::string(k) + '=' + std::string(v.get()) + ';'; });
+    CHECK_EQ(seen, "id=1;value=10;tag=first;");
+  }
+
+  // streaming policy: a truncated object still yields its complete members
+  {
+    std::size_t n{};
+    j50n(R"j({"a":1,"b":2)j").feach(
+      [&](std::string_view const k, j50n const v)
+        { if (k == "a") CHECK_EQ(v, "1"); ++n; });
+    CHECK_EQ(n, 2u);
+  }
+
+  // no-ops: arrays, scalars, missing keys, empty views, empty objects
+  std::size_t calls{};
+  auto const f([&](std::string_view, j50n) { ++calls; });
+  root["numbers"].feach(f);                  // array
+  root["name"].feach(f);                     // string
+  root["version"].feach(f);                  // number
+  root["active"].feach(f);                   // bool
+  root["ratio"].feach(f);                    // null
+  root["does_not_exist"].feach(f);           // missing
+  j50n().feach(f);                           // default constructed
+  j50n("{ }").feach(f);                      // empty object
+  CHECK_EQ(calls, 0u);
+
+  // key and value views point into the original buffer
+  {
+    std::string_view const src(R"j({"k":"v"})j");
+    j50n const d(src);
+    std::size_t pairs{};
+    d.feach([&](std::string_view const k, j50n const v)
+      {
+        ++pairs;
+        CHECK(k.data() == src.data() + 2);   // "k" without the quotes
+        CHECK_EQ(k.size(), 1u);
+        CHECK(v.get().data() == src.data() + 6);
+        CHECK_EQ(v.get().size(), 1u);
+      });
+    CHECK_EQ(pairs, 1u);
+  }
+}
+
+static void test_streaming_truncation()
+{
+  // Documents cut off mid-container follow the streaming policy: every
+  // member/element completed before the cut is still reported.
+  SECTION("truncated containers (streaming policy)");
+
+  CHECK_EQ(j50n("[1,2").size(),   2u);
+  CHECK_EQ(j50n("[1,2,3").size(), 3u);
+  CHECK_EQ(j50n("[1,").size(),    1u);       // dangling comma adds nothing
+  CHECK_EQ(j50n("{\"a\":1,\"b\":2").size(), 2u);
+  CHECK_EQ(j50n("{\"a\":1,").size(),        1u);
+  CHECK_EQ(j50n(R"j({"a":1,"b")j").size(),  1u);   // dangling key: no value
+
+  // completed elements of a truncated array are accessible and iterable
+  {
+    j50n const t("[1,2");
+    CHECK_EQ(t[0], "1");
+    CHECK_EQ(t[1], "2");
+    CHECK(t[2].is_empty());
+    std::size_t n{}, sum{};
+    t.feach([&](j50n const e, std::size_t i)
+      { ++n; sum += i + e.get<std::size_t>().first; });
+    CHECK_EQ(n, 2u);
+    CHECK_EQ(sum, 4u);                       // (0+1) + (1+2)
+  }
+
+  // completed members of a truncated object keep their types
+  {
+    j50n const t(R"j({"a":1,"b":"x")j");
+    CHECK(t["a"].is_number());
+    CHECK(t["b"].is_string());
+    CHECK_EQ(t["b"], "x");
+    CHECK(t["c"].is_empty());
+  }
+  CHECK(j50n(R"j({"a":1,"b")j")["b"].is_empty());  // dangling key: no value
+
+  // a cut inside a *nested* container yields nothing at the outer level
+  CHECK_EQ(j50n("[[1,2").size(), 0u);
+  CHECK(j50n("[[1,2")[0].is_empty());
+  CHECK_EQ(j50n("{\"a\":{\"b\":1").size(), 0u);
+  CHECK(j50n("{\"a\":{\"b\":1")["a"].is_empty());
+}
+
+static void test_control_bytes()
+{
+  // Rules the byte-sweep loops leave open: 0x7F (DEL) is accepted inside
+  // strings (and quoted keys) per RFC 8259, but never inside bare words;
+  // a raw NUL after the document proper is harmless, while one inside a
+  // string or bare word makes the scan fail.
+  SECTION("DEL and NUL bytes");
+
+  // 0x7F inside a string value: accepted, byte-exact
+  {
+    std::string const doc("{\"a\":\"x\x7Fy\",\"b\":2}");
+    j50n const j(doc);
+    CHECK_EQ(j["a"].get(), std::string_view("x\x7Fy"));
+    CHECK_EQ(j["a"].get().size(), 3u);
+    CHECK_EQ(j["b"], "2");
+  }
+
+  // 0x7F inside a quoted key: accepted
+  {
+    std::string const doc("{\"a\x7F" "b\":1,\"after\":2}");
+    j50n const j(doc);
+    CHECK_EQ(j[std::string_view("a\x7F" "b")], "1");
+    CHECK_EQ(j["after"], "2");
+  }
+
+  // 0x7F inside a bare word: rejected, and the scan stops there
+  {
+    std::string const doc("{\"a\":x\x7Fy,\"b\":2}");
+    j50n const j(doc);
+    CHECK(j["a"].is_empty());
+    CHECK(j["b"].is_empty());
+  }
+
+  // a raw NUL after the document proper: the members still scan fine
+  {
+    std::string const doc(std::string("{\"a\":\"x\",\"b\":2}") + '\0' + "tail");
+    j50n const j{std::string_view(doc)};
+    CHECK_EQ(j["a"], "x");
+    CHECK_EQ(j["b"], "2");
+    CHECK_EQ(j.size(), 2u);
+    CHECK_EQ(j.get().size(), doc.size());  // view carries the trailing bytes
+  }
+
+  // a raw NUL inside a string: malformed, like every control character
+  {
+    std::string const doc(std::string("{\"a\":\"x") + '\0' + "y\",\"b\":2}");
+    j50n const j{std::string_view(doc)};
+    CHECK(j["a"].is_empty());
+    CHECK(j["b"].is_empty());
+  }
+}
+
+static void test_numeric_extra()
+{
+  // Number spellings at the from_chars boundary, on top of the lenient
+  // scanner's bare-token rules.
+  SECTION("number spellings and from_chars edges");
+
+  // leading zeros: accepted by std::from_chars (base 10), lenient extension
+  CHECK_GET(j50n(R"j({"a":007})j").get<int>("a"), 7);
+  CHECK_GET(j50n(R"j({"a":007})j").get<double>("a"), 7.0);
+  CHECK(j50n(R"j({"a":007})j")["a"].is_number());
+
+  // a trailing dot: strtod-style grammars accept "5." as a complete number
+  CHECK_GET(j50n(R"j({"a":5.})j").get<double>("a"), 5.0);
+  CHECK(j50n(R"j({"a":5.})j")["a"].is_number());
+  CHECK_EQ(j50n(R"j({"a":5.})j")["a"], "5.");
+  // ... but an integer parse still stops at the dot
+  CHECK_GET_ERR(j50n(R"j({"a":5.})j").get<int>("a"));
+
+  // '.' and '+' cannot start a bare word: the scan aborts at the token
+  CHECK(j50n(R"j({"a":.5,"b":2})j")["a"].is_empty());
+  CHECK(j50n(R"j({"a":.5,"b":2})j")["b"].is_empty());
+  CHECK(j50n(R"j({"a":+1,"b":2})j")["a"].is_empty());
+  CHECK(j50n(R"j({"a":+1,"b":2})j")["b"].is_empty());
+
+  // junk inside a number: the token scans, but the parse is partial
+  CHECK_EQ(j50n(R"j({"a":1_000,"b":2})j")["a"], "1_000");
+  CHECK_GET_ERR(j50n(R"j({"a":1_000,"b":2})j").get<int>("a"));
+  CHECK(!j50n(R"j({"a":1_000,"b":2})j")["a"].is_number());
+  CHECK_EQ(j50n(R"j({"a":1_000,"b":2})j")["b"], "2");
+
+  // a bare exponent without a mantissa is not a number
+  CHECK_EQ(j50n(R"j({"a":e5,"b":2})j")["a"], "e5");
+  CHECK_GET_ERR(j50n(R"j({"a":e5,"b":2})j").get<double>("a"));
+  CHECK(!j50n(R"j({"a":e5,"b":2})j")["a"].is_number());
+
+  // integer get<> on float / exponent text: from_chars stops at '.' / 'e'
+  j50n const nums(JSON_NUMBERS.data(), JSON_NUMBERS.size());
+  CHECK_GET_ERR(nums.get<int>("sci"));       // 1.5e2
+  CHECK_GET_ERR(nums.get<int>("negfloat"));  // -3.14
+
+  // is_number across spellings
+  CHECK(j50n("0").is_number());
+  CHECK(j50n("-0").is_number());
+  CHECK(j50n("0.0").is_number());
+  CHECK(j50n("1e5").is_number());
+  CHECK(j50n("-2.5e-1").is_number());
+  CHECK(!j50n("true").is_number());
+  CHECK(!j50n("null").is_number());
+  CHECK(!j50n("").is_number());
+  CHECK(!j50n("\"123\"").is_number());       // quoted digits are not coerced
+}
+
+static void test_unescape_extra()
+{
+  SECTION("unescape: hex case and surrogate pairs (more)");
+
+  // uppercase and mixed-case hex digits in \u escapes
+  CHECK_EQ(j50n::unescape(R"(\u00E9)"), std::string("\xC3\xA9", 2));
+  CHECK_EQ(j50n::unescape(R"(\uABCD)"), std::string("\xEA\xAF\x8D", 3));
+  CHECK_EQ(j50n::unescape(R"(\uAbCd)"), std::string("\xEA\xAF\x8D", 3));
+
+  // an uppercase surrogate pair combines like a lowercase one
+  CHECK_EQ(j50n::unescape(R"(\uD83D\uDE80)"),
+    std::string("\xF0\x9F\x9A\x80", 4));
+
+  // two pairs back to back combine independently
+  CHECK_EQ(j50n::unescape(R"(\ud83d\ude80\ud83d\ude01)"),
+    std::string("\xF0\x9F\x9A\x80" "\xF0\x9F\x98\x81", 8));
+
+  // a high surrogate followed by a simple escape does not combine:
+  // replacement character + the escape's own byte
+  CHECK_EQ(j50n::unescape(R"(\ud800\n)"),
+    std::string("\xEF\xBF\xBD" "\n", 4));
+
+  // a high surrogate followed by non-hex text: no combining either
+  CHECK_EQ(j50n::unescape(R"(\ud800ZZZZ)"),
+    std::string("\xEF\xBF\xBD" "ZZZZ", 7));
+
+  // \u0000 encodes a one-byte NUL, also at the end of the input
+  CHECK_EQ(j50n::unescape(R"(\u0000)").size(), 1u);
+  CHECK_EQ(j50n::unescape(R"(\u0000)"), std::string("\0", 1));
+}
+
+static void test_misc_extra()
+{
+  SECTION("more coverage: numeric keys, bool paths, output, determinism");
+
+  // numeric-looking keys are ordinary keys on objects
+  j50n const numkeys(R"j({"0":"zero","10":"ten","-1":"neg"})j");
+  CHECK_EQ(numkeys["0"],  "zero");
+  CHECK_EQ(numkeys["10"], "ten");
+  CHECK_EQ(numkeys["-1"], "neg");
+  CHECK(numkeys["1"].is_empty());
+  CHECK(numkeys[0].is_empty());              // objects have no indices
+  CHECK(numkeys[std::size_t(10)].is_empty());
+
+  // ... and on arrays, keys are not looked up either
+  j50n const arr(R"j(["zero","ten"])j");
+  CHECK(arr["0"].is_empty());
+  CHECK(arr["zero"].is_empty());
+  CHECK_EQ(arr[0], "zero");
+
+  // containers alternating with scalars: depth must reset cleanly
+  j50n const mix(R"j([[1],2,[3],4])j");
+  CHECK_EQ(mix.size(), 4u);
+  CHECK_EQ(mix[0].size(), 1u);
+  CHECK_EQ(mix[1], "2");
+  CHECK_EQ(mix[2][0], "3");
+  CHECK_EQ(mix[3], "4");
+
+  // contains() across mixed index/key paths
+  CHECK(j50n("[[1],[2]]").contains(0, 0));
+  CHECK(j50n("[[1],[2]]").contains(1, 0));
+  CHECK(!j50n("[[1],[2]]").contains(0, 1));
+  CHECK(j50n(R"j([{"a":[5]}])j").contains(0, "a", 0));
+  CHECK(!j50n(R"j([{"a":[5]}])j").contains(0, "b", 0));
+
+  // get<bool>() with paths and on array elements
+  j50n const root(JSON.data(), JSON.size());
+  CHECK_GET_ERR(root.get<bool>("objects", 1, "tag"));    // null
+  j50n const h(R"j([10,"two",true,null,{"x":1},[2,3],"",-4.5e1])j");
+  CHECK_GET(h[2].get<bool>(), true);
+  CHECK_GET_ERR(h[0].get<bool>());           // number
+  CHECK_GET_ERR(h[1].get<bool>());           // string
+  CHECK_GET_ERR(h[3].get<bool>());           // null
+  CHECK_GET(root["active"].get<bool>(), true);
+
+  // view() with no arguments is the identity on subviews too
+  CHECK_EQ(root["nested"].view()["a"]["b"]["c"], "deep");
+  CHECK_EQ(root.view(std::string("nested"), std::string_view("a"))["b"]["c"],
+    "deep");
+
+  // equality against std::string_view compares unescaped content
+  j50n const esc(JSON_ESCAPED.data(), JSON_ESCAPED.size());
+  CHECK(esc["quote"]   == std::string_view("say \"hello\""));
+  CHECK(esc["newline"] == std::string_view("line1\nline2"));
+  CHECK(!(esc["quote"] == std::string_view(R"(say \"hello\")")));
+
+  // operator<< prints raw text: containers verbatim, strings un-unescaped
+  CHECK_EQ(str(j50n(R"j({"a":[1,2],"b":{"c":3}})j")),
+    R"j({"a":[1,2],"b":{"c":3}})j");
+  CHECK_EQ(str(esc["quote"]),   R"j(say \"hello\")j");
+  CHECK_EQ(str(esc["unicode"]), R"j(\u0041BC)j");
+  CHECK_EQ(str(j50n("null")),   "null");
+  CHECK_EQ(str(j50n("true")),   "true");
+  CHECK_EQ(str(j50n("-1.5e3")), "-1.5e3");
+
+  // repeated identical lookups return identical views
+  CHECK(root["name"].get().data() == root["name"].get().data());
+  CHECK(root["name"].get().size() == root["name"].get().size());
+  CHECK(root["numbers"][2].get().data() ==
+    root["numbers"][2].get().data());
+
+  // is_empty_string on a padded document
+  CHECK(j50n("  \"\"  ").is_empty_string());
+
+  // numeric get_or through an index path
+  CHECK_EQ(root.get_or<int>(-1, "numbers", 4), 5);
+  CHECK_EQ(root.get_or<int>(-1, "numbers", 9), -1);
+
+  // array element views point into the original buffer
+  {
+    std::string_view const src(R"j(["aa","bb","cc"])j");
+    j50n const j(src);
+    std::size_t i{};
+    j.feach([&](j50n const e)
+      {
+        CHECK(e.get().data() == src.data() + 2 + 5 * i);
+        CHECK_EQ(e.get().size(), 2u);
+        ++i;
+      });
+    CHECK_EQ(i, 3u);
+  }
+}
+
 // ── main ────────────────────────────────────────────────────────────────────
 
 int main(int argc, char** argv)
@@ -2610,6 +3067,12 @@ int main(int argc, char** argv)
   test_is_empty_string();
   test_integer_widths();
   test_numeric_overflow();
+  test_object_feach();
+  test_streaming_truncation();
+  test_control_bytes();
+  test_numeric_extra();
+  test_unescape_extra();
+  test_misc_extra();
 
   std::cout << "\n== Summary ==\n"
     << t::g.checks << " checks, " << t::g.failures << " failed";
