@@ -88,16 +88,16 @@ class j50n
           unsigned char n(1 + ((unsigned char)*p >= 0xE0u) +
             ((unsigned char)*p >= 0xF0u));
 
-          unsigned char lo2((unsigned char)*p == 0xE0 ? 0xA0 :
+          unsigned char lo((unsigned char)*p == 0xE0 ? 0xA0 :
             (unsigned char)*p == 0xF0 ? 0x90 : 0x80);
-          unsigned char hi2((unsigned char)*p == 0xED ? 0x9F :
+          unsigned char hi((unsigned char)*p == 0xED ? 0x9F :
             (unsigned char)*p == 0xF4 ? 0x8F : 0xBF);
 
           while (n--)
           {
-            if ((++p == end) || (unsigned char)*p < lo2 ||
-              (unsigned char)*p > hi2) return {};
-            lo2 = 0x80; hi2 = 0xBF;
+            if ((++p == end) || (unsigned char)*p < lo ||
+              (unsigned char)*p > hi) return {};
+            lo = 0x80; hi = 0xBF;
           }
         }
 
