@@ -1173,6 +1173,51 @@ static void test_unescape()
   CHECK_EQ(j50n::unescape(""),        "");
 }
 
+static void test_unescape_edge_cases()
+{
+  SECTION("unescape edge cases (more)");
+
+  // Multiple escapes back to back.
+  CHECK_EQ(j50n::unescape(R"(a\n\t\rb)"), std::string("a\n\t\rb"));
+  CHECK_EQ(j50n::unescape(R"(a\n\t\\b)"), std::string("a\n\t\\b"));
+
+  // A single backslash alone: passes through.
+  CHECK_EQ(j50n::unescape(R"(\)"), std::string("\\"));
+
+  // "\u" alone (incomplete escape): the backslash is consumed, leaving "u".
+  CHECK_EQ(j50n::unescape(R"(\u)"), "u");
+
+  // Two high surrogates back to back: two CESU-8 encodings, no combining.
+  j50n const dbl(R"j({"s":"\ud800\ud800"})j");
+  CHECK_EQ(j50n::unescape(dbl["s"].get()),
+    std::string("\xED\xA0\x80\xED\xA0\x80", 6));
+
+  // A lone low surrogate: still encodes as 3 bytes (CESU-8 style).
+  j50n const lo(R"j({"s":"\udc00"})j");
+  CHECK_EQ(j50n::unescape(lo["s"].get()),
+    std::string("\xED\xB0\x80", 3));
+
+  // High surrogate followed by a non-low-surrogate \u escape: they do not
+  // combine; the first is a lone surrogate, the second is a normal codepoint.
+  j50n const hi(R"j({"s":"\ud800\u0041"})j");
+  CHECK_EQ(j50n::unescape(hi["s"].get()),
+    std::string("\xED\xA0\x80" "A", 4));
+
+  // High surrogate at the very end of the string, truncated.
+  j50n const trunc(R"j({"s":"\ud800"})j");
+  CHECK_EQ(j50n::unescape(trunc["s"].get()),
+    std::string("\xED\xA0\x80", 3));
+
+  // Raw bytes 0x80-0xFF pass through unescape unchanged.
+  std::string const raw("\xC3\xA9 \xFF");
+  CHECK_EQ(j50n::unescape(raw), raw);
+
+  // A raw NUL byte in the input survives.
+  std::string const nul("a\0b", 3);
+  CHECK_EQ(j50n::unescape(nul).size(), 3u);
+  CHECK_EQ(j50n::unescape(nul), nul);
+}
+
 static void test_utf8()
 {
   SECTION("UTF-8");
@@ -2113,6 +2158,8 @@ static void test_operator_spaceship()
     std::partial_ordering>);
   static_assert(std::is_same_v<decltype(std::declval<j50n>() <=> 1.0),
     std::partial_ordering>);
+  static_assert(std::is_same_v<decltype(std::declval<j50n>() <=> 1.0L),
+    std::partial_ordering>);
   static_assert(std::is_same_v<decltype(std::declval<j50n>() <=> true),
     std::partial_ordering>);
   static_assert(noexcept(std::declval<j50n>() <=> 1));
@@ -2122,6 +2169,7 @@ static void test_operator_spaceship()
 
   static_assert( cmp_sp<j50n, int>);
   static_assert( cmp_sp<j50n, double>);
+  static_assert( cmp_sp<j50n, long double>);
   static_assert( cmp_sp<j50n, bool>);
   static_assert( cmp_sp<int, j50n>);
 
@@ -2149,6 +2197,9 @@ static void test_operator_spaceship()
   CHECK(root["version"] <  2u);
   CHECK(root["version"] <  2.0);
   CHECK(root["version"] <  2.0f);
+  CHECK(root["version"] <  2.0L);
+  CHECK((root["version"] <=> 2.0L) == std::partial_ordering::less);
+  CHECK((root["version"] <=> 1.0L) == std::partial_ordering::equivalent);
 
   // Floating point.
   CHECK(root["pi"] >  3);
@@ -2157,6 +2208,10 @@ static void test_operator_spaceship()
   CHECK(root["pi"] <= 3.14159);
   CHECK(!(root["pi"] <  3.14159));
   CHECK(!(root["pi"] >  3.14159));
+
+  // long double on the left too
+  CHECK(4.0L > root["version"]);
+  CHECK(0.0L < root["version"]);
 
   // Negative numbers.
   j50n const neg(R"j({"n":-42})j");
@@ -2353,6 +2408,150 @@ static void test_get_or_overloads()
   CHECK(root.get_or(false, "active") == true);
 }
 
+// ── additional coverage: is_empty_string, integer widths, overflow,
+//    numeric edge cases ────────────────────────────────────────────────────
+
+static void test_is_empty_string()
+{
+  SECTION("is_empty_string");
+
+  // Only the exact raw 2-char text "\"\"" counts.
+  j50n const doc(R"j({"a":"","b":"x","c":null,"d":[],"e":{},"f":" "})j");
+  CHECK(doc["a"].is_empty_string());
+  CHECK(!doc["b"].is_empty_string());
+  CHECK(!doc["c"].is_empty_string());          // null
+  CHECK(!doc["d"].is_empty_string());          // []
+  CHECK(!doc["e"].is_empty_string());          // {}
+  CHECK(!doc["f"].is_empty_string());          // " " (one blank)
+  CHECK(!doc["missing"].is_empty_string());
+
+  // Whole documents.
+  CHECK(j50n(R"j("")j").is_empty_string());
+  CHECK(!j50n("").is_empty_string());          // empty view, not ""
+  CHECK(!j50n(" ").is_empty_string());         // blank document
+  CHECK(!j50n("x").is_empty_string());         // bare token
+  CHECK(!j50n("[]").is_empty_string());
+  CHECK(!j50n("{}").is_empty_string());
+
+  // "" (a present empty-string value) is distinct from the empty view.
+  CHECK(!doc["a"].is_empty());                 // j50n itself is not empty
+  CHECK_EQ(doc["a"].get(), "");
+  CHECK_EQ(doc["a"].get().size(), 0u);
+  CHECK(doc["a"].is_string());
+
+  // But get_or returns the empty string, not the fallback.
+  CHECK_EQ(doc.get_or("DEFAULT", "a"), "");
+}
+
+static void test_integer_widths()
+{
+  SECTION("integer width coverage");
+
+  j50n const small(R"j({"v":42,"neg":-7,"big":32768})j");
+
+  // All the standard integer types route through std::from_chars.
+  CHECK_GET(small.get<short>("v"),              short(42));
+  CHECK_GET(small.get<unsigned short>("v"),     static_cast<unsigned short>(42));
+  CHECK_GET(small.get<long>("v"),               42L);
+  CHECK_GET(small.get<unsigned long>("v"),      42UL);
+  CHECK_GET(small.get<long long>("v"),          42LL);
+  CHECK_GET(small.get<unsigned long long>("v"), 42ULL);
+  CHECK_GET(small.get<std::int16_t>("v"),       std::int16_t(42));
+  CHECK_GET(small.get<std::uint16_t>("v"),      std::uint16_t(42));
+  CHECK_GET(small.get<std::int32_t>("v"),       std::int32_t(42));
+  CHECK_GET(small.get<std::uint32_t>("v"),      std::uint32_t(42));
+  CHECK_GET(small.get<std::int64_t>("v"),       std::int64_t(42));
+  CHECK_GET(small.get<std::uint64_t>("v"),      std::uint64_t(42));
+
+  // signed char and unsigned char.
+  CHECK_GET(small.get<signed char>("v"),        static_cast<signed char>(42));
+  CHECK_GET(small.get<unsigned char>("v"),      static_cast<unsigned char>(42));
+
+  // char: from_chars treats it as an integer; 42 is '*'.
+  CHECK_GET(small.get<char>("v"),               char(42));
+
+  // Negative values fit in every signed width.
+  CHECK_GET(small.get<int>("neg"),              -7);
+  CHECK_GET(small.get<long>("neg"),             -7L);
+  CHECK_GET(small.get<long long>("neg"),        -7LL);
+  CHECK_GET(small.get<std::int16_t>("neg"),     std::int16_t(-7));
+
+  // Negative values do not fit in any unsigned width.
+  CHECK_GET_ERR(small.get<unsigned>("neg"));
+  CHECK_GET_ERR(small.get<unsigned short>("neg"));
+  CHECK_GET_ERR(small.get<unsigned long>("neg"));
+  CHECK_GET_ERR(small.get<std::uint64_t>("neg"));
+
+  // Out-of-range for the narrow types.
+  CHECK_GET_ERR(small.get<signed char>("big"));    // 32768 > 127
+  CHECK_GET_ERR(small.get<std::int8_t>("big"));
+  CHECK_GET_ERR(small.get<std::uint8_t>("big"));   // 32768 > 255
+  CHECK_GET_ERR(small.get<short>("big"));          // 32768 > 32767
+  j50n const huge(R"j({"v":100000})j");
+  CHECK_GET_ERR(huge.get<short>("v"));             // 100000 > 32767
+  CHECK_GET_ERR(huge.get<std::int16_t>("v"));
+  CHECK_GET_ERR(huge.get<unsigned short>("v"));    // 100000 > 65535
+}
+
+static void test_numeric_overflow()
+{
+  SECTION("numeric overflow");
+
+  // 1e500 overflows double (max ~1.8e308).  from_chars reports
+  // result_out_of_range, so get<double> reports an error and is_number()
+  // returns false.  The comparison operators fall through to "unordered".
+  j50n const huge(R"j({"huge":1e500,"neg":-1e500})j");
+  CHECK(!huge["huge"].is_number());
+  CHECK(!huge["neg"].is_number());
+
+  CHECK(huge.get<double>("huge").second);
+  CHECK(huge.get<double>("neg").second);
+
+  // Current behaviour: an overflowing number compares as unordered against
+  // any comparison target, because the parse fails.
+  CHECK((huge["huge"] <=> 5) == std::partial_ordering::unordered);
+  CHECK((huge["huge"] <=> 5.0) == std::partial_ordering::unordered);
+  CHECK(!(huge["huge"] > 5));
+  CHECK(!(huge["huge"] < 5));
+
+  // operator bool: parse fails, so it falls through to "bare token is
+  // truthy" (the leading byte is '1' or '-', not '[' / '{').
+  CHECK(bool(huge["huge"]));
+  CHECK(bool(huge["neg"]));
+
+  // 1e308 is representable; 1e309 is not.
+  j50n const edge(R"j({"ok":1e308,"ov":1e309,"z":0e500})j");
+  CHECK(edge["ok"].is_number());
+  CHECK(!edge["ov"].is_number());
+  CHECK(edge["z"].is_number());                 // 0 * 10^500 = 0
+  CHECK(!bool(edge["z"]));                      // zero -> falsy
+
+  // NaN and Infinity parse successfully under from_chars (general format),
+  // so is_number is true for them.
+  j50n const special(R"j({"nan":NaN,"inf":Infinity})j");
+  CHECK(special["nan"].is_number());
+  CHECK(special["inf"].is_number());
+  CHECK(std::isnan(special.get<double>("nan").first));
+  CHECK(std::isinf(special.get<double>("inf").first));
+
+  // ... but comparison against a normal number is unordered for NaN,
+  // and ordinary for Infinity.
+  CHECK((special["nan"] <=> 1.0) == std::partial_ordering::unordered);
+  CHECK((special["inf"] <=> 1.0) == std::partial_ordering::greater);
+  CHECK(special["inf"] > 1.0);
+
+  // Very large integer that still fits in uint64_t.
+  j50n const u64(R"j({"v":18446744073709551615})j");
+  CHECK_GET(u64.get<std::uint64_t>("v"), UINT64_MAX);
+  CHECK(!u64.get<int>("v").second == false);   // int overflows -> error
+  CHECK(u64.get<int>("v").second);
+
+  // One past INT64_MAX.
+  j50n const over(R"j({"v":9223372036854775808})j");
+  CHECK(over.get<std::int64_t>("v").second);          // error
+  CHECK(!over.get<std::uint64_t>("v").second);        // fits in uint64_t
+}
+
 // ── main ────────────────────────────────────────────────────────────────────
 
 int main(int argc, char** argv)
@@ -2383,6 +2582,7 @@ int main(int argc, char** argv)
   test_strings_and_escapes();
   test_string_blanks();
   test_unescape();
+  test_unescape_edge_cases();
   test_operator_eq();
   test_operator_bool();
   test_operator_spaceship();
@@ -2398,6 +2598,9 @@ int main(int argc, char** argv)
   test_more_coverage();
   test_size();
   test_get_or_overloads();
+  test_is_empty_string();
+  test_integer_widths();
+  test_numeric_overflow();
 
   std::cout << "\n== Summary ==\n"
     << t::g.checks << " checks, " << t::g.failures << " failed";
