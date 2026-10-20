@@ -73,17 +73,16 @@ class j50n
     static char const* str_end(char const* p, char const* const end) noexcept
     {
       for (; end != p; ++p)
-        if ('"' == *p)
-          return p;
-        else if ('\\' == *p)
+        if (auto const b((unsigned char)*p);
+          '"' == b) [[unlikely]] return p;
+        else if ('\\' == b) [[unlikely]]
         {
           if ((end == ++p) ||
             !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
             break;
         } // 0x7F (DEL) is allowed unescaped per RFC 8259
-        else if (!range<uc(32), uc(127)>((unsigned char)*p))
+        else if (!range<uc(32), uc(127)>(b)) [[unlikely]]
         {
-          auto const b((unsigned char)*p);
           if ((b - 0xC2u) > 0x32u) break;
 
           {
