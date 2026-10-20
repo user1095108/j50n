@@ -141,8 +141,7 @@ class j50n
     {
       if (s.empty() || '{' != s.front()) return {};
 
-      char const *val{}, *val_end;
-      bool val_incl;
+      std::string_view val;
 
       each_item(s,
         [&, expecting_key = false, key_found = false](char const* const p,
@@ -156,16 +155,14 @@ class j50n
           }
           else if (key_found)
           {
-            val = p; val_end = e; val_incl = incl;
+            val = {p, size_type(e - p) + incl};
             return true;
           }
 
           return false;
         });
 
-      return val ?
-        std::string_view(val, size_type(val_end - val) + val_incl) :
-        std::string_view();
+      return val;
     }
 
     [[nodiscard]] static std::string_view find(std::string_view const s,
@@ -173,20 +170,17 @@ class j50n
     {
       if (s.empty() || '[' != s.front()) return {};
 
-      char const *val{}, *val_end;
-      bool val_incl;
+      std::string_view val;
 
       each_item(s,
         [&](char const* const p, char const* const e,
           bool const incl) noexcept -> bool
         {
           return index ? --index, false :
-            (val = p, val_end = e, val_incl = incl, true);
+            (val = {p, size_type(e - p) + incl}, true);
         });
 
-      return val ?
-        std::string_view(val, size_type(val_end - val) + val_incl) :
-        std::string_view();
+      return val;
     }
 
     template <typename F>
