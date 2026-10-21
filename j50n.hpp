@@ -90,9 +90,8 @@ class j50n
               break;
           }
 
-          for (unsigned char n((b >= 0xE0u) + (b >= 0xF0u)); n; --n)
-            if (end == ++p || ((unsigned char)*p & 0xC0) != 0x80)
-              return {};
+          if ((b >= 0xE0u) && (end == ++p || (*p & 0xC0) != 0x80)) break;
+          if ((b >= 0xF0u) && (end == ++p || (*p & 0xC0) != 0x80)) break;
         }
 
       return {};
