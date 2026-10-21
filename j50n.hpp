@@ -91,7 +91,7 @@ class j50n
           }
 
           for (unsigned char n((b >= 0xE0u) + (b >= 0xF0u)); n; --n)
-            if ((++p == end) || ((unsigned char)*p & 0xC0) != 0x80)
+            if (++p == end || ((unsigned char)*p & 0xC0) != 0x80)
               return {};
         }
 
