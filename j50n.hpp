@@ -87,16 +87,10 @@ class j50n
         {
           if (!range<0xc2, 0xf4>(b)) break; // not a UTF-8 lead: invalid
 
-          {
-            unsigned char const lo(0xE0u == b ? 0xA0u :
-              0xF0u == b ? 0x90u : 0x80u);
-            unsigned char const hi(0xEDu == b ? 0x9Fu :
-              0xF4u == b ? 0x8Fu : 0xBFu);
-
-            if (end == ++i || (unsigned char)*i < lo ||
-              (unsigned char)*i > hi)
-              break;
-          }
+          if (end == ++i || (unsigned char)*i < (0xE0u == b ? 0xA0u :
+            0xF0u == b ? 0x90u : 0x80u) || (unsigned char)*i >
+            (0xEDu == b ? 0x9Fu : 0xF4u == b ? 0x8Fu : 0xBFu))
+            break;
 
           if (((b >= 0xE0u) && (end == ++i || (*i & 0xC0) != 0x80)) ||
             ((b >= 0xF0u) && (end == ++i || (*i & 0xC0) != 0x80))) break;
