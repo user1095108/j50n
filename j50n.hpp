@@ -85,7 +85,7 @@ class j50n
             unsigned char const hi(b == 0xED ? 0x9F :
               b == 0xF4 ? 0x8F : 0xBF);
 
-            if ((++p == end) || (unsigned char)*p < lo ||
+            if (end == ++p || (unsigned char)*p < lo ||
               (unsigned char)*p > hi)
               break;
           }
