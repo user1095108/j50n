@@ -77,11 +77,10 @@ class j50n
         else if ('\\' == b) [[unlikely]]
         {
           if (end == ++i ||
-            !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i))
-            break;
-          else if (('u' == *i) && ((++i == end) || !is_hex(*i) ||
+            !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i) ||
+            ('u' == *i && ((++i == end) || !is_hex(*i) ||
             (++i == end) || !is_hex(*i) || (++i == end) || !is_hex(*i) ||
-            (++i == end) || !is_hex(*i)))
+            (++i == end) || !is_hex(*i))))
             break;
         } // 0x7F (DEL) is allowed unescaped per RFC 8259
         else if (!range<32, 127>(b)) // not printable ASCII (incl. 0x7F)
