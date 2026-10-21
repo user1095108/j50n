@@ -2671,7 +2671,7 @@ static void test_scanner()
     {
       std::string const doc("{\"a\":\"x\x7Fy\",\"b\":2}");
       j50n const j(doc);
-      CHECK_EQ(j["a"].get(), std::string_view("x\x7Fy"));
+      CHECK_EQ(j["a"], "x\x7Fy");
       CHECK_EQ(j["a"].get().size(), 3u);
       CHECK_EQ(j["b"], "2");
     }
