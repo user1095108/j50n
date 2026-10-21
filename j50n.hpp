@@ -80,10 +80,10 @@ class j50n
           if (!range<0xc2, 0xf4>(b)) break;
 
           {
-            unsigned char const lo(b == 0xE0 ? 0xA0 :
-              b == 0xF0 ? 0x90 : 0x80);
-            unsigned char const hi(b == 0xED ? 0x9F :
-              b == 0xF4 ? 0x8F : 0xBF);
+            unsigned char const lo(0xE0u == b ? 0xA0u :
+              0xF0u == b ? 0x90u : 0x80u);
+            unsigned char const hi(0xEDu == b ? 0x9Fu :
+              0xF4u == b ? 0x8Fu : 0xBFu);
 
             if (end == ++p || (unsigned char)*p < lo ||
               (unsigned char)*p > hi)
