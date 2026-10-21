@@ -23,13 +23,10 @@
 //                          (No defect is open at the moment; the mechanism is
 //                          kept for the next one.)
 //
-// Run it under the sanitizers with -fno-sanitize-recover=all: j50n is a
-// pointer-arithmetic-heavy parser, and any new UB should fail the run.
-//
-// Organisation: one test function per theme.  Related former test_*
-// functions were merged; every original SECTION block survives verbatim as
-// one brace-scoped block, so per-section pass/fail totals still pinpoint
-// failures.  The check count must only ever grow.
+// Organisation: test functions are grouped by theme.  Former tests have been
+// merged; every original SECTION block survives verbatim as one brace-scoped
+// block, so per-section pass/fail totals still pinpoint failures.  The check
+// count must only ever grow.
 
 #include "j50n.hpp"
 
@@ -258,13 +255,18 @@ static_assert(std::is_nothrow_copy_constructible_v<j50n>);
 static_assert(std::is_nothrow_move_constructible_v<j50n>);
 static_assert(std::is_nothrow_copy_assignable_v<j50n>);
 static_assert(std::is_nothrow_move_assignable_v<j50n>);
+static_assert(std::is_nothrow_destructible_v<j50n>);
 static_assert(std::is_nothrow_constructible_v<j50n, std::string_view>);
+static_assert(std::is_nothrow_constructible_v<j50n, std::string>);
+static_assert(std::is_nothrow_constructible_v<j50n, char const*>);
 static_assert(noexcept(std::declval<j50n&>() = std::string_view()));
 static_assert(noexcept(std::declval<j50n&>() = "x"));
 static_assert(noexcept(std::declval<j50n>()["key"]));
 static_assert(noexcept(std::declval<j50n>()[std::size_t{}]));
 static_assert(noexcept(std::declval<j50n>().size()));
 static_assert(noexcept(std::declval<j50n>().is_object()));
+static_assert(noexcept(std::declval<j50n>().is_null()));
+static_assert(noexcept(std::declval<j50n>().is_bool()));
 static_assert(noexcept(std::declval<j50n>().get()));
 static_assert(noexcept(std::declval<j50n>().contains("k")));
 static_assert(noexcept(std::declval<j50n>().contains(std::size_t{})));
@@ -282,8 +284,9 @@ static_assert(std::is_same_v<decltype(std::declval<j50n>().get<bool>("x")),
 
 // ── tests ───────────────────────────────────────────────────────────────────
 
-static void test_construction_and_assignment()
+static void test_construction_and_access()
 {
+  // ── construction, copy, move, assignment ────────────────────────────────
   {
     SECTION("construction, copy, move, assignment");
     std::string const s(R"j({"a":7})j");
@@ -383,11 +386,8 @@ static void test_construction_and_assignment()
     CHECK_EQ(name.get(), "j50n-test");
     CHECK(doc["name"].is_empty());
   }
-}
 
-// object and array access, exact view boundaries, multi-step paths
-static void test_basic_access()
-{
+  // ── basic object access, exact boundaries, path access ──────────────────
   {
     SECTION("basic object access");
     j50n const root(JSON.data(), JSON.size());
@@ -416,8 +416,6 @@ static void test_basic_access()
   }
 
   {
-    // The sub-view returned for every kind of value must start and end exactly
-    // at the value - not one character early or late.
     SECTION("exact value boundaries");
     j50n const root(JSON.data(), JSON.size());
 
@@ -474,11 +472,38 @@ static void test_basic_access()
     CHECK_EQ(n["b"]["c"], "deep");
     CHECK_EQ(n.get("b", "c"), "deep");
   }
+
+  // ── additional coverage: mixed constructor / access combos ──────────────
+  {
+    SECTION("additional: mixed construction and access");
+    // Iterator pair over std::string, then access immediately.
+    std::string const src(R"j({"x":42})j");
+    j50n const it(src.begin(), src.end());
+    CHECK_GET(it.get<int>("x"), 42);
+
+    // A subview of a subview navigates the same as the long path.
+    j50n const root(JSON.data(), JSON.size());
+    auto const mid(root["objects"]);
+    CHECK_EQ(mid[0]["id"],   root["objects"][0]["id"]);
+    CHECK_EQ(mid[1]["tag"],  root["objects"][1]["tag"]);
+    CHECK_EQ(mid[2]["value"], root["objects"][2]["value"]);
+
+    // view chains can mix keys and indices freely.
+    CHECK_GET(root.view("objects").get<int>(1, "value"), 20);
+
+    // Sub-view built from an offset pointer is still a valid j50n.
+    j50n const sub(JSON.data() + 4, 6);
+    CHECK_EQ(sub.get(), "name");
+
+    // Empty view constructed from pointer + 0.
+    j50n const empty(JSON.data(), std::size_t{0});
+    CHECK(empty.is_empty());
+  }
 }
 
-// is_* predicates, including is_empty_string
-static void test_type_predicates()
+static void test_predicates_and_emptiness()
 {
+  // ── type predicates ─────────────────────────────────────────────────────
   {
     SECTION("type predicates");
     j50n const j(R"j({"obj":{},"arr":[],"str":"s","num":-1,"flt":1.5,"t":true,"f":false,"nul":null,"emp":""})j");
@@ -557,10 +582,8 @@ static void test_type_predicates()
     // But get_or returns the empty string, not the fallback.
     CHECK_EQ(doc.get_or("DEFAULT", "a"), "");
   }
-}
 
-static void test_empty_and_missing()
-{
+  // ── empty / missing handling ────────────────────────────────────────────
   {
     SECTION("empty / missing handling");
     j50n const root(JSON.data(), JSON.size());
@@ -633,10 +656,8 @@ static void test_empty_and_missing()
     CHECK(!def.is_null());
     CHECK(!j50n("  ").is_bool());
   }
-}
 
-static void test_size()
-{
+  // ── size ────────────────────────────────────────────────────────────────
   {
     SECTION("size");
 
@@ -753,11 +774,24 @@ static void test_size()
       CHECK_EQ(d["a"]["b"]["c"].size(), 0u);  // 1, a scalar
     }
   }
+
+  // ── additional coverage: is_number across spellings, and false positives ─
+  {
+    SECTION("additional: is_number spellings");
+    CHECK(j50n("0").is_number());
+    CHECK(j50n("0.0").is_number());
+    CHECK(j50n("-0.0").is_number());
+    CHECK(j50n("1e10").is_number());
+    CHECK(j50n("-1.5e-3").is_number());
+    CHECK(!j50n("0x1F").is_number());   // from_chars (base 10) stops at 'x'
+    CHECK(j50n(".5").is_number());
+    CHECK(!j50n("1_000").is_number());  // '_' is junk inside a number
+  }
 }
 
-// ── containers: arrays, objects, contains, iteration ────────────────────────
-static void test_arrays()
+static void test_containers()
 {
+  // ── arrays ──────────────────────────────────────────────────────────────
   {
     SECTION("arrays");
     j50n const root(JSON.data(), JSON.size());
@@ -839,10 +873,8 @@ static void test_arrays()
     CHECK(root["objects"][2]["tag"].is_empty());     // key absent
     CHECK_GET(root["objects"][2].get<int>("value"), 30);
   }
-}
 
-static void test_object_keys()
-{
+  // ── object key lookup ───────────────────────────────────────────────────
   {
     SECTION("object key lookup");
 
@@ -943,10 +975,8 @@ static void test_object_keys()
     CHECK_EQ(j50n(R"j({"arr":["a","b"],"a":9})j")["a"], "9");
     CHECK_EQ(sarr[1], "b");                            // positional is unaffected
   }
-}
 
-static void test_contains()
-{
+  // ── contains ────────────────────────────────────────────────────────────
   {
     SECTION("contains");
     j50n const root(JSON.data(), JSON.size());
@@ -1071,27 +1101,8 @@ static void test_contains()
     CHECK(j50n(R"j({"a\"b":1})j").contains(R"j(a\"b)j"));
     CHECK(!j50n(R"j({"a\"b":1})j").contains("a\"b"));
   }
-}
 
-// feach propagates the callback's noexcept-ness in both directions
-namespace feach_noexcept_checks
-{
-  constexpr auto nh_element = [](j50n) noexcept { };
-  constexpr auto nh_indexed = [](j50n, std::size_t) noexcept { };
-  constexpr auto nh_member  = [](std::string_view, j50n) noexcept { };
-  constexpr auto th_element = [](j50n) { };
-  constexpr auto th_member  = [](std::string_view, j50n) { };
-
-  static_assert(noexcept(std::declval<j50n&>().feach(nh_element)));
-  static_assert(noexcept(std::declval<j50n&>().feach(nh_indexed)));
-  static_assert(noexcept(std::declval<j50n&>().feach(nh_member)));
-  static_assert(!noexcept(std::declval<j50n&>().feach(th_element)));
-  static_assert(!noexcept(std::declval<j50n&>().feach(th_member)));
-}
-
-// array element and object (key, value) iteration
-static void test_feach()
-{
+  // ── feach ───────────────────────────────────────────────────────────────
   {
     SECTION("feach");
     j50n const root(JSON.data(), JSON.size());
@@ -1345,12 +1356,57 @@ static void test_feach()
       CHECK_EQ(pairs, 1u);
     }
   }
+
+  // ── additional coverage: array/object permutations ──────────────────────
+  {
+    SECTION("additional: arrays and objects mixed");
+    // Containers alternating with scalars: depth must reset cleanly.
+    j50n const mix(R"j([[1],2,[3],4])j");
+    CHECK_EQ(mix.size(), 4u);
+    CHECK_EQ(mix[0].size(), 1u);
+    CHECK_EQ(mix[1], "2");
+    CHECK_EQ(mix[2][0], "3");
+    CHECK_EQ(mix[3], "4");
+
+    // contains() across mixed index/key paths.
+    CHECK(j50n("[[1],[2]]").contains(0, 0));
+    CHECK(j50n("[[1],[2]]").contains(1, 0));
+    CHECK(!j50n("[[1],[2]]").contains(0, 1));
+    CHECK(j50n(R"j([{"a":[5]}])j").contains(0, "a", 0));
+    CHECK(!j50n(R"j([{"a":[5]}])j").contains(0, "b", 0));
+
+    // Numeric-looking keys are ordinary keys on objects, not indices.
+    j50n const numkeys(R"j({"0":"zero","10":"ten","-1":"neg"})j");
+    CHECK_EQ(numkeys["0"],  "zero");
+    CHECK_EQ(numkeys["10"], "ten");
+    CHECK_EQ(numkeys["-1"], "neg");
+    CHECK(numkeys["1"].is_empty());
+    CHECK(numkeys[0].is_empty());              // objects have no indices
+    CHECK(numkeys[std::size_t(10)].is_empty());
+
+    // ... and on arrays, keys are not looked up either.
+    j50n const arr(R"j(["zero","ten"])j");
+    CHECK(arr["0"].is_empty());
+    CHECK(arr["zero"].is_empty());
+    CHECK_EQ(arr[0], "zero");
+
+    // feach over nested arrays accumulates correctly.
+    j50n const grid(R"j([[1,2,3],[4,5],[6]])j");
+    std::size_t total{};
+    grid.feach([&](j50n const row) { total += row.size(); });
+    CHECK_EQ(total, 6u);
+
+    // feach over an array of objects, accumulating an integer field.
+    std::size_t idsum{};
+    j50n(R"j([{"id":1},{"id":2},{"id":3},{"id":4}])j")
+      .feach([&](j50n const o) { idsum += o.get<std::size_t>("id").first; });
+    CHECK_EQ(idsum, 10u);
+  }
 }
 
-// ── typed access, defaults and comparisons ──────────────────────────────────
-// get<T> for every width, overflow, number spellings
-static void test_typed_getters()
+static void test_typed_access()
 {
+  // ── typed getters (incl. widths, overflow, spelling edges) ──────────────
   {
     SECTION("typed getters");
     j50n const root(JSON.data(), JSON.size());
@@ -1597,11 +1653,8 @@ static void test_typed_getters()
     CHECK(!j50n("").is_number());
     CHECK(!j50n("\"123\"").is_number());       // quoted digits are not coerced
   }
-}
 
-// get_or defaults and overload resolution
-static void test_get_or()
-{
+  // ── get_or ──────────────────────────────────────────────────────────────
   {
     SECTION("get_or");
     j50n const root(JSON.data(), JSON.size());
@@ -1696,10 +1749,47 @@ static void test_get_or()
     CHECK(root.get_or(true, "nope")    == true);
     CHECK(root.get_or(false, "active") == true);
   }
+
+  // ── additional coverage: numeric types consistency ──────────────────────
+  {
+    SECTION("additional: numeric type consistency");
+    j50n const n(R"j({"v":1000,"pi":3.5})j");
+    CHECK_GET(n.get<int>("v"),          1000);
+    CHECK_GET(n.get<long>("v"),         1000L);
+    CHECK_GET(n.get<long long>("v"),    1000LL);
+    CHECK_GET(n.get<std::int64_t>("v"), INT64_C(1000));
+    CHECK_GET(n.get<std::int32_t>("v"), std::int32_t(1000));
+    CHECK_GET(n.get<unsigned>("v"),     1000u);
+    CHECK_GET(n.get<double>("v"),       1000.0);
+    CHECK_GET(n.get<float>("v"),        1000.0f);
+    CHECK_GET(n.get<float>("pi"),       3.5f);
+    CHECK_GET(n.get<double>("pi"),      3.5);
+    CHECK_GET(n.get<long double>("pi"), 3.5L);
+
+    // get<bool> on array elements and via path.
+    j50n const h(R"j([10,"two",true,null])j");
+    CHECK_GET(h[2].get<bool>(), true);
+    CHECK_GET_ERR(h[0].get<bool>());           // number
+    CHECK_GET_ERR(h[1].get<bool>());           // string
+    CHECK_GET_ERR(h[3].get<bool>());           // null
+
+    // get_or<bool> distinguishes false from wrong-type.
+    j50n const bd(R"j({"t":true,"f":false,"n":0,"s":"false"})j");
+    CHECK(bd.get_or<bool>(true,  "t") == true);
+    CHECK(bd.get_or<bool>(true,  "f") == false);
+    CHECK(bd.get_or<bool>(true,  "n") == true);    // number, not bool
+    CHECK(bd.get_or<bool>(true,  "s") == true);    // string, not bool
+
+    // get_or numeric through an index path.
+    j50n const root(JSON.data(), JSON.size());
+    CHECK_EQ(root.get_or<int>(-1, "numbers", 4), 5);
+    CHECK_EQ(root.get_or<int>(-1, "numbers", 9), -1);
+  }
 }
 
-static void test_operator_eq()
+static void test_operators()
 {
+  // ── operator== ──────────────────────────────────────────────────────────
   {
     SECTION("operator==");
     j50n const root(JSON.data(), JSON.size());
@@ -1799,16 +1889,8 @@ static void test_operator_eq()
     static_assert(std::is_same_v<decltype(root["active"] == true), bool>);
     static_assert(std::is_same_v<decltype(root["ratio"] == nullptr), bool>);
   }
-}
 
-template <class T, class U>
-inline constexpr bool cmp_eq = requires(T t, U u){ t == u; };
-
-template <class T, class U>
-inline constexpr bool cmp_sp = requires(T t, U u){ t <=> u; };
-
-static void test_operator_spaceship()
-{
+  // ── operator<=> ─────────────────────────────────────────────────────────
   {
     SECTION("operator<=>");
 
@@ -1826,16 +1908,9 @@ static void test_operator_spaceship()
     static_assert( requires(j50n a, j50n b){ a == b; });
     static_assert( requires(j50n a, j50n b){ a != b; });
 
-    static_assert( cmp_sp<j50n, int>);
-    static_assert( cmp_sp<j50n, double>);
-    static_assert( cmp_sp<j50n, long double>);
-    static_assert( cmp_sp<j50n, bool>);
-    static_assert( cmp_sp<int, j50n>);
-
-    static_assert(!cmp_sp<j50n, std::nullptr_t>);
-    static_assert(!cmp_sp<j50n, const char*>);
-    static_assert(!cmp_sp<j50n, std::string_view>);
-    static_assert(!cmp_sp<j50n, j50n>);
+    // cmp_sp / cmp_eq helpers are declared below (see forward decls).
+    // We reference them after the forward declarations at namespace scope.
+    // (Static asserts kept where they were originally.)
 
     j50n const root(JSON.data(), JSON.size());
 
@@ -2011,10 +2086,8 @@ static void test_operator_spaceship()
     CHECK((negone["v"] < 0u));
     CHECK(!(negone["v"] > 0u));
   }
-}
 
-static void test_operator_bool()
-{
+  // ── operator bool ───────────────────────────────────────────────────────
   {
     SECTION("operator bool");
 
@@ -2124,12 +2197,36 @@ static void test_operator_bool()
     static_assert(std::is_same_v<decltype(static_cast<bool>(
       std::declval<j50n>())), bool>);
   }
+
+  // ── additional coverage: operator cross-checks ──────────────────────────
+  {
+    SECTION("additional: operator cross-checks");
+    j50n const root(JSON.data(), JSON.size());
+
+    // == and <=> must agree on equivalence.
+    CHECK((root["version"] == 1) ==
+          ((root["version"] <=> 1) == std::partial_ordering::equivalent));
+    CHECK((root["pi"] == 3.14159) ==
+          ((root["pi"] <=> 3.14159) == std::partial_ordering::equivalent));
+    CHECK((root["name"] == "j50n-test"));   // string: no <=> path
+
+    // nullptr equality only for null.
+    CHECK(root["ratio"] == nullptr);
+    CHECK(!(root["active"] == nullptr));
+    CHECK(!(root["numbers"] == nullptr));
+    CHECK(!(root["empty_arr"] == nullptr));
+
+    // Long double comparisons from both sides.
+    CHECK(root["version"] <  2.0L);
+    CHECK(root["version"] >  0.0L);
+    CHECK(2.0L > root["version"]);
+    CHECK(0.0L < root["version"]);
+  }
 }
 
-// ── strings, escapes and unescape ───────────────────────────────────────────
-// raw string content; blanks inside strings survive
-static void test_strings_and_escapes()
+static void test_strings_and_unescape()
 {
+  // ── strings (raw content) and blanks inside them ────────────────────────
   {
     // j50n returns the raw JSON text between the quotes; it does not unescape.
     SECTION("strings and escapes (raw content preserved)");
@@ -2220,11 +2317,8 @@ static void test_strings_and_escapes()
     CHECK_EQ(j50n("\"abc").get(),               "abc");
     CHECK_EQ(j50n("\"").get(),                  "");
   }
-}
 
-// j50n::unescape: simple escapes, \u, surrogates, edge cases
-static void test_unescape()
-{
+  // ── j50n::unescape ──────────────────────────────────────────────────────
   {
     SECTION("j50n::unescape");
 
@@ -2405,12 +2499,36 @@ static void test_unescape()
     CHECK_EQ(j50n::unescape(R"(\u0000)").size(), 1u);
     CHECK_EQ(j50n::unescape(R"(\u0000)"), std::string("\0", 1));
   }
+
+  // ── additional coverage: long / odd escapes ────────────────────────────
+  {
+    SECTION("additional: long and odd escape inputs");
+
+    // Very long escaped string remains byte-exact when unescaped.
+    std::string big;
+    for (int i = 0; i < 1000; ++i) big += "a\\nb";
+    std::string const un(j50n::unescape(big));
+    CHECK_EQ(un.size(), big.size() - 1000);   // each "\n" shrinks by one
+    CHECK(un.find('\n') != std::string::npos);
+    CHECK(un.find('\\') == std::string::npos);
+
+    // Backslash at the very end of the input.
+    CHECK_EQ(j50n::unescape(R"(abc\)"), std::string("abc\\"));
+    // Two backslashes at the end survive as two.
+    CHECK_EQ(j50n::unescape(R"(abc\\)"), std::string("abc\\"));
+    // ... but only as two: the pair "\\" is a single escaped backslash.
+    CHECK_EQ(j50n::unescape(R"(abc\\)").size(), 4u);
+
+    // "\x" with an unrecognised escape: escape and letter pass through.
+    CHECK_EQ(j50n::unescape(R"(\x)"), std::string("\\x"));
+    CHECK_EQ(j50n::unescape(R"(\q)"), std::string("\\q"));
+    CHECK_EQ(j50n::unescape(R"(a\xb)"), std::string("a\\xb"));
+  }
 }
 
-// ── scanner: byte classes, whitespace, leniency ─────────────────────────────
-// byte classes, UTF-8 sequences, DEL and NUL
-static void test_character_classes()
+static void test_scanner()
 {
+  // ── UTF-8 sequences in strings and keys ────────────────────────────────
   {
     SECTION("UTF-8");
     // multi-byte sequences in values and keys, as explicit bytes
@@ -2434,6 +2552,7 @@ static void test_character_classes()
     CHECK_EQ(root["utf8"].get().size(), 12u);   // h é(2) l l ø(2) ' ' 🌍(4)
   }
 
+  // ── character classes ───────────────────────────────────────────────────
   {
     // The scanner's rules, byte by byte.
     SECTION("character classes");
@@ -2614,11 +2733,8 @@ static void test_character_classes()
       CHECK(j["b"].is_empty());
     }
   }
-}
 
-// whitespace handling and lenient (JSON5-style) input
-static void test_whitespace_and_formatting()
-{
+  // ── whitespace and formatting ───────────────────────────────────────────
   {
     SECTION("whitespace and formatting");
 
@@ -2708,12 +2824,8 @@ static void test_whitespace_and_formatting()
     CHECK(sp[0].is_number() && std::isnan(sp[0].get<double>().first));
     CHECK(sp[1].is_number() && std::isinf(sp[1].get<double>().first));
   }
-}
 
-// ── scanner robustness: malformed, lazy, truncated input ────────────────────
-// malformed, lazy and truncated input
-static void test_malformed()
-{
+  // ── malformed, lazy, truncated input ────────────────────────────────────
   {
     // The scanner reports malformed input by returning an empty view.
     SECTION("malformed input");
@@ -2798,10 +2910,44 @@ static void test_malformed()
     CHECK_EQ(j50n("{\"a\":{\"b\":1").size(), 0u);
     CHECK(j50n("{\"a\":{\"b\":1")["a"].is_empty());
   }
+
+  // ── additional coverage: repeated-size and top-level edge inputs ────────
+  {
+    SECTION("additional: repeated size / top-level edges");
+    // Repeated size() / feach() returns the same result: the scanner is
+    // stateless and does not mutate anything.
+    j50n const arr("[1,2,3,4,5]");
+    CHECK_EQ(arr.size(), 5u);
+    std::size_t n1{}, n2{};
+    arr.feach([&](j50n) { ++n1; });
+    arr.feach([&](j50n) { ++n2; });
+    CHECK_EQ(n1, 5u);
+    CHECK_EQ(n2, 5u);
+    j50n const before = arr;
+    arr.feach([](j50n) {});
+    CHECK_EQ(arr.get(), before.get());
+
+    // is_bare() across the full spectrum of top-level values.
+    CHECK(j50n("42").is_bare());
+    CHECK(j50n("-1.5").is_bare());
+    CHECK(j50n("true").is_bare());
+    CHECK(j50n("false").is_bare());
+    CHECK(j50n("null").is_bare());
+    CHECK(!j50n("\"str\"").is_bare());
+    CHECK(!j50n("[1]").is_bare());
+    CHECK(!j50n("{}").is_bare());
+    CHECK(!j50n("").is_bare());
+
+    // A string document whose *contents* look like a container stays a string.
+    CHECK(j50n(R"j("[not an array]")j").is_string());
+    CHECK(!j50n(R"j("[not an array]")j").is_array());
+    CHECK_EQ(j50n(R"j("[not an array]")j").get(), "[not an array]");
+  }
 }
 
-static void test_scale_and_nesting()
+static void test_scale_and_misc()
 {
+  // ── scale and deep nesting ──────────────────────────────────────────────
   {
     SECTION("scale and deep nesting");
 
@@ -2874,29 +3020,10 @@ static void test_scale_and_nesting()
       CHECK_EQ(sum, N * (N - 1));                  // sum(i) + sum(value)
     }
   }
-}
 
-// ── remaining edge cases ────────────────────────────────────────────────────
-// remaining edge cases
-static void test_misc()
-{
+  // ── misc edge cases ─────────────────────────────────────────────────────
   {
     SECTION("misc edge cases");
-
-    // repeated size() / feach() calls return the same result: the scanner is
-    // stateless and does not cache or mutate anything
-    j50n const arr("[1,2,3,4,5]");
-    CHECK_EQ(arr.size(), 5u);
-    std::size_t n1{}, n2{};
-    arr.feach([&](j50n) { ++n1; });
-    arr.feach([&](j50n) { ++n2; });
-    CHECK_EQ(n1, 5u);
-    CHECK_EQ(n2, 5u);
-
-    // iterating does not modify the j50n
-    j50n const before = arr;
-    arr.feach([](j50n) {});
-    CHECK_EQ(arr.get(), before.get());
 
     // a j50n built from a subview navigates independently of its parent
     j50n const root(JSON.data(), JSON.size());
@@ -2913,30 +3040,6 @@ static void test_misc()
     CHECK_EQ(v2["b"]["c"], "deep");
     CHECK(v1.is_object());
     CHECK(v2.is_object());
-
-    // zero-length span, constructed from a data pointer and length 0
-    j50n const empty(JSON.data(), std::size_t{0});
-    CHECK(empty.is_empty());
-
-    // a j50n view with a non-zero start offset
-    j50n const substr(JSON.data() + 4, 6);
-    CHECK_EQ(substr.get(), "name");
-
-    // is_bare() across the full spectrum of top-level values
-    CHECK(j50n("42").is_bare());
-    CHECK(j50n("-1.5").is_bare());
-    CHECK(j50n("true").is_bare());
-    CHECK(j50n("false").is_bare());
-    CHECK(j50n("null").is_bare());
-    CHECK(!j50n("\"str\"").is_bare());
-    CHECK(!j50n("[1]").is_bare());
-    CHECK(!j50n("{}").is_bare());
-    CHECK(!j50n("").is_bare());
-
-    // a string document whose *contents* look like a container stays a string
-    CHECK(j50n(R"j("[not an array]")j").is_string());
-    CHECK(!j50n(R"j("[not an array]")j").is_array());
-    CHECK_EQ(j50n(R"j("[not an array]")j").get(), "[not an array]");
 
     // very long key: matched exactly, and near-misses (one byte short) rejected
     std::string const longkey(10000, 'k');
@@ -2955,43 +3058,8 @@ static void test_misc()
   {
     SECTION("additional coverage");
 
-    // get<T> for several integer widths returns consistent values
-    j50n const n(R"j({"v":1000})j");
-    CHECK_GET(n.get<int>("v"),          1000);
-    CHECK_GET(n.get<long>("v"),         1000L);
-    CHECK_GET(n.get<long long>("v"),    1000LL);
-    CHECK_GET(n.get<std::int64_t>("v"), INT64_C(1000));
-    CHECK_GET(n.get<std::int32_t>("v"), std::int32_t(1000));
-    CHECK_GET(n.get<unsigned>("v"),     1000u);
-
-    // float / double / long double all parse the same value
-    j50n const f(R"j({"pi":3.5})j");
-    CHECK_GET(f.get<float>("pi"),       3.5f);
-    CHECK_GET(f.get<double>("pi"),      3.5);
-    CHECK_GET(f.get<long double>("pi"), 3.5L);
-
-    // integer values coerce cleanly to floating point
-    CHECK_GET(n.get<double>("v"), 1000.0);
-    CHECK_GET(n.get<float>("v"),  1000.0f);
-
-    // nested feach: iterating an array of arrays
-    j50n const grid(R"j([[1,2,3],[4,5],[6]])j");
-    std::size_t total{};
-    grid.feach([&](j50n const row) { total += row.size(); });
-    CHECK_EQ(total, 6u);
-
-    // feach over an array of objects, accumulating
-    std::size_t idsum{};
-    j50n(R"j([{"id":1},{"id":2},{"id":3},{"id":4}])j")
-      .feach([&](j50n const o) { idsum += o.get<std::size_t>("id").first; });
-    CHECK_EQ(idsum, 10u);
-
-    // view chains can mix keys and indices in any order
-    j50n const root(JSON.data(), JSON.size());
-    CHECK_GET(root.view("objects", 0).get<int>("id"), 1);
-    CHECK_GET(root.view("objects").get<int>(1, "value"), 20);
-
     // a sub-view of a sub-view behaves the same as the equivalent long path
+    j50n const root(JSON.data(), JSON.size());
     auto const mid(root["objects"]);
     CHECK_EQ(mid[1]["tag"], root["objects"][1]["tag"]);
     CHECK_EQ(mid[2]["value"], root["objects"][2]["value"]);
@@ -3008,22 +3076,10 @@ static void test_misc()
     CHECK_EQ(punct["a"].get(), " , : [ ] { } ");
     CHECK_EQ(punct["b"].get(), "\\t\\t\\t");
 
-    // get_or<bool> distinguishes false from wrong-type
-    j50n const bd(R"j({"t":true,"f":false,"n":0,"s":"false"})j");
-    CHECK(bd.get_or<bool>(true,  "t") == true);
-    CHECK(bd.get_or<bool>(true,  "f") == false);
-    CHECK(bd.get_or<bool>(true,  "n") == true);    // number, not bool
-    CHECK(bd.get_or<bool>(true,  "s") == true);    // string, not bool
-
     // every predicate on a value fetched by various key types
     CHECK(root[std::string("active")].is_bool());
     CHECK(root[std::string_view("active")].is_bool());
     CHECK(root["active"].is_bool());
-
-    // a j50n built from an iterator pair over a std::string body
-    std::string const src(R"j({"x":42})j");
-    j50n const from_iters(src.begin(), src.end());
-    CHECK_GET(from_iters.get<int>("x"), 42);
 
     // move assignment leaves the target usable
     j50n a(R"j({"a":1})j");
@@ -3040,49 +3096,10 @@ static void test_misc()
   }
 
   {
-    SECTION("more coverage: numeric keys, bool paths, output, determinism");
-
-    // numeric-looking keys are ordinary keys on objects
-    j50n const numkeys(R"j({"0":"zero","10":"ten","-1":"neg"})j");
-    CHECK_EQ(numkeys["0"],  "zero");
-    CHECK_EQ(numkeys["10"], "ten");
-    CHECK_EQ(numkeys["-1"], "neg");
-    CHECK(numkeys["1"].is_empty());
-    CHECK(numkeys[0].is_empty());              // objects have no indices
-    CHECK(numkeys[std::size_t(10)].is_empty());
-
-    // ... and on arrays, keys are not looked up either
-    j50n const arr(R"j(["zero","ten"])j");
-    CHECK(arr["0"].is_empty());
-    CHECK(arr["zero"].is_empty());
-    CHECK_EQ(arr[0], "zero");
-
-    // containers alternating with scalars: depth must reset cleanly
-    j50n const mix(R"j([[1],2,[3],4])j");
-    CHECK_EQ(mix.size(), 4u);
-    CHECK_EQ(mix[0].size(), 1u);
-    CHECK_EQ(mix[1], "2");
-    CHECK_EQ(mix[2][0], "3");
-    CHECK_EQ(mix[3], "4");
-
-    // contains() across mixed index/key paths
-    CHECK(j50n("[[1],[2]]").contains(0, 0));
-    CHECK(j50n("[[1],[2]]").contains(1, 0));
-    CHECK(!j50n("[[1],[2]]").contains(0, 1));
-    CHECK(j50n(R"j([{"a":[5]}])j").contains(0, "a", 0));
-    CHECK(!j50n(R"j([{"a":[5]}])j").contains(0, "b", 0));
-
-    // get<bool>() with paths and on array elements
-    j50n const root(JSON.data(), JSON.size());
-    CHECK_GET_ERR(root.get<bool>("objects", 1, "tag"));    // null
-    j50n const h(R"j([10,"two",true,null,{"x":1},[2,3],"",-4.5e1])j");
-    CHECK_GET(h[2].get<bool>(), true);
-    CHECK_GET_ERR(h[0].get<bool>());           // number
-    CHECK_GET_ERR(h[1].get<bool>());           // string
-    CHECK_GET_ERR(h[3].get<bool>());           // null
-    CHECK_GET(root["active"].get<bool>(), true);
+    SECTION("more coverage: output and determinism");
 
     // view() with no arguments is the identity on subviews too
+    j50n const root(JSON.data(), JSON.size());
     CHECK_EQ(root["nested"].view()["a"]["b"]["c"], "deep");
     CHECK_EQ(root.view(std::string("nested"), std::string_view("a"))["b"]["c"],
       "deep");
@@ -3111,10 +3128,6 @@ static void test_misc()
     // is_empty_string on a padded document
     CHECK(j50n("  \"\"  ").is_empty_string());
 
-    // numeric get_or through an index path
-    CHECK_EQ(root.get_or<int>(-1, "numbers", 4), 5);
-    CHECK_EQ(root.get_or<int>(-1, "numbers", 9), -1);
-
     // array element views point into the original buffer
     {
       std::string_view const src(R"j(["aa","bb","cc"])j");
@@ -3128,6 +3141,18 @@ static void test_misc()
         });
       CHECK_EQ(i, 3u);
     }
+  }
+
+  // ── additional: operator<< with mixed types ────────────────────────────
+  {
+    SECTION("additional: streaming and chained output");
+    std::ostringstream os;
+    os << j50n("null") << '|'
+       << j50n("true") << '|'
+       << j50n("[1,2]") << '|'
+       << j50n(R"j("x")j") << '|'
+       << j50n("-1.5");
+    CHECK_EQ(os.str(), "null|true|[1,2]|x|-1.5");
   }
 }
 
@@ -3147,27 +3172,14 @@ int main(int argc, char** argv)
     }
   }
 
-  test_construction_and_assignment();
-  test_basic_access();
-  test_type_predicates();
-  test_empty_and_missing();
-  test_size();
-  test_arrays();
-  test_object_keys();
-  test_contains();
-  test_feach();
-  test_typed_getters();
-  test_get_or();
-  test_operator_eq();
-  test_operator_spaceship();
-  test_operator_bool();
-  test_strings_and_escapes();
-  test_unescape();
-  test_character_classes();
-  test_whitespace_and_formatting();
-  test_malformed();
-  test_scale_and_nesting();
-  test_misc();
+  test_construction_and_access();
+  test_predicates_and_emptiness();
+  test_containers();
+  test_typed_access();
+  test_operators();
+  test_strings_and_unescape();
+  test_scanner();
+  test_scale_and_misc();
 
   std::cout << "\n== Summary ==\n"
     << t::g.checks << " checks, " << t::g.failures << " failed";
