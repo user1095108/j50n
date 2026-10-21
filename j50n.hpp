@@ -97,8 +97,8 @@ class j50n
               break;
           }
 
-          if (((b >= 0xE0u) && (end == ++p || (*p & 0xC0) != 0x80)) ||
-            ((b >= 0xF0u) && (end == ++p || (*p & 0xC0) != 0x80))) break;
+          if ((b >= 0xE0u) && (end == ++p || (*p & 0xC0) != 0x80)) break;
+          else if ((b >= 0xF0u) && (end == ++p || (*p & 0xC0) != 0x80)) break;
         }
 
       return {};
