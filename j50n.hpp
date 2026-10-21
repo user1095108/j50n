@@ -69,18 +69,19 @@ class j50n
       return range<'0', '9'>(c) || range<'A', 'F'>(c) || range<'a', 'f'>(c);
     }
 
-    static char const* str_end(char const* p, char const* const end) noexcept
+    static char const* str_end(auto i, decltype(i) const end) noexcept
     {
-      for (; end != p; ++p)
-        if (auto const b((unsigned char)*p); '"' == b) [[unlikely]]
-          return p;
+      for (; end != i; ++i)
+        if (auto const b((unsigned char)*i); '"' == b) [[unlikely]]
+          return i;
         else if ('\\' == b) [[unlikely]]
         {
-          if ((end == ++p) ||
-            !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
+          if ((end == ++i) ||
+            !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i))
             break;
-          else if (('u' == *p) && (end - p < 5 || !is_hex(*++p) ||
-            !is_hex(*++p) || !is_hex(*++p) || !is_hex(*++p))) break;
+          else if (('u' == *i) && ((++i == end) || !is_hex(*i) ||
+            (++i == end) || !is_hex(*i) || (++i == end) || !is_hex(*i) ||
+            (++i == end) || !is_hex(*i))) break;
         } // 0x7F (DEL) is allowed unescaped per RFC 8259
         else if (!range<32, 127>(b)) // not printable ASCII (incl. 0x7F)
         {
@@ -92,23 +93,23 @@ class j50n
             unsigned char const hi(0xEDu == b ? 0x9Fu :
               0xF4u == b ? 0x8Fu : 0xBFu);
 
-            if (end == ++p || (unsigned char)*p < lo ||
-              (unsigned char)*p > hi)
+            if (end == ++i || (unsigned char)*i < lo ||
+              (unsigned char)*i > hi)
               break;
           }
 
-          if (((b >= 0xE0u) && (end == ++p || (*p & 0xC0) != 0x80)) ||
-            ((b >= 0xF0u) && (end == ++p || (*p & 0xC0) != 0x80))) break;
+          if (((b >= 0xE0u) && (end == ++i || (*i & 0xC0) != 0x80)) ||
+            ((b >= 0xF0u) && (end == ++i || (*i & 0xC0) != 0x80))) break;
         }
 
       return {};
     }
 
-    static char const* bare_end(char const* p, char const* const end) noexcept
+    static char const* bare_end(auto i, decltype(i) const end) noexcept
     {
-      for (; end != p; ++p)
-        if (any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*p)) return p;
-        else if (!range<32, 126>(*p)) return {};
+      for (; end != i; ++i)
+        if (any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*i)) return i;
+        else if (!range<32, 126>(*i)) return {};
 
       return end;
     }
@@ -118,32 +119,36 @@ class j50n
       char const *start{}, *end(s.data() + s.size());
       unsigned depth{};
 
-      for (auto p(s.data()); end != p; ++p)
-        if (any_of<' ', '\t', '\r', '\n', ':', ','>(*p))
-          continue;
-        else if (any_of<'[', '{'>(*p))
+      for (auto i(s.data()); end != i;)
+        if (any_of<' ', '\t', '\r', '\n', ':', ','>(*i))
         {
-          if (depth++ == 1) start = p;
+          ++i; continue;
         }
-        else if (any_of<']', '}'>(*p))
+        else if (any_of<'[', '{'>(*i))
+        {
+          if (depth++ == 1) start = i;
+          ++i;
+        }
+        else if (any_of<']', '}'>(*i))
         {
           if (!depth) return;
           else if (--depth == 1 && start)
           {
-            if (cb(start, p, true)) return;
+            if (cb(start, i, true)) return;
             start = {};
           }
+          ++i;
         }
         else
         { // delimit token
-          auto const e(('"' == *p) ? str_end(p + 1, end) :
-            ('-' == *p || range<'0', '9'>(*p) || range<'A', 'Z'>(*p) ||
-            range<'a', 'z'>(*p) ? bare_end(p, end) : nullptr));
+          auto const e(('"' == *i) ? str_end(i + 1, end) :
+            ('-' == *i || range<'0', '9'>(*i) || range<'A', 'Z'>(*i) ||
+            range<'a', 'z'>(*i) ? bare_end(i, end) : nullptr));
 
-          if (!e || (depth == 1 && cb(p, e, '"' == *p)) || (end == e))
+          if (!e || (depth == 1 && cb(i, e, '"' == *i)) || (end == e))
             return;
 
-          p = e - ('"' != *p);
+          i = e + ('"' == *i);
         }
     }
 
