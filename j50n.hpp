@@ -75,9 +75,9 @@ class j50n
             !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
             break;
         } // 0x7F (DEL) is allowed unescaped per RFC 8259
-        else if (!range<32, 127>(b))
+        else if (!range<32, 127>(b) // not printable ASCII (incl. 0x7F)
         {
-          if (!range<0xc2, 0xf4>(b)) break;
+          if (!range<0xc2, 0xf4>(b)) break; // not a UTF-8 lead: invalid
 
           {
             unsigned char const lo(0xE0u == b ? 0xA0u :
