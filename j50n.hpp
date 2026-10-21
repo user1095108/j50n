@@ -77,20 +77,25 @@ class j50n
         else if ('\\' == b) [[unlikely]]
         {
           if (end == ++i ||
-            !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i) ||
-            ('u' == *i && ((++i == end) || !is_hex(*i) ||
+            !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i))
+            break;
+
+          if (('u' == *i) && ((++i == end) || !is_hex(*i) ||
             (++i == end) || !is_hex(*i) || (++i == end) || !is_hex(*i) ||
-            (++i == end) || !is_hex(*i))))
+            (++i == end) || !is_hex(*i)))
             break;
         } // 0x7F (DEL) is allowed unescaped per RFC 8259
         else if (!range<32, 127>(b)) // not printable ASCII (incl. 0x7F)
         {
-          if (!range<0xc2, 0xf4>(b) || end == ++i ||
-            (unsigned char)*i < (0xE0u == b ? 0xA0u :
-              0xF0u == b ? 0x90u : 0x80u) ||
-            (unsigned char)*i > (0xEDu == b ? 0x9Fu :
-              0xF4u == b ? 0x8Fu : 0xBFu) ||
-            ((b >= 0xE0u) && (end == ++i || (*i & 0xC0) != 0x80)) ||
+          if (!range<0xc2, 0xf4>(b))
+            break; // not a UTF-8 lead: invalid
+
+          if (end == ++i || (unsigned char)*i < (0xE0u == b ? 0xA0u :
+            0xF0u == b ? 0x90u : 0x80u) || (unsigned char)*i >
+            (0xEDu == b ? 0x9Fu : 0xF4u == b ? 0x8Fu : 0xBFu))
+            break;
+
+          if (((b >= 0xE0u) && (end == ++i || (*i & 0xC0) != 0x80)) ||
             ((b >= 0xF0u) && (end == ++i || (*i & 0xC0) != 0x80)))
             break;
         }
