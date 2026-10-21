@@ -1113,10 +1113,10 @@ static void test_unescape()
     CHECK(s[0] == 'a' && s[1] == '\0' && s[2] == 'b');
   }
 
-  // Malformed \u falls through to the literal remainder.
+  // Malformed \u does not fall through to the literal remainder.
   j50n const bad(R"j({"a":"\uZZZZ","b":"\u12"})j");
-  CHECK_EQ(j50n::unescape(bad["a"].get()), R"(\uZZZZ)");
-  CHECK_EQ(j50n::unescape(bad["b"].get()), R"(\u12)");
+  CHECK_EQ(j50n::unescape(bad["a"].get()), R"()");
+  CHECK_EQ(j50n::unescape(bad["b"].get()), R"()");
 
   // Lone surrogate: three-byte CESU-8-style encoding.
   j50n const lone(R"j({"s":"\ud800"})j");
