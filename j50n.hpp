@@ -57,17 +57,11 @@ class j50n
       return ndx;
     }
 
-    template <typename U>
-    static consteval unsigned char uc(U const val) noexcept
-    {
-      return static_cast<unsigned char>(val);
-    }
-
     template <auto lo, decltype(lo) hi>
     static constexpr bool range(auto const c) noexcept
     {
       static_assert(lo <= hi, "range bounds must be ordered");
-      return c >= lo && c <= hi;
+      return c >= decltype(c)(lo) && c <= decltype(c)(hi);
     }
 
     static char const* str_end(char const* p, char const* const end) noexcept
@@ -81,9 +75,9 @@ class j50n
             !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*p))
             break;
         } // 0x7F (DEL) is allowed unescaped per RFC 8259
-        else if (!range<uc(32), uc(127)>(b))
+        else if (!range<32, 127>(b))
         {
-          if ((b - 0xC2u) > 0x32u) break;
+          if (!range<0xc2, 0xf4>(b)) break;
 
           {
             unsigned char const lo(b == 0xE0 ? 0xA0 :
@@ -108,7 +102,7 @@ class j50n
     {
       for (; end != p; ++p)
         if (any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*p)) return p;
-        else if (!range<uc(32), uc(126)>((unsigned char)*p)) return {};
+        else if (!range<32, 126>(*p)) return {};
 
       return end;
     }
