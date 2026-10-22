@@ -553,12 +553,12 @@ public:
             }
           }
 
-          unsigned const n(1 + (u >= 0x80) + (u >= 0x800) + (u >= 0x10000));
+          unsigned const n((u >= 0x80) + (u >= 0x800) + (u >= 0x10000));
           char b[4];
-          for (auto p(&b[n - 1]); b != p; --p, u >>= 6)
+          for (auto p(&b[n]); b != p; --p, u >>= 6)
             *p = char(0x80 | (u & 0x3F));
-          *b = char(u | (n > 1 ? 0xFFu << (8 - n) : 0u));
-          r.append(b, n);
+          *b = char(u | (n ? 0xFFu << (7 - n) : 0u));
+          r.append(b, n + 1);
 
           break;
         }
