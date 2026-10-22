@@ -116,15 +116,12 @@ class j50n
       char const *start{}, *end(s.data() + s.size());
       unsigned depth{};
 
-      for (auto i(s.data()); end != i;)
+      for (auto i(s.data()); end != i; ++i)
         if (any_of<' ', '\t', '\r', '\n', ':', ','>(*i))
-        {
-          ++i; continue;
-        }
+          continue;
         else if (any_of<'[', '{'>(*i))
         {
-          if (depth++ == 1) start = i;
-          ++i;
+          if (1 == depth++) start = i;
         }
         else if (any_of<']', '}'>(*i))
         {
@@ -134,7 +131,6 @@ class j50n
             if (cb(start, i, true)) return;
             start = {};
           }
-          ++i;
         }
         else
         { // delimit token
@@ -145,7 +141,7 @@ class j50n
           if (!e || (1 == depth && cb(i, e, '"' == *i)) || (end == e))
             return;
 
-          i = e + ('"' == *i);
+          i = e - ('"' != *i);
         }
     }
 
