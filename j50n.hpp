@@ -504,15 +504,6 @@ public:
     std::string r;
     r.reserve(sv.size());
 
-    auto const utf8 = [&](unsigned cp)
-      {
-        int const n = cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
-        char b[4];
-        for (int i = n - 1; i > 0; --i, cp >>= 6) b[i] = char(0x80 | (cp & 0x3F));
-        b[0] = char(cp | (n > 1 ? (0xFF << (8 - n)) & 0xFF : 0));
-        r.append(b, n);
-      };
-
     auto const hex4 = [](auto& p) noexcept
       {
         unsigned v{};
@@ -566,7 +557,13 @@ public:
               }
             }
           }
-          utf8(u);
+
+          int const n = u < 0x80 ? 1 : u < 0x800 ? 2 : u < 0x10000 ? 3 : 4;
+          char b[4];
+          for (int i = n - 1; i > 0; --i, u >>= 6) b[i] = char(0x80 | (u & 0x3F));
+          b[0] = char(u | (n > 1 ? (0xFF << (8 - n)) & 0xFF : 0));
+          r.append(b, n);
+
           break;
         }
 
