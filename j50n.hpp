@@ -138,7 +138,7 @@ class j50n
         }
         else
         { // delimit token
-          auto const e(('"' == *i) ? str_end(i + 1, end) :
+          auto const e('"' == *i ? str_end(i + 1, end) :
             ('-' == *i || range<'0', '9'>(*i) || range<'A', 'Z'>(*i) ||
             range<'a', 'z'>(*i) ? bare_end(i, end) : nullptr));
 
