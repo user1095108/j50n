@@ -544,14 +544,9 @@ public:
 
           if (unsigned hi(cp - 0xD800); hi < 0x400 && end - p >= 6 &&
             p[0] == '\\' && p[1] == 'u')
-          {
-            if (auto [lo, ok](hex4(p + 2));
-              ok && unsigned(lo - 0xDC00) < 0x400)
-            {
-              u = 0x10000 + (hi << 10) + (lo - 0xDC00);
-              p += 6;
-            }
-          }
+            if (auto [lo, ok](hex4(p + 2)); ok &&
+              unsigned(lo - 0xDC00) < 0x400)
+              u = 0x10000 + (hi << 10) + (lo - 0xDC00), p += 6;
 
           unsigned const n((u >= 0x80) + (u >= 0x800) + (u >= 0x10000));
           char b[4];
