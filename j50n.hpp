@@ -138,7 +138,7 @@ class j50n
             ('-' == *i || range<'0', '9'>(*i) || range<'A', 'Z'>(*i) ||
             range<'a', 'z'>(*i) ? bare_end(i, end) : nullptr));
 
-          if (!e || (1 == depth && cb(i, e, '"' == *i)) || (end == e))
+          if (!e || (1 == depth && cb(i, e, '"' == *i)) || end == e)
             return;
 
           i = e - ('"' != *i);
