@@ -126,7 +126,7 @@ class j50n
         else if (any_of<']', '}'>(*i))
         {
           if (!depth) return;
-          else if (--depth == 1 && start)
+          else if (--depth == 1)
           {
             if (cb(start, i, true)) return;
             start = {};
