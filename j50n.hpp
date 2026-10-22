@@ -80,9 +80,8 @@ class j50n
             !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i))
             break;
 
-          if (('u' == *i) && ((++i == end) || !is_hex(*i) ||
-            (++i == end) || !is_hex(*i) || (++i == end) || !is_hex(*i) ||
-            (++i == end) || !is_hex(*i)))
+          if ('u' == *i && (end - i < 5 || !is_hex(*++i) || !is_hex(*++i) ||
+            !is_hex(*++i) || !is_hex(*++i)))
             break;
         } // 0x7F (DEL) is allowed unescaped per RFC 8259
         else if (!range<32, 127>(b)) // not printable ASCII (incl. 0x7F)
