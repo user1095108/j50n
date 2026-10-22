@@ -521,10 +521,9 @@ public:
 
     for (auto p(sv.data()); end != p;)
     {
-      char const c(*p++);
-      if ('\\' != c || p == end) { r += c; continue; }
+      if (auto const c(*p++); '\\' != c || p == end) { r += c; continue; }
 
-      switch (char const e(*p++); e)
+      switch (auto const e(*p++); e)
       {
         case '"':  r += '"';  break;
         case '\\': r += '\\'; break;
