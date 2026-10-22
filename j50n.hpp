@@ -328,7 +328,7 @@ public:
 
     if constexpr(!std::is_same_v<bool, std::remove_cv_t<decltype(a)>>)
       if (auto const [x, err](get<double>()); !err)
-        return x <=> a;
+        return x <=> double(a);
 
     return std::partial_ordering::unordered;
   }
@@ -354,7 +354,7 @@ public:
       return false;
     else if ('"' == s_.front()) return !get().empty();
     else if (auto const [v, err](get<double>()); !err)
-      return v;
+      return bool(v);
     else 
       return !S::any_of<'[', '{'>(s_.front()) || size();
   }
@@ -509,9 +509,9 @@ public:
         unsigned v{};
 
         for (auto const end(p + 4); end != p; ++p)
-          if (v <<= 4; S::range<'0', '9'>(*p)) v |= (*p - '0');
-          else if (S::range<'a', 'f'>(*p)) v |= *p - 'a' + 10;
-          else if (S::range<'A', 'F'>(*p)) v |= *p - 'A' + 10;
+          if (v <<= 4; S::range<'0', '9'>(*p)) v |= unsigned(*p - '0');
+          else if (S::range<'a', 'f'>(*p)) v |= unsigned(*p - 'a' + 10);
+          else if (S::range<'A', 'F'>(*p)) v |= unsigned(*p - 'A' + 10);
           else return std::pair(v, false);
 
         return std::pair(v, true);
@@ -557,7 +557,7 @@ public:
           char b[4];
           for (auto p(&b[n - 1]); b != p; --p, u >>= 6)
             *p = char(0x80 | (u & 0x3F));
-          *b = char(u | (n > 1 ? (0xFF << (8 - n)) & 0xFF : 0));
+          *b = char(u | (n > 1 ? 0xFFu << (8 - n) : 0u));
           r.append(b, n);
 
           break;
