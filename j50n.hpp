@@ -504,7 +504,7 @@ public:
     std::string r;
     r.reserve(sv.size());
 
-    auto const hex4 = [](auto& p) noexcept
+    auto const hex4 = [](auto&& p) noexcept
       {
         unsigned v{};
 
@@ -540,27 +540,24 @@ public:
           auto const [cp, ok] = hex4(p);
           if (!ok) { p = p0; (r += '\\') += 'u'; break; }
 
-          unsigned u = cp;
-          if (cp >= 0xD800 && cp <= 0xDFFF)
+          unsigned u(unsigned(cp - 0xD800) < 0x800 ? 0xFFFD : cp);
+
+          if (unsigned hi(cp - 0xD800); hi < 0x400 && end - p >= 6 &&
+            p[0] == '\\' && p[1] == 'u')
           {
-            u = 0xFFFD;
-            if (cp <= 0xDBFF && end - p >= 6 &&
-                *p == '\\' && *(p + 1) == 'u')
+            if (auto [lo, ok](hex4(p + 2));
+              ok && unsigned(lo - 0xDC00) < 0x400)
             {
-              auto q = p + 2;
-              auto const [lo, ok2] = hex4(q);
-              if (ok2 && lo >= 0xDC00 && lo <= 0xDFFF)
-              {
-                u = 0x10000u + ((cp - 0xD800u) << 10) + (lo - 0xDC00u);
-                p += 6;
-              }
+              u = 0x10000 + (hi << 10) + (lo - 0xDC00);
+              p += 6;
             }
           }
 
-          int const n = u < 0x80 ? 1 : u < 0x800 ? 2 : u < 0x10000 ? 3 : 4;
+          unsigned const n(1 + (u >= 0x80) + (u >= 0x800) + (u >= 0x10000));
           char b[4];
-          for (int i = n - 1; i > 0; --i, u >>= 6) b[i] = char(0x80 | (u & 0x3F));
-          b[0] = char(u | (n > 1 ? (0xFF << (8 - n)) & 0xFF : 0));
+          for (auto p(&b[n - 1]); b != p; --p, u >>= 6)
+            *p = char(0x80 | (u & 0x3F));
+          *b = char(u | (n > 1 ? (0xFF << (8 - n)) & 0xFF : 0));
           r.append(b, n);
 
           break;
