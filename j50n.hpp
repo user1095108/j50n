@@ -548,14 +548,15 @@ public:
               unsigned(lo - 0xDC00) < 0x400)
               u = 0x10000 + (hi << 10) + (lo - 0xDC00), p += 6;
 
-          unsigned char const n((u >= 0x80) + (u >= 0x800) + (u >= 0x10000));
-          switch (char b[4]; n)
+          switch (unsigned char const n((u >= 0x80) + (u >= 0x800) +
+            (u >= 0x10000)); n)
           {
+            char b[4];
             case 3: b[3] = char(0x80 | (u & 0x3F)); u >>= 6; [[fallthrough]];
             case 2: b[2] = char(0x80 | (u & 0x3F)); u >>= 6; [[fallthrough]];
             case 1: b[1] = char(0x80 | (u & 0x3F)); u >>= 6; [[fallthrough]];
             case 0: b[0] = char(u | (n ? 0xFFu << (7 - n) : 0));
-            r.append(b, n + 1);
+                    r.append(b, n + 1);
           }
 
           break;
