@@ -550,13 +550,13 @@ public:
 
           if (u < 0x80u) r += char(u);
           else
-            switch (unsigned char const n((u >= 0x800u) + (u >= 0x10000u)); n)
+            switch (unsigned const n((u >= 0x800u) + (u >= 0x10000u)); n)
             {
               char b[4];
-              case 2: b[3] = char(0x80 | (u & 0x3F)); u >>= 6;[[fallthrough]];
-              case 1: b[2] = char(0x80 | (u & 0x3F)); u >>= 6;[[fallthrough]];
-              default: b[1] = char(0x80 | (u & 0x3F)); u >>= 6;
-                       *b   = char(u | (0xFFu << (6 - n)));
+              case 2: b[3] = char(0x80 | (u & 0x3F)), u >>= 6;[[fallthrough]];
+              case 1: b[2] = char(0x80 | (u & 0x3F)), u >>= 6;[[fallthrough]];
+              default: b[1] = char(0x80 | (u & 0x3F));
+                       *b   = char(~0x3Fu >> n | u >> 6);
                        r.append(b, n + 2);
             }
 
