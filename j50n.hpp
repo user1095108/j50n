@@ -549,7 +549,7 @@ public:
               u = 0x10000 + (hi << 10) + (lo - 0xDC00), p += 6;
 
           if (u < 0x80u) r += char(u);
-          else
+          else [[unlikely]]
             switch (unsigned char const n((u >= 0x800u) + (u >= 0x10000u)); n)
             {
               char b[4];
