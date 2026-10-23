@@ -535,10 +535,10 @@ public:
         case 't':  r += '\t'; break;
         case 'u':
         {
-          if (end - p < 4) { (r += '\\') += 'u'; break; }
+          if (end - p < 4) { r.append({'\\', 'u'}); break; }
           auto const p0 = p;
           auto const [cp, ok] = hex4(p);
-          if (!ok) { p = p0; (r += '\\') += 'u'; break; }
+          if (!ok) { p = p0; r.append({'\\', 'u'}); break; }
 
           unsigned u(unsigned(cp - 0xD800) < 0x800 ? 0xFFFD : cp);
 
@@ -548,18 +548,21 @@ public:
               unsigned(lo - 0xDC00) < 0x400)
               u = 0x10000 + (hi << 10) + (lo - 0xDC00), p += 6;
 
-          unsigned const n((u >= 0x80) + (u >= 0x800) + (u >= 0x10000));
-          char b[4];
-          for (auto p(&b[n]); b != p; --p, u >>= 6)
-            *p = char(0x80 | (u & 0x3F));
-          *b = char(u | (n ? 0xFFu << (7 - n) : 0u));
-          r.append(b, n + 1);
+          unsigned char const n((u >= 0x80) + (u >= 0x800) + (u >= 0x10000));
+          switch (char b[4]; n)
+          {
+            case 3: b[3] = char(0x80 | (u & 0x3F)); u >>= 6; [[fallthrough]];
+            case 2: b[2] = char(0x80 | (u & 0x3F)); u >>= 6; [[fallthrough]];
+            case 1: b[1] = char(0x80 | (u & 0x3F)); u >>= 6; [[fallthrough]];
+            case 0: b[0] = char(u | (n ? 0xFFu << (7 - n) : 0));
+            r.append(b, n + 1);
+          }
 
           break;
         }
 
         default:
-          (r += '\\') += e;
+          r.append({'\\', e});
           break;
       }
     }
