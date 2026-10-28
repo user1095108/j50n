@@ -521,7 +521,7 @@ public:
 
     for (auto p(sv.data()); end != p;)
     {
-      if (auto const c(*p++); '\\' != c || p == end) { r += c; continue; }
+      if (auto const c(*p++); '\\' != c || end == p) { r += c; continue; }
 
       switch (auto const e(*p++); e)
       {
@@ -557,7 +557,7 @@ public:
               case 1: b[2] = char(0x80 | (u & 0x3F)), u >>= 6;[[fallthrough]];
               default: b[1] = char(0x80 | (u & 0x3F));
                        *b   = char(~0x3Fu >> n | u >> 6);
-                       r.append(b, n + 2);
+                       r.append(b, n + 2u);
             }
 
           break;
