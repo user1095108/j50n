@@ -565,7 +565,6 @@ public:
 
         default:
           r.append({'\\', e});
-          break;
       }
     }
 
