@@ -153,8 +153,8 @@ class j50n
       std::string_view val;
 
       each_item(s,
-        [&, expecting_key = false, key_found = false](char const* const p,
-          char const* const e, bool const incl) mutable noexcept -> bool
+        [&, expecting_key = false, key_found = false](auto const p,
+          auto const e, bool const incl) mutable noexcept -> bool
         {
           if ((expecting_key = !expecting_key))
           {
@@ -183,8 +183,7 @@ class j50n
       std::string_view val;
 
       each_item(s,
-        [&](char const* const p, char const* const e,
-          bool const incl) noexcept -> bool
+        [&](auto const p, auto const e, bool const incl) noexcept -> bool
         {
           return index ? --index, false :
             (val = {p, size_type(e - p) + incl}, true);
@@ -215,7 +214,7 @@ class j50n
       if (s.empty() || '[' != s.front()) return; // arrays only
 
       each_item(s,
-        [&, i = std::size_t{}](char const* const p, char const* const e,
+        [&, i = std::size_t{}](auto const p, auto const e,
           bool const incl) mutable
           noexcept(feach_noexcept<decltype(f)>()) -> bool
           {
@@ -238,7 +237,7 @@ class j50n
 
       each_item(s,
         [&, expecting_key = false, key = std::string_view()](
-          char const* const p, char const* const e, bool const incl) mutable
+          auto const p, auto const e, bool const incl) mutable
           noexcept(noexcept(f(std::declval<std::string_view>(),
             std::declval<j50n>()))) -> bool
           {
