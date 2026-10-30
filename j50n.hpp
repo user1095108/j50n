@@ -542,9 +542,9 @@ public:
 
           unsigned u(unsigned(cp - 0xD800) < 0x800 ? 0xFFFD : cp);
 
-          if (unsigned hi(cp - 0xD800); hi < 0x400 && end - p >= 6 &&
+          if (unsigned const hi(cp - 0xD800); hi < 0x400 && end - p >= 6 &&
             p[0] == '\\' && p[1] == 'u')
-            if (auto [lo, ok](hex4(p + 2)); ok &&
+            if (auto const [lo, ok](hex4(p + 2)); ok &&
               unsigned(lo - 0xDC00) < 0x400)
               u = 0x10000 + (hi << 10) + (lo - 0xDC00), p += 6;
 
