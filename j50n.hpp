@@ -128,15 +128,8 @@ class j50n
           if (!depth) return;
           else if (--depth == 1)
           {
-            switch (*i)
-            {
-              case ']': if ('[' != *start) return;
-                break;
-              case '}': if ('{' != *start) return;
-                break;
-              default:;
-            }
-            if (cb(start, i, true)) return;
+            if (auto const expected(']' == *i ? '[' : '{');
+              expected != *start || cb(start, i, true)) return;
             start = {};
           }
         }
