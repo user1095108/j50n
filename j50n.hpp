@@ -128,8 +128,7 @@ class j50n
           if (!depth) return;
           else if (--depth == 1)
           {
-            if (auto const expected(']' == *i ? '[' : '{');
-              expected != *start || cb(start, i, true)) return;
+            if ((']' == *i? '[': '{') != *start || cb(start, i, true)) return;
             start = {};
           }
         }
