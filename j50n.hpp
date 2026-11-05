@@ -352,7 +352,7 @@ public:
       return false;
     else if (auto const [v, err](get<double>()); !err)
       return bool(v);
-    else 
+    else
       return !S::any_of<'[', '{'>(s_.front()) || size();
   }
 
