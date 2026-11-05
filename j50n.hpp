@@ -348,9 +348,8 @@ public:
 
   [[nodiscard]] explicit operator bool() const noexcept
   {
-    if (is_empty() || is_null() || S::any_of<"false">(s_))
+    if (is_empty() || is_null() || is_empty_string() || is_false())
       return false;
-    else if ('"' == s_.front()) return !get().empty();
     else if (auto const [v, err](get<double>()); !err)
       return bool(v);
     else 
@@ -395,6 +394,11 @@ public:
     return S::any_of<"\"\"">(s_);
   }
 
+  [[nodiscard]] bool is_false() const noexcept
+  {
+    return S::any_of<"false">(s_);
+  }
+
   [[nodiscard]] bool is_object() const noexcept
   {
     return !s_.empty() && ('{' == s_.front());
@@ -413,6 +417,11 @@ public:
   [[nodiscard]] bool is_number() const noexcept
   {
     return !get<double>().second;
+  }
+
+  [[nodiscard]] bool is_true() const noexcept
+  {
+    return S::any_of<"true">(s_);
   }
 
   //
