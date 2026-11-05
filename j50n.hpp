@@ -309,16 +309,23 @@ public:
   }
 
   //
-  bool operator==(j50n const o) const noexcept { return s_ == o.s_; }
-  bool operator==(std::nullptr_t) const noexcept { return is_null(); }
+  [[nodiscard]] bool operator==(j50n const o) const noexcept
+  {
+    return s_ == o.s_;
+  }
 
-  bool operator==(auto const a) const noexcept
+  [[nodiscard]] bool operator==(std::nullptr_t) const noexcept
+  {
+    return is_null();
+  }
+
+  [[nodiscard]] bool operator==(auto const a) const noexcept
     requires std::is_arithmetic_v<decltype(a)>
   {
     return *this <=> a == 0;
   }
 
-  std::partial_ordering operator<=>(auto const a) const noexcept
+  [[nodiscard]] std::partial_ordering operator<=>(auto const a) const noexcept
     requires(std::is_arithmetic_v<decltype(a)>)
   {
     if (auto const [x, err](get<decltype(a)>()); !err)
@@ -332,13 +339,13 @@ public:
   }
 
   template <std::size_t N>
-  bool operator==(char const(&a)[N]) const
+  [[nodiscard]] bool operator==(char const(&a)[N]) const
     noexcept(noexcept(operator==(std::string_view(a, N - 1))))
   {
     return operator==(std::string_view(a, N - 1));
   }
 
-  bool operator==(std::string_view const v) const
+  [[nodiscard]] bool operator==(std::string_view const v) const
   {
     if (!is_string()) return false;
 
