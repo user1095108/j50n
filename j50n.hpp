@@ -7,6 +7,7 @@
 #include <compare> // std::partial_ordering
 #include <ostream> // operator<<()
 #include <string_view>
+#include <tuple> // std::ignore
 #include <type_traits>
 #include <utility> // std::forward()
 
@@ -53,7 +54,7 @@ class j50n
     static constexpr std::size_t index_of(std::string_view const sv) noexcept
     {
       std::size_t ndx{};
-      return ((sv == Strings || !++ndx) || ...), ndx;
+      return std::ignore = ((sv == Strings || !++ndx) || ...), ndx;
     }
 
     template <auto lo, decltype(lo) hi>
