@@ -68,7 +68,7 @@ class j50n
       return range<'0', '9'>(c) || range<'A', 'F'>(c) || range<'a', 'f'>(c);
     }
 
-    static char const* str_end(auto i, decltype(i) const end) noexcept
+    static auto str_end(auto i, decltype(i) const end) noexcept
     {
       for (; end != i; ++i)
         if (auto const b((unsigned char)*i); '"' == b) [[unlikely]]
@@ -98,14 +98,14 @@ class j50n
             break;
         }
 
-      return {};
+      return decltype(i){};
     }
 
-    static char const* bare_end(auto i, decltype(i) const end) noexcept
+    static auto bare_end(auto i, decltype(i) const end) noexcept
     {
       for (; end != i; ++i)
         if (any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*i)) return i;
-        else if (!range<32, 126>(*i)) return {};
+        else if (!range<32, 126>(*i)) return decltype(i){};
 
       return end;
     }
@@ -406,16 +406,6 @@ public:
     return S::any_of<"false">(s_);
   }
 
-  [[nodiscard]] bool is_object() const noexcept
-  {
-    return !s_.empty() && ('{' == s_.front());
-  }
-
-  [[nodiscard]] bool is_string() const noexcept
-  {
-    return !s_.empty() && ('"' == s_.front());
-  }
-
   [[nodiscard]] bool is_null() const noexcept
   {
     return S::any_of<"null">(s_);
@@ -424,6 +414,16 @@ public:
   [[nodiscard]] bool is_number() const noexcept
   {
     return !get<double>().second;
+  }
+
+  [[nodiscard]] bool is_object() const noexcept
+  {
+    return !s_.empty() && ('{' == s_.front());
+  }
+
+  [[nodiscard]] bool is_string() const noexcept
+  {
+    return !s_.empty() && ('"' == s_.front());
   }
 
   [[nodiscard]] bool is_true() const noexcept
