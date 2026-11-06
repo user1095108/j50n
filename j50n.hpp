@@ -200,61 +200,69 @@ class j50n
         std::declval<std::size_t>());})
         return noexcept(std::declval<F&>()(std::declval<j50n>(),
           std::declval<std::size_t>()));
-      else
+      else if constexpr(requires(F f){f(std::declval<j50n>());})
         return noexcept(std::declval<F&>()(std::declval<j50n>()));
+      else
+        return noexcept(std::declval<F&>()(std::declval<std::string_view>(),
+          std::declval<j50n>()));
     }
 
     static void feach(std::string_view const s, auto f)
       noexcept(feach_noexcept<decltype(f)>())
       requires(
         requires{f(std::declval<j50n>(), std::declval<std::size_t>());} ||
-        requires{f(std::declval<j50n>());}
+        requires{f(std::declval<j50n>());} ||
+        requires{f(std::declval<std::string_view>(), std::declval<j50n>());}
       )
     {
-      if (s.empty() || '[' != s.front()) return; // arrays only
+      if (s.empty()) return;
 
-      each_item(s,
-        [&, i = std::size_t{}](auto const p, auto const e,
-          bool const incl) mutable
-          noexcept(feach_noexcept<decltype(f)>()) -> bool
-          {
-            j50n const item(p, size_type(e - p) + incl);
-            if constexpr(requires{bool(f(item, i));}) return f(item, i++);
-            else if constexpr(requires{bool(f(item));}){ ++i; return f(item); }
-            else if constexpr(requires{f(item);}){ ++i; f(item); return false; }
-            else { f(item, i++); return false; }
-          }
-      );
-    }
+      if constexpr(requires{f(std::declval<j50n>(),
+        std::declval<std::size_t>());} || requires{f(std::declval<j50n>());})
+      { // element-style callable: arrays only
+        if ('[' != s.front()) return;
 
-    static void feach(std::string_view const s, auto f)
-      noexcept(noexcept(f(std::declval<std::string_view>(),
-        std::declval<j50n>())))
-      requires(requires{f(std::declval<std::string_view>(),
-        std::declval<j50n>());})
-    {
-      if (s.empty() || '{' != s.front()) return; // objects only
-
-      each_item(s,
-        [&, expecting_key = false, key = std::string_view()](
-          auto const p, auto const e, bool const incl) mutable
-          noexcept(noexcept(f(std::declval<std::string_view>(),
-            std::declval<j50n>()))) -> bool
-          {
-            if ((expecting_key = !expecting_key))
+        each_item(s,
+          [&, i = std::size_t{}](auto const p, auto const e,
+            bool const incl) mutable
+            noexcept(feach_noexcept<decltype(f)>()) -> bool
             {
-              bool const quoted('"' == *p);
-              key = {p + quoted, size_type(e - p) - quoted};
-
-              return false;
+              j50n const item(p, size_type(e - p) + incl);
+              if constexpr(requires{bool(f(item, i));}) return f(item, i++);
+              else if constexpr(requires{bool(f(item));})
+                { ++i; return f(item); }
+              else if constexpr(requires{f(item);})
+                { ++i; f(item); return false; }
+              else { f(item, i++); return false; }
             }
+        );
+      }
+      else if constexpr(requires{f(std::declval<std::string_view>(),
+        std::declval<j50n>());})
+      { // key/value callable: objects only
+        if ('{' != s.front()) return;
 
-            j50n const val(p, size_type(e - p) + incl);
+        each_item(s,
+          [&, expecting_key = false, key = std::string_view()](
+            auto const p, auto const e, bool const incl) mutable
+            noexcept(noexcept(f(std::declval<std::string_view>(),
+              std::declval<j50n>()))) -> bool
+            {
+              if ((expecting_key = !expecting_key))
+              {
+                bool const quoted('"' == *p);
+                key = {p + quoted, size_type(e - p) - quoted};
 
-            if constexpr(requires{bool(f(key, val));}) return f(key, val);
-            else { f(key, val); return false; }
-          }
-      );
+                return false;
+              }
+
+              j50n const val(p, size_type(e - p) + incl);
+
+              if constexpr(requires{bool(f(key, val));}) return f(key, val);
+              else { f(key, val); return false; }
+            }
+        );
+      }
     }
 
     static void trim(std::string_view& s) noexcept
@@ -439,7 +447,7 @@ public:
   {
     auto r((*this)[std::forward<decltype(a)>(a)]);
 
-    return ((r = r[std::forward<decltype(b)>(b)]), ...), r; // !!!
+    return ((r = r[std::forward<decltype(b)>(b)]), ...), r;
   }
 
   [[nodiscard]] bool contains(auto&& ...a) const noexcept
@@ -607,7 +615,7 @@ public:
 
 //////////////////////////////////////////////////////////////////////////////
 inline std::ostream& operator<<(std::ostream& os, j50n const j)
-{ // !!!
+{
   return os << j.get();
 }
 

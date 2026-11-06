@@ -35,11 +35,6 @@
 // edge cases" and "more coverage" are one; every former "additional:"
 // block is part of its obvious parent.  The check count must only ever
 // grow.
-//
-// Known issues (this revision)
-//   - Lenient-scanner edges (multi-root documents, bare words swallowing
-//     '['/'{', mismatched brackets, ...) are pinned as "current
-//     behaviour" with comments, not treated as defects.
 
 #include "j50n.hpp"
 
@@ -1581,11 +1576,42 @@ static void test_containers()
       static_assert(!noexcept(std::declval<j50n const&>().feach(
         [](std::string_view, j50n) { })));
 
+      // a fully generic two-parameter lambda now compiles: it binds as
+      // (item, index) and visits arrays
+      j50n const g2(R"j([10,20,30])j");
+      std::string gseen;
+      std::size_t gn{};
+      g2.feach([&](auto const& e, auto const& i)
+        { gseen += std::string(e.get()) + "@" + std::to_string(i) + ";";
+          ++gn; });
+      CHECK_EQ(gseen, "10@0;20@1;30@2;");
+      CHECK_EQ(gn, 3u);
+
+      // ... and is a no-op on objects; a concrete first parameter iterates
+      // members as (key, value)
       j50n const g3(R"j({"a":1,"b":2})j");
+      gn = 0;
+      g3.feach([&](auto const&, auto const&) { ++gn; });
+      CHECK_EQ(gn, 0u);
+
       std::string gpairs;
       g3.feach([&](std::string_view const k, auto const& v)
         { gpairs += std::string(k) + '=' + std::string(v.get()) + ';'; });
       CHECK_EQ(gpairs, "a=1;b=2;");
+
+      // a nonzero return from a generic two-parameter lambda stops iteration
+      gn = 0;
+      g2.feach([&](auto const&, auto const& i) -> std::size_t
+        { (void)i; return ++gn == 2u; });
+      CHECK_EQ(gn, 2u);
+
+      // a declared return type keeps the constraint probe free of body
+      // instantiation; iteration stops when the lambda returns nonzero
+      j50n const g4(R"j([1,2,3,4])j");
+      gn = 0;
+      g4.feach([&](auto const& e, auto const&) -> int
+        { ++gn; return e.template get<int>().first == 3; });
+      CHECK_EQ(gn, 3u);                          // stopped at "3" (index 2)
     }
   }
 }
