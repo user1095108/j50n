@@ -23,12 +23,23 @@
 //                          (No defect is open at the moment; the mechanism is
 //                          kept for the next one.)
 //
-// Organisation: test functions are grouped by theme.  Closely related
-// SECTION blocks have been folded into a single brace-scoped block per theme
-// (in particular: every "additional:" section, the four unescape sections,
-// and the "blanks inside strings" section are now part of their obvious
-// parent).  Each remaining SECTION still pins a distinct theme so per-section
-// pass/fail totals stay useful.  The check count must only ever grow.
+// Organisation: the suite is one file of themed test functions; each
+// SECTION block pins a distinct theme so per-section pass/fail totals
+// stay useful.  Over successive revisions closely related sections have
+// been merged: "exact value boundaries" and "path access" live under
+// "object access, boundaries, and paths"; "is_empty_string" lives under
+// "type predicates"; both feach sections are one; "integer width
+// coverage" and "numeric overflow" live under "typed getters"; the two
+// get_or sections are one; "DEL and NUL bytes" lives under "character
+// classes"; the malformed / lazy / truncated sections are one; "misc
+// edge cases" and "more coverage" are one; every former "additional:"
+// block is part of its obvious parent.  The check count must only ever
+// grow.
+//
+// Known issues (this revision)
+//   - Lenient-scanner edges (multi-root documents, bare words swallowing
+//     '['/'{', mismatched brackets, ...) are pinned as "current
+//     behaviour" with comments, not treated as defects.
 
 #include "j50n.hpp"
 
@@ -284,11 +295,25 @@ static_assert(std::is_same_v<decltype(std::declval<j50n>().get<int>("x")),
 static_assert(std::is_same_v<decltype(std::declval<j50n>().get<bool>("x")),
   std::pair<bool, bool>>);
 
-// ── tests ───────────────────────────────────────────────────────────────────
 
+// ── additional compile-time properties ───────────────────────────────────
+static_assert(noexcept(std::declval<j50n>().is_true()));
+static_assert(noexcept(std::declval<j50n>().is_false()));
+static_assert(noexcept(std::declval<j50n>().is_bare()));
+static_assert(noexcept(std::declval<j50n>().is_string()));
+static_assert(noexcept(std::declval<j50n>().is_array()));
+static_assert(noexcept(std::declval<j50n>().is_number()));
+static_assert(noexcept(std::declval<j50n>().is_empty_string()));
+static_assert(noexcept(std::declval<j50n>().view()));
+static_assert(noexcept(std::declval<j50n>().view("k", std::size_t{})));
+static_assert(noexcept(std::declval<j50n>().get_or(true, "k")));
+static_assert(std::is_same_v<decltype(j50n("x").view()), j50n const&>);
+
+// ── tests ───────────────────────────────────────────────────────────────────
 static void test_construction_and_access()
 {
-  // ── construction, copy, move, assignment ────────────────────────────────
+  // ── construction, copy, move, assignment ─────────────────────────────────
+
   {
     SECTION("construction, copy, move, assignment");
     std::string const s(R"j({"a":7})j");
@@ -387,11 +412,54 @@ static void test_construction_and_access()
     CHECK_EQ(doc["neg"], "-42");
     CHECK_EQ(name.get(), "j50n-test");
     CHECK(doc["name"].is_empty());
+
+
+  // ── additional coverage: mixed constructor / access combos ──────────────
+  {
+    // Iterator pair over std::string, then access immediately.
+    std::string const src(R"j({"x":42})j");
+    j50n const it(src.begin(), src.end());
+    CHECK_GET(it.get<int>("x"), 42);
+
+    // A subview of a subview navigates the same as the long path.
+    j50n const root(JSON.data(), JSON.size());
+    auto const mid(root["objects"]);
+    CHECK_EQ(mid[0]["id"],   root["objects"][0]["id"]);
+    CHECK_EQ(mid[1]["tag"],  root["objects"][1]["tag"]);
+    CHECK_EQ(mid[2]["value"], root["objects"][2]["value"]);
+
+    // view chains can mix keys and indices freely.
+    CHECK_GET(root.view("objects").get<int>(1, "value"), 20);
+
+    // Sub-view built from an offset pointer is still a valid j50n.
+    j50n const sub(JSON.data() + 4, 6);
+    CHECK_EQ(sub.get(), "name");
+
+    // Empty view constructed from pointer + 0.
+    j50n const empty(JSON.data(), std::size_t{0});
+    CHECK(empty.is_empty());
   }
 
-  // ── basic object access, exact boundaries, path access ──────────────────
+    // ── additional: self and chained assignment ───────────────────────────
+    {
+      j50n s1("42");
+      s1 = static_cast<j50n const&>(s1);          // self copy-assign: no-op
+      CHECK_EQ(s1.get(), "42");
+
+      j50n s2, s3;
+      s2 = s3 = std::string_view("  [1] ");       // chained assignment trims
+      CHECK_EQ(s2.get(), "[1]");
+      CHECK_EQ(s3.get(), "[1]");
+
+      j50n s4(R"j({"z":1})j");
+      s4 = "";                                    // an empty literal clears
+      CHECK(s4.is_empty());
+    }
+  }
+  // ── basic object access, exact boundaries, and path access ───────────────
+
   {
-    SECTION("basic object access");
+    SECTION("object access, boundaries, and paths");
     j50n const root(JSON.data(), JSON.size());
 
     CHECK_EQ(root["name"],    "j50n-test");
@@ -415,10 +483,9 @@ static void test_construction_and_access()
     std::ostringstream os;
     os << root["name"] << '|' << root["version"] << '|' << root["pi"];
     CHECK_EQ(os.str(), "j50n-test|1|3.14159");
-  }
+
 
   {
-    SECTION("exact value boundaries");
     j50n const root(JSON.data(), JSON.size());
 
     CHECK_EQ(root["numbers"].get(),   "[1, 2, 3, 4, 5]");
@@ -448,8 +515,8 @@ static void test_construction_and_access()
     CHECK_EQ(sv.size(), 9u);
   }
 
+
   {
-    SECTION("path access (view / get / get_or with keys and indices)");
     j50n const root(JSON.data(), JSON.size());
 
     CHECK_GET(root.get<int>("objects", 1, "value"), 20);
@@ -475,39 +542,31 @@ static void test_construction_and_access()
     CHECK_EQ(n.get("b", "c"), "deep");
   }
 
-  // ── additional coverage: mixed constructor / access combos ──────────────
-  {
-    SECTION("additional: mixed construction and access");
-    // Iterator pair over std::string, then access immediately.
-    std::string const src(R"j({"x":42})j");
-    j50n const it(src.begin(), src.end());
-    CHECK_GET(it.get<int>("x"), 42);
+    // ── additional: deeper paths and chained subviews ─────────────────────
+    {
+      j50n const deep(R"j({"a":{"b":{"c":{"d":{"e":"deep5"}}}}})j");
+      CHECK_EQ(deep.view("a", "b", "c", "d", "e"),  "deep5");
+      CHECK_EQ(deep["a"]["b"]["c"]["d"]["e"],       "deep5");
+      CHECK_EQ(deep.get("a", "b", "c", "d", "e"),   "deep5");
+      CHECK_EQ(deep["a"]["b"]["c"]["d"]["e"].get().size(), 5u);
+      CHECK(deep.view("a", "b", "c", "d", "e", "f").is_empty());
+      CHECK(deep.contains("a", "b", "c", "d", "e"));
+      CHECK(!deep.contains("a", "b", "c", "d", "e", "f"));
+      CHECK(!deep.view("a", "b", "c", "d", "e", "f").is_object());
+    }
 
-    // A subview of a subview navigates the same as the long path.
-    j50n const root(JSON.data(), JSON.size());
-    auto const mid(root["objects"]);
-    CHECK_EQ(mid[0]["id"],   root["objects"][0]["id"]);
-    CHECK_EQ(mid[1]["tag"],  root["objects"][1]["tag"]);
-    CHECK_EQ(mid[2]["value"], root["objects"][2]["value"]);
-
-    // view chains can mix keys and indices freely.
-    CHECK_GET(root.view("objects").get<int>(1, "value"), 20);
-
-    // Sub-view built from an offset pointer is still a valid j50n.
-    j50n const sub(JSON.data() + 4, 6);
-    CHECK_EQ(sub.get(), "name");
-
-    // Empty view constructed from pointer + 0.
-    j50n const empty(JSON.data(), std::size_t{0});
-    CHECK(empty.is_empty());
+    // a multi-hop path across the fixture, mixing keys and indices
+    CHECK_EQ(root.view("nested").view("a").view("b").view("c"), "deep");
+    CHECK_EQ(root.get("nested", "a", "b", "c").size(), 4u);
   }
 }
 
 static void test_predicates_and_emptiness()
 {
-  // ── type predicates ─────────────────────────────────────────────────────
+  // ── type predicates (incl. empty-string detection) ───────────────────────
+
   {
-    SECTION("type predicates");
+    SECTION("type predicates (incl. empty-string detection)");
     j50n const j(R"j({"obj":{},"arr":[],"str":"s","num":-1,"flt":1.5,"t":true,"f":false,"nul":null,"emp":""})j");
 
     struct Expect
@@ -562,10 +621,9 @@ static void test_predicates_and_emptiness()
     CHECK(!j50n("0x1F").is_number());   // from_chars (base 10) stops at 'x'
     CHECK(j50n(".5").is_number());
     CHECK(!j50n("1_000").is_number());  // '_' is junk inside a number
-  }
+
 
   {
-    SECTION("is_empty_string");
 
     // Only the exact raw 2-char text "\"\"" counts.
     j50n const doc(R"j({"a":"","b":"x","c":null,"d":[],"e":{},"f":" "})j");
@@ -593,6 +651,34 @@ static void test_predicates_and_emptiness()
 
     // But get_or returns the empty string, not the fallback.
     CHECK_EQ(doc.get_or("DEFAULT", "a"), "");
+  }
+
+    // ── additional: is_true / is_false / is_null as direct predicates ─────
+    {
+      j50n const t(R"j({"t":true,"f":false,"n":null,"x":1})j");
+      CHECK(t["t"].is_true() && !t["t"].is_false());
+      CHECK(t["f"].is_false() && !t["f"].is_true());
+      CHECK(t["n"].is_null() && !t["n"].is_true() && !t["n"].is_false());
+      CHECK(!t["x"].is_true() && !t["x"].is_false() && !t["x"].is_null());
+      CHECK(j50n("true").is_true() && !j50n("true").is_false());
+      CHECK(j50n("false").is_false() && !j50n("false").is_true());
+      CHECK(!j50n("True").is_bool());           // case-sensitive
+      CHECK(!j50n("FALSE").is_bool());
+      CHECK(!j50n("Null").is_null());
+      CHECK(!j50n("NULL").is_null());
+
+      // quoted numbers are strings only
+      j50n const qn(R"j({"s":"0","n":0})j");
+      CHECK(qn["s"].is_string() && !qn["s"].is_number() && !qn["s"].is_bare());
+      CHECK(qn["n"].is_bare() && qn["n"].is_number() && !qn["n"].is_string());
+
+      // lone closing brackets: no container predicate matches, but by the
+      // first-byte rule they report as bare (current behaviour)
+      CHECK(j50n("}").is_bare() && j50n("]").is_bare());
+      CHECK(!j50n("}").is_object() && !j50n("]").is_array());
+      CHECK(!j50n("]").is_string());
+      CHECK_EQ(j50n("]").size(), 0u);
+    }
   }
 
   // ── empty / missing handling ────────────────────────────────────────────
@@ -667,6 +753,18 @@ static void test_predicates_and_emptiness()
     CHECK(!root["does_not_exist"].is_bool());
     CHECK(!def.is_null());
     CHECK(!j50n("  ").is_bool());
+
+    // ── additional: views and predicates on empty / aborted scans ─────────
+    CHECK(j50n().view("a").is_empty());
+    CHECK(j50n().view(0).is_empty());
+    CHECK(j50n().view("a", 0, "b").is_empty());
+    CHECK(j50n("[+]")["a"].is_empty());         // scan aborted at '+'
+    CHECK(j50n("[+]").view(0).is_empty());
+    CHECK(!j50n("[+]").contains(0));
+    CHECK(!root["does_not_exist"].is_true());
+    CHECK(!root["does_not_exist"].is_false());
+    CHECK(!def.is_true());
+    CHECK(!def.is_false());
   }
 
   // ── size ────────────────────────────────────────────────────────────────
@@ -785,6 +883,15 @@ static void test_predicates_and_emptiness()
       CHECK_EQ(d["a"]["b"].size(),    1u);  // {"c": ...}
       CHECK_EQ(d["a"]["b"]["c"].size(), 0u);  // 1, a scalar
     }
+
+    // ── additional: nested containers report only their own elements ──────
+    CHECK_EQ(j50n(R"j({"a":{"b":[1,2]}})j").size(),           1u);
+    CHECK_EQ(j50n(R"j({"a":{"b":[1,2]}})j")["a"].size(),      1u);
+    CHECK_EQ(j50n(R"j({"a":{"b":[1,2]}})j")["a"]["b"].size(), 2u);
+    CHECK_EQ(j50n("[[[]]]").size(),                           1u);
+    CHECK_EQ(j50n("[[[]]]")[0].size(),                        1u);
+    CHECK_EQ(j50n("[[[]]]")[0][0].size(),                     0u);
+    CHECK_EQ(j50n("[[[]]]")[0][0].get(), "[]");   // still a value, not empty
   }
 }
 
@@ -914,6 +1021,15 @@ static void test_containers()
     j50n(R"j([{"id":1},{"id":2},{"id":3},{"id":4}])j")
       .feach([&](j50n const o) { idsum += o.get<std::size_t>("id").first; });
     CHECK_EQ(idsum, 10u);
+
+    // ── additional: empty containers as elements, deeper indexing ─────────
+    CHECK_EQ(j50n("[[]]")[0].get(),  "[]");
+    CHECK_EQ(j50n("[{}]")[0].get(),  "{}");
+    CHECK_EQ(j50n("[[[]]]")[0][0].get(), "[]");
+    CHECK(j50n("[[[]]]")[0][0].is_array());
+    CHECK_EQ(j50n("[1,[2,[3,[4]]]]")[1][1][1][0], "4");
+    CHECK(j50n("[1,[2,[3,[4]]]]")[1][1][1][1].is_empty());
+    CHECK(j50n("[1,[2,[3,[4]]]]")[1][1][2].is_empty());
   }
 
   // ── object key lookup ───────────────────────────────────────────────────
@@ -1016,6 +1132,20 @@ static void test_containers()
     CHECK(j50n(R"j({"arr":["a","b"],"a":9})j")["arr"]["a"].is_empty());
     CHECK_EQ(j50n(R"j({"arr":["a","b"],"a":9})j")["a"], "9");
     CHECK_EQ(sarr[1], "b");                            // positional is unaffected
+
+    // ── additional: more key shapes ────────────────────────────────────────
+    {
+      // a char const* pointer (not a literal) reaches the same lookup
+      j50n const pk(R"j({"a":7})j");
+      char const* const pp = "a";
+      CHECK_EQ(pk[pp], "7");
+      CHECK(pk[static_cast<char const*>("zz")].is_empty());
+    }
+
+    // the empty key can hold a container
+    CHECK(j50n(R"j({"":{}})j")[""].is_object());
+    CHECK_EQ(j50n(R"j({"a":1,"":{"b":2}})j")[""]["b"], "2");
+    CHECK(j50n(R"j({"a":1,"":{"b":2}})j")[""].is_object());
   }
 
   // ── contains ────────────────────────────────────────────────────────────
@@ -1142,11 +1272,21 @@ static void test_containers()
     // keys are matched raw: an escaped key needs the escaped spelling
     CHECK(j50n(R"j({"a\"b":1})j").contains(R"j(a\"b)j"));
     CHECK(!j50n(R"j({"a\"b":1})j").contains("a\"b"));
-  }
 
-  // ── feach ───────────────────────────────────────────────────────────────
+    // ── additional: containers as elements, aborted scans, multi-root ─────
+    CHECK(j50n("[[]]").contains(0));
+    CHECK(j50n("[[\"x\"]]").contains(0, 0));
+    CHECK(!j50n("[[]]").contains(0, 0));
+    CHECK(j50n("[1,2]extra").contains(1));      // trailing junk is harmless
+    CHECK(!j50n("[+]").contains(0));            // aborted scan: nothing found
+    CHECK(j50n(R"j({"a":1}{"b":2})j").contains("a"));
+    CHECK(j50n(R"j({"a":1}{"b":2})j").contains("b"));
+    CHECK(!j50n(R"j({"a":1}{"b":2})j").contains("c"));
+  }
+  // ── feach: elements, indices, and key/value pairs ────────────────────────
+
   {
-    SECTION("feach");
+    SECTION("feach (elements, indices, and key/value pairs)");
     j50n const root(JSON.data(), JSON.size());
     j50n const numbers(root["numbers"]);
 
@@ -1230,13 +1370,12 @@ static void test_containers()
     j50n().feach(g);
     j50n("[ ]").feach(f);
     CHECK_EQ(calls, 0u);
-  }
+
 
   {
     // The (key, value) feach overload: every depth-1 member is visited once,
     // in document order, with the raw (still escaped) key text and the value
     // as a navigable sub-view.
-    SECTION("object feach (key, value)");
 
     j50n const o(R"j({"a":1,"b":"x","c":null,"d":[1,2],"e":{"k":9},"last":-2})j");
 
@@ -1398,13 +1537,65 @@ static void test_containers()
       CHECK_EQ(pairs, 1u);
     }
   }
+
+    // ── additional: overload dispatch and noexcept propagation ────────────
+    {
+      // an element-style lambda on an OBJECT visits nothing (arrays only)
+      j50n const o2(R"j({"a":1,"b":2})j");
+      std::size_t calls2{};
+      o2.feach([&](j50n const, std::size_t) -> bool { ++calls2; return false; });
+      CHECK_EQ(calls2, 0u);
+
+      // a lambda returning int (convertible to bool) iterates; nonzero stops
+      j50n const a2("[1,2,3,4,5]");
+      std::size_t seen{};
+      a2.feach([&](j50n const) -> int { ++seen; return 0; });
+      CHECK_EQ(seen, 5u);
+      seen = 0;
+      a2.feach([&](j50n const, std::size_t i) -> int { ++seen; return i == 2; });
+      CHECK_EQ(seen, 3u);
+
+      // a fully generic one-parameter lambda binds as (element)
+      std::size_t gen{};
+      a2.feach([&](auto const& e) { ++gen; (void)e; });
+      CHECK_EQ(gen, 5u);
+
+      // an empty key is visited like any other key
+      j50n const ek2(R"j({"":1,"b":2})j");
+      std::string keys2;
+      ek2.feach([&](std::string_view const k, j50n const)
+        { keys2 += std::string(k) + ","; });
+      CHECK_EQ(keys2, ",b,");
+
+      // feach propagates the callable's noexcept-ness (compile-time)
+      static_assert(noexcept(std::declval<j50n const&>().feach(
+        [](j50n) noexcept { })));
+      static_assert(!noexcept(std::declval<j50n const&>().feach(
+        [](j50n) { })));
+      static_assert(noexcept(std::declval<j50n const&>().feach(
+        [](j50n, std::size_t) noexcept { })));
+      static_assert(!noexcept(std::declval<j50n const&>().feach(
+        [](j50n, std::size_t) { })));
+      static_assert(noexcept(std::declval<j50n const&>().feach(
+        [](std::string_view, j50n) noexcept { })));
+      static_assert(!noexcept(std::declval<j50n const&>().feach(
+        [](std::string_view, j50n) { })));
+
+      j50n const g3(R"j({"a":1,"b":2})j");
+      std::string gpairs;
+      g3.feach([&](std::string_view const k, auto const& v)
+        { gpairs += std::string(k) + '=' + std::string(v.get()) + ';'; });
+      CHECK_EQ(gpairs, "a=1;b=2;");
+    }
+  }
 }
 
 static void test_typed_access()
 {
-  // ── typed getters (incl. width, overflow, numeric type consistency) ────
+  // ── typed getters: widths, overflow, special values ──────────────────────
+
   {
-    SECTION("typed getters");
+    SECTION("typed getters (widths, overflow, special values)");
     j50n const root(JSON.data(), JSON.size());
 
     CHECK_GET(root.get<int>("version"),    1);
@@ -1522,10 +1713,9 @@ static void test_typed_access()
     // get_or numeric through an index path.
     CHECK_EQ(root.get_or<int>(-1, "numbers", 4), 5);
     CHECK_EQ(root.get_or<int>(-1, "numbers", 9), -1);
-  }
+
 
   {
-    SECTION("integer width coverage");
 
     j50n const small(R"j({"v":42,"neg":-7,"big":32768})j");
 
@@ -1573,8 +1763,8 @@ static void test_typed_access()
     CHECK_GET_ERR(huge.get<unsigned short>("v"));    // 100000 > 65535
   }
 
+
   {
-    SECTION("numeric overflow");
 
     // 1e500 overflows double (max ~1.8e308).  from_chars reports
     // result_out_of_range, so get<double> reports an error and is_number()
@@ -1631,6 +1821,37 @@ static void test_typed_access()
     CHECK(!over.get<std::uint64_t>("v").second);        // fits in uint64_t
   }
 
+    // ── additional: FP underflow/overflow boundaries and signed infinities ─
+    {
+      // 1e-400 underflows double; from_chars reports out-of-range
+      j50n const uf(R"j({"a":1e-400,"b":1e-308,"c":1e-50})j");
+      CHECK(!uf["a"].is_number());
+      CHECK_GET_ERR(uf.get<double>("a"));
+      CHECK(uf["b"].is_number());               // DBL_MIN is representable
+      CHECK_GET_ERR(uf.get<float>("c"));        // underflows float, not double
+      CHECK_GET(uf.get<double>("c"), 1e-50);
+      CHECK(uf.get<double>("a").first == 0.0);  // value untouched on error
+
+      // 1e400 overflows double
+      j50n const of(R"j({"a":1e400})j");
+      CHECK(!of["a"].is_number());
+      CHECK_GET_ERR(of.get<double>("a"));
+      CHECK((of["a"] <=> 1e300) == std::partial_ordering::unordered);
+      CHECK(!(of["a"] == 1e300));
+
+      // -Infinity / -inf parse to negative infinity
+      j50n const ifn(R"j({"a":-Infinity,"b":-inf})j");
+      CHECK(ifn["a"].is_number() && ifn["b"].is_number());
+      CHECK(std::isinf(ifn.get<double>("a").first));
+      CHECK(ifn.get<double>("a").first < 0);
+      CHECK(ifn.get<double>("b").first < 0);
+
+      // 2^64 still fits in a double
+      CHECK_GET(j50n("18446744073709551616").get<double>(),
+        18446744073709551616.0);
+    }
+  }
+
   {
     // Number spellings at the from_chars boundary, on top of the lenient
     // scanner's bare-token rules.
@@ -1680,11 +1901,31 @@ static void test_typed_access()
     CHECK(!j50n("null").is_number());
     CHECK(!j50n("").is_number());
     CHECK(!j50n("\"123\"").is_number());       // quoted digits are not coerced
-  }
 
-  // ── get_or ──────────────────────────────────────────────────────────────
+    // ── additional: token-start asymmetries vs from_chars acceptance ──────
+    // ".5" and "+.5" cannot START a bare word (the scan aborts), though
+    // from_chars would accept ".5"; "-.5" can start one.
+    CHECK_EQ(j50n("[-.5]")[0], "-.5");
+    CHECK_GET(j50n("[-.5]").get<double>(0), -0.5);
+    CHECK_EQ(j50n("[.5]").size(), 0u);
+    CHECK_EQ(j50n("[+.5]").size(), 0u);
+    CHECK(j50n(".5").is_number());              // but root-level parses
+    CHECK(!j50n("+.5").is_number());            // '+' rejected by from_chars
+
+    // exponent forms accepted by from_chars
+    CHECK_GET(j50n(R"j({"a":1e+5})j").get<double>("a"), 100000.0);
+    CHECK(j50n(R"j({"a":1.e5})j")["a"].is_number());
+    CHECK(j50n(".5e1").is_number());
+    CHECK_GET(j50n(".5e1").get<double>(), 5.0);
+
+    // a hexfloat-looking token scans but is not parsed as a number
+    CHECK_EQ(j50n(R"j({"a":0x1p3})j")["a"], "0x1p3");
+    CHECK(!j50n("0x1p3").is_number());
+  }
+  // ── get_or: fallbacks and overload resolution ────────────────────────────
+
   {
-    SECTION("get_or");
+    SECTION("get_or (fallbacks and overload resolution)");
     j50n const root(JSON.data(), JSON.size());
 
     // string fallback
@@ -1722,10 +1963,9 @@ static void test_typed_access()
     CHECK(root.get_or<bool>(true,  "does_not_exist") == true);
     CHECK(root.get_or<bool>(false, "does_not_exist") == false);
     CHECK(root.get_or<bool>(true,  "name")        == true);   // wrong type -> default
-  }
+
 
   {
-    SECTION("get_or overload resolution");
 
     j50n const root(JSON.data(), JSON.size());
 
@@ -1761,12 +2001,14 @@ static void test_typed_access()
     CHECK_EQ(root.get_or(std::string_view("SV"), "name"), "j50n-test");
     CHECK_EQ(root.get_or(std::string_view("SV"), "nope"), "SV");
 
-    CHECK_EQ(root.get_or(std::string("ST"), "name"),      "j50n-test");  // <- bug
-    CHECK_EQ(root.get_or(std::string("ST"), "nope"),      "ST");         // <- bug
+    CHECK_EQ(root.get_or(std::string("ST"), "name"),      "j50n-test");
+    CHECK_EQ(root.get_or(std::string("ST"), "nope"),      "ST");
 
+    // a std::string / char const* default reaches the string_view overload
+    // (older revisions marked these two checks as buggy; kept as guards)
     char const* const cp("CP");
-    CHECK_EQ(root.get_or(cp, "name"),                     "j50n-test");  // <- bug
-    CHECK_EQ(root.get_or(cp, "nope"),                     "CP");         // <- bug
+    CHECK_EQ(root.get_or(cp, "name"),                     "j50n-test");
+    CHECK_EQ(root.get_or(cp, "nope"),                     "CP");
 
     // Arithmetic defaults.
     CHECK(root.get_or(-1,   "version") == 1);
@@ -1776,6 +2018,7 @@ static void test_typed_access()
     CHECK(root.get_or(true, "active")  == true);
     CHECK(root.get_or(true, "nope")    == true);
     CHECK(root.get_or(false, "active") == true);
+  }
   }
 }
 
@@ -1900,6 +2143,19 @@ static void test_operators()
     CHECK(root["version"] >  0.0L);
     CHECK(2.0L > root["version"]);
     CHECK(0.0L < root["version"]);
+
+    // ── additional: bare tokens never compare equal to strings ────────────
+    CHECK(!(j50n("abc") == "abc"));             // bare word, not a string
+    CHECK(!(j50n("true") == "true"));
+    CHECK(!(j50n("null") == "null"));
+    CHECK(j50n("0") == 0);                      // numbers work
+    CHECK(!(j50n("0") == false));               // bools are their own type
+    CHECK(!(j50n(R"j("42")j") == 42));          // quoted digits are not a number
+    CHECK(j50n(R"j("42")j") == "42");
+
+    // raw-text equality across multi-root documents
+    CHECK(j50n(R"j({"a":1}{"b":2})j") == j50n(R"j({"a":1}{"b":2})j"));
+    CHECK(!(j50n(R"j({"a":1}{"b":2})j") == j50n(R"j({"b":2}{"a":1})j")));
   }
 
   // ── operator<=> ─────────────────────────────────────────────────────────
@@ -2097,6 +2353,13 @@ static void test_operators()
     CHECK((negone["v"] <=> 1u) == std::partial_ordering::less);
     CHECK((negone["v"] < 0u));
     CHECK(!(negone["v"] > 0u));
+
+    // ── additional: mixed-width comparisons ────────────────────────────────
+    CHECK(j50n("5") > -1);
+    CHECK(j50n("5") > -1.0);
+    CHECK((j50n("1.0") <=> 1L) == std::partial_ordering::equivalent);
+    CHECK(j50n("1.0") == 1L);
+    CHECK((j50n("-1") <=> 1u) == std::partial_ordering::less);
   }
 
   // ── operator bool ───────────────────────────────────────────────────────
@@ -2208,6 +2471,13 @@ static void test_operators()
     // Return type is bool.
     static_assert(std::is_same_v<decltype(static_cast<bool>(
       std::declval<j50n>())), bool>);
+
+    // ── additional: aborted scans and stray brackets ───────────────────────
+    CHECK(!bool(j50n("[+]")));                  // scan abort: no elements
+    CHECK(!bool(j50n("[.5]")));                 // ditto ('.' cannot start a token)
+    CHECK(bool(j50n("[1,2]extra")));            // trailing junk: elements remain
+    CHECK(bool(j50n("}")));                     // stray bracket: bare-token fallthrough
+    CHECK(!bool(j50n("{")));                    // unterminated object
   }
 }
 
@@ -2300,6 +2570,12 @@ static void test_strings_and_unescape()
     // the closing quote is dropped only if there is one
     CHECK_EQ(j50n("\"abc").get(),               "abc");
     CHECK_EQ(j50n("\"").get(),                  "");
+
+    // ── additional: strings ending in an escaped quote ─────────────────────
+    CHECK_EQ(j50n(R"j("a\"")j").get(), R"j(a\")j");
+    CHECK_EQ(j50n(R"j("a\"")j").get().size(), 3u);
+    CHECK(j50n(R"j("a\"")j") == "a\"");
+    CHECK_EQ(str(j50n(R"j("a\"")j")), R"j(a\")j");
   }
 
   // ── j50n::unescape (all former unescape sections folded here) ───────────
@@ -2500,6 +2776,38 @@ static void test_strings_and_unescape()
     CHECK_EQ(j50n::unescape(R"(\x)"), std::string("\\x"));
     CHECK_EQ(j50n::unescape(R"(\q)"), std::string("\\q"));
     CHECK_EQ(j50n::unescape(R"(a\xb)"), std::string("a\\xb"));
+
+    // ── additional: UTF-8 encoding boundaries ──────────────────────────────
+    CHECK_EQ(j50n::unescape(R"(\u07FF)"), std::string("\xDF\xBF", 2));
+    CHECK_EQ(j50n::unescape(R"(\u0800)"), std::string("\xE0\xA0\x80", 3));
+    CHECK_EQ(j50n::unescape(R"(\uD7FF)"), std::string("\xED\x9F\xBF", 3));
+    CHECK_EQ(j50n::unescape(R"(\uE000)"), std::string("\xEE\x80\x80", 3));
+    CHECK_EQ(j50n::unescape(R"(\uFFFF)"), std::string("\xEF\xBF\xBF", 3));
+    CHECK_EQ(j50n::unescape(R"(\uFFFE)"), std::string("\xEF\xBF\xBE", 3));
+
+    // the largest code point, via an uppercase surrogate pair
+    CHECK_EQ(j50n::unescape(R"(\uDBFF\uDFFF)"),
+      std::string("\xF4\x8F\xBF\xBF", 4));
+
+    // a pair followed by another escape: only the pair combines
+    CHECK_EQ(j50n::unescape(R"(\uD800\uDC00\u0041)"),
+      std::string("\xF0\x90\x80\x80" "A", 5));
+
+    // two pairs back to back combine independently
+    CHECK_EQ(j50n::unescape(R"(\ud800\udc00\ud800\udc00)"),
+      std::string("\xF0\x90\x80\x80" "\xF0\x90\x80\x80", 8));
+
+    // three lone high surrogates: three replacement characters
+    CHECK_EQ(j50n::unescape(R"(\uD800\ud800\ud800)"),
+      std::string("\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD", 9));
+
+    // high surrogate then a truncated escape: replacement + literal "\u12"
+    CHECK_EQ(j50n::unescape(R"(\ud800\u12)"),
+      std::string("\xEF\xBF\xBD" "\\u12", 7));
+
+    // another 4-byte code point from a lowercase pair
+    CHECK_EQ(j50n::unescape(R"(\uD83D\uDE0A)"),
+      std::string("\xF0\x9F\x98\x8A", 4));
   }
 }
 
@@ -2528,11 +2836,11 @@ static void test_scanner()
     j50n const root(JSON.data(), JSON.size());
     CHECK_EQ(root["utf8"].get().size(), 12u);   // h é(2) l l ø(2) ' ' 🌍(4)
   }
+  // ── character classes (incl. DEL and NUL bytes) ──────────────────────────
 
-  // ── character classes ───────────────────────────────────────────────────
   {
     // The scanner's rules, byte by byte.
-    SECTION("character classes");
+    SECTION("character classes (incl. DEL and NUL bytes)");
 
     // string content: any printable ASCII character except '"' and '\'
     {
@@ -2658,14 +2966,13 @@ static void test_scanner()
       t::record(j50n(doc)["b"].is_empty(),
         "'" + std::string(1, char(c)) + "' cannot start a bare word", __LINE__);
     }
-  }
+
 
   {
     // Rules the byte-sweep loops leave open: 0x7F (DEL) is accepted inside
     // strings (and quoted keys) per RFC 8259, but never inside bare words;
     // a raw NUL after the document proper is harmless, while one inside a
     // string or bare word makes the scan fail.
-    SECTION("DEL and NUL bytes");
 
     // 0x7F inside a string value: accepted, byte-exact
     {
@@ -2708,6 +3015,15 @@ static void test_scanner()
       j50n const j{std::string_view(doc)};
       CHECK(j["a"].is_empty());
       CHECK(j["b"].is_empty());
+    }
+  }
+
+    // ── additional: a raw NUL inside a quoted key derails the scan ────────
+    {
+      std::string const doc(std::string("{\"a\0b\":1,\"z\":2}"));
+      j50n const j{std::string_view(doc)};
+      CHECK(j["z"].is_empty());
+      CHECK_EQ(j.size(), 0u);
     }
   }
 
@@ -2830,12 +3146,61 @@ static void test_scanner()
     j50n const sp("[NaN, Infinity]");
     CHECK(sp[0].is_number() && std::isnan(sp[0].get<double>().first));
     CHECK(sp[1].is_number() && std::isinf(sp[1].get<double>().first));
-  }
 
-  // ── malformed, lazy, truncated input ────────────────────────────────────
+    // ── additional: multi-root documents (current behaviour) ──────────────
+    // The scanner keeps going after a root container closes: a second root's
+    // items stream through as if the documents were concatenated.
+    {
+      j50n const mr(R"j([1][2])j");
+      CHECK_EQ(mr.size(), 2u);
+      CHECK_EQ(mr[0], "1");
+      CHECK_EQ(mr[1], "2");
+      CHECK(mr.contains(1));
+
+      j50n const mo(R"j({"a":1}{"b":2})j");
+      CHECK_EQ(mo.size(), 2u);
+      CHECK_EQ(mo["a"], "1");
+      CHECK_EQ(mo["b"], "2");
+
+      // object root followed by an array root: the array's bare element
+      // surfaces as a phantom *key* of the object alternation (so size
+      // counts the one pair), and index access is empty (front is '{')
+      j50n const oa(R"j({"a":1}[2])j");
+      CHECK_EQ(oa["a"], "1");
+      CHECK_EQ(oa.size(), 1u);
+      CHECK(oa[0].is_empty());
+      CHECK(!oa.contains(0));
+    }
+
+    // ── additional: trailing garbage after a closed root ──────────────────
+    CHECK_EQ(j50n("[1,2]garbage").size(), 2u);
+    CHECK_EQ(j50n("[1,2]garbage")[0], "1");
+    CHECK_EQ(j50n(R"j({"a":1}x)j").size(), 1u);
+    CHECK_EQ(j50n(R"j({"a":1}x)j")["a"], "1");
+
+    // ── additional: mismatched brackets (current behaviour) ───────────────
+    CHECK_EQ(j50n("[1}").size(), 1u);           // scalar element tolerated
+    CHECK_EQ(j50n("[1}")[0], "1");
+    CHECK_EQ(j50n("[[1}").size(), 0u);          // nested mismatch aborts the scan
+    CHECK(j50n(R"j({"a":[1})j")["a"].is_empty());
+    CHECK_EQ(j50n(R"j({"a":[1})j").size(), 0u);
+
+    // ── additional: bare words swallow open brackets ──────────────────────
+    // bare_end() stops at , : ] } and blanks only; '[' and '{' are ordinary
+    // data inside a bare word (unlike ']'/'}', which terminate it).
+    CHECK_EQ(j50n("[a{b]").size(), 1u);
+    CHECK_EQ(j50n("[a{b]")[0], "a{b");
+    CHECK_EQ(j50n("[1[x]]").size(), 1u);
+    CHECK_EQ(j50n("[1[x]]")[0], "1[x");
+    CHECK_EQ(j50n("[a:b]").size(), 2u);         // ':' splits a bare word in arrays
+    CHECK_EQ(j50n("[a:b]")[0], "a");
+    CHECK_EQ(j50n("[a:b]")[1], "b");
+  }
+  // ── malformed, lazy, and truncated input (streaming policy) ──────────────
+
   {
     // The scanner reports malformed input by returning an empty view.
-    SECTION("malformed input");
+    SECTION("malformed, lazy, and truncated input (streaming policy)");
 
     CHECK(j50n(R"j({"a":"unterminated)j")["a"].is_empty());
     CHECK(j50n(R"j({"a":"bad\xesc","b":2})j")["b"].is_empty());
@@ -2856,12 +3221,11 @@ static void test_scanner()
     CHECK_EQ(j50n("{\"a\":12")["a"], "12");     // truncated object
     CHECK(j50n("{\"a")["a"].is_empty());                         // inside a key
     CHECK_EQ(j50n("[1,2")[1], "2");             // truncated array
-  }
+
 
   {
     // The scanner stops as soon as the requested value is complete, so damage
     // *after* the target does not affect the result.
-    SECTION("lazy scanning stops at the match");
 
     CHECK_EQ(j50n(R"j({"a":1,"b":"\x"})j")["a"], "1");
     CHECK_EQ(j50n(R"j({"a":"ok","b":@})j")["a"], "ok");
@@ -2869,10 +3233,10 @@ static void test_scanner()
     CHECK_EQ(j50n(R"j([1,2,@])j")[1], "2");
   }
 
+
   {
     // Documents cut off mid-container follow the streaming policy: every
     // member/element completed before the cut is still reported.
-    SECTION("truncated containers (streaming policy)");
 
     CHECK_EQ(j50n("[1,2").size(),   2u);
     CHECK_EQ(j50n("[1,2,3").size(), 3u);
@@ -2916,6 +3280,19 @@ static void test_scanner()
     CHECK(j50n("[[1,2")[0].is_empty());
     CHECK_EQ(j50n("{\"a\":{\"b\":1").size(), 0u);
     CHECK(j50n("{\"a\":{\"b\":1")["a"].is_empty());
+  }
+
+    // ── additional: truncated string VALUES lose the whole pair ───────────
+    // A bare token that runs to the end of the buffer is complete by
+    // definition, but a string without its closing quote is never a token:
+    // {"a":12 streams the pair, {"a":"x" streams nothing.
+    CHECK_EQ(j50n(R"j({"a":"x)j").size(), 0u);
+    CHECK(!j50n(R"j({"a":"x)j").contains("a"));
+    CHECK(j50n(R"j({"a":"x)j")["a"].is_empty());
+    CHECK_EQ(j50n(R"j({"a":12)j").size(), 1u);
+    CHECK(j50n(R"j({"a":12)j").contains("a"));
+    CHECK_EQ(j50n(R"j({"a":"x\u0041)j").size(), 0u);  // complete escape, no quote
+    CHECK(j50n(R"j({"a":"x\u0041)j")["a"].is_empty());
   }
 }
 
@@ -2994,10 +3371,10 @@ static void test_scale_and_misc()
       CHECK_EQ(sum, N * (N - 1));                  // sum(i) + sum(value)
     }
   }
+  // ── misc edge cases (incl. output and determinism) ───────────────────────
 
-  // ── misc edge cases (incl. former "additional coverage") ────────────────
   {
-    SECTION("misc edge cases");
+    SECTION("misc edge cases (incl. output and determinism)");
 
     // a j50n built from a subview navigates independently of its parent
     j50n const root(JSON.data(), JSON.size());
@@ -3063,11 +3440,10 @@ static void test_scale_and_misc()
              root.view("nested").view("a").view("b").view("c"));
     CHECK_EQ(root.get("objects", 0, "id"),
              root.view("objects", 0).get("id"));
-  }
+
 
   {
     // ── more coverage: output, determinism, and chained streaming ──────
-    SECTION("more coverage: output and determinism");
 
     // view() with no arguments is the identity on subviews too
     j50n const root(JSON.data(), JSON.size());
@@ -3122,7 +3498,15 @@ static void test_scale_and_misc()
        << j50n("-1.5");
     CHECK_EQ(os.str(), "null|true|[1,2]|x|-1.5");
   }
+
+    // ── additional: views on default-constructed and empty receivers ──────
+    CHECK(j50n().view("a").is_empty());
+    CHECK(j50n().view(0).is_empty());
+    CHECK(j50n().view("a", 0, "b").is_empty());
+    CHECK(j50n("").view("a", "b").is_empty());
+  }
 }
+
 
 // ── main ────────────────────────────────────────────────────────────────────
 
