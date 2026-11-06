@@ -245,8 +245,7 @@ class j50n
         each_item(s,
           [&, expecting_key = false, key = std::string_view()](
             auto const p, auto const e, bool const incl) mutable
-            noexcept(noexcept(f(std::declval<std::string_view>(),
-              std::declval<j50n>()))) -> bool
+            noexcept(feach_noexcept<decltype(f)>()) -> bool
             {
               if ((expecting_key = !expecting_key))
               {
