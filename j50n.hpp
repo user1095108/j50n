@@ -125,13 +125,12 @@ class j50n
         }
         else if (any_of<']', '}'>(*i))
         {
-          if (!depth) return;
-          else if (1u == --depth)
+          if (depth && (1u == --depth))
           {
             if ((']' == *i? '[': '{') != *start || cb(start, i, true)) return;
             start = {};
           }
-          if (!depth) return;
+          else if (!depth) return;
         }
         else
         { // delimit token
