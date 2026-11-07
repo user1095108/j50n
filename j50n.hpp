@@ -130,7 +130,7 @@ class j50n
             if ((']' == *i? '[': '{') != *start || cb(start, i, true)) return;
             start = {};
           }
-          else if (!depth) return;
+          else if (!depth) break;
         }
         else
         { // delimit token
@@ -140,7 +140,7 @@ class j50n
             range<'a', 'z'>(*i) ? bare_end(i, end) : nullptr));
 
           if (!e || (1 == depth && cb(i, e, quot)) || end == e)
-            return;
+            break;
 
           i = e - !quot;
         }
