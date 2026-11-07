@@ -121,16 +121,17 @@ class j50n
           continue;
         else if (any_of<'[', '{'>(*i))
         {
-          if (1 == depth++) start = i;
+          if (2u == ++depth) start = i;
         }
         else if (any_of<']', '}'>(*i))
         {
           if (!depth) return;
-          else if (--depth == 1)
+          else if (1u == --depth)
           {
             if ((']' == *i? '[': '{') != *start || cb(start, i, true)) return;
             start = {};
           }
+          if (!depth) return;
         }
         else
         { // delimit token

@@ -1275,7 +1275,7 @@ static void test_containers()
     CHECK(j50n("[1,2]extra").contains(1));      // trailing junk is harmless
     CHECK(!j50n("[+]").contains(0));            // aborted scan: nothing found
     CHECK(j50n(R"j({"a":1}{"b":2})j").contains("a"));
-    CHECK(j50n(R"j({"a":1}{"b":2})j").contains("b"));
+    CHECK(!j50n(R"j({"a":1}{"b":2})j").contains("b"));
     CHECK(!j50n(R"j({"a":1}{"b":2})j").contains("c"));
   }
   // ── feach: elements, indices, and key/value pairs ────────────────────────
@@ -3178,15 +3178,15 @@ static void test_scanner()
     // items stream through as if the documents were concatenated.
     {
       j50n const mr(R"j([1][2])j");
-      CHECK_EQ(mr.size(), 2u);
+      CHECK_EQ(mr.size(), 1u);
       CHECK_EQ(mr[0], "1");
-      CHECK_EQ(mr[1], "2");
-      CHECK(mr.contains(1));
+      CHECK_EQ(mr[1], "");
+      CHECK(mr.contains(0));
 
       j50n const mo(R"j({"a":1}{"b":2})j");
-      CHECK_EQ(mo.size(), 2u);
+      CHECK_EQ(mo.size(), 1u);
       CHECK_EQ(mo["a"], "1");
-      CHECK_EQ(mo["b"], "2");
+      CHECK_EQ(mo["b"], "");
 
       // object root followed by an array root: the array's bare element
       // surfaces as a phantom *key* of the object alternation (so size
