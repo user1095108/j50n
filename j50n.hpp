@@ -139,7 +139,7 @@ class j50n
             ('-' == *i || range<'0', '9'>(*i) || range<'A', 'Z'>(*i) ||
             range<'a', 'z'>(*i) ? bare_end(i, end) : nullptr));
 
-          if (!e || (1 == depth && cb(i, e, quot)) || end == e)
+          if (!e || (1u == depth && cb(i, e, quot)) || end == e)
             break;
 
           i = e - !quot;
