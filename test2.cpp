@@ -10,6 +10,12 @@
 //   -v        print every PASS line, not just failures and per-section totals
 //   --strict  treat open KNOWN_BUG entries as failures (use this while fixing)
 //
+// The crash-hunt sections in test_crash_hunt() below assert portable
+// invariants (every view inside the input buffer, size()/feach() agreement,
+// determinism, bounded unescape output) AND rely on the sanitizer build
+// (first line above) to abort on anything those checks cannot see - OOB
+// reads, UB, bad frees.  Run at least that build when touching the scanner.
+//
 // Conventions
 //   CHECK(cond)            plain boolean assertion
 //   CHECK_EQ(a, b)         equality; j50n operands are compared via .get();
@@ -35,6 +41,11 @@
 // edge cases" and "more coverage" are one; every former "additional:"
 // block is part of its obvious parent.  The check count must only ever
 // grow.
+//
+// The crash-hunt sections added by the malformed-input campaign are
+// self-contained and deterministic: a fixed corpus, a fixed-seed generator
+// and constant iteration counts, so they reproduce any failure exactly and
+// their check counts never vary between runs.
 
 #include "j50n.hpp"
 
@@ -43,11 +54,13 @@
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
+#include <random>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 
@@ -3534,6 +3547,534 @@ static void test_scale_and_misc()
 }
 
 
+// ── crash hunt (malformed input, fuzzing, invariants) ───────────────────────
+//
+// This function is the merged result of a malformed-input campaign against
+// the scanner: a hand-built corpus of hostile documents, systematic byte
+// sweeps, a truncation sweep, deterministic mutation fuzzing, property
+// fuzzing of unescape(), and bounded scale probes.  The original unbounded
+// run - several million mutants plus the sweeps below, under
+// -fsanitize=address,undefined and -D_GLIBCXX_ASSERTIONS, on both char
+// signednesses - found no crash, no UB and no invariant violation; these
+// sections keep a reproducible, bounded version of that hunt in the suite,
+// so the scanner is re-fuzzed on every run.
+//
+// Invariants enforced on every document fed in:
+//   - two independent parses of the same bytes agree exactly;
+//   - size() is stable and equals the visit counts of both feach() modes;
+//   - every view handed out (get(), operator[], feach visits) points into
+//     the original buffer - a portable OOB backstop for non-sanitizer
+//     builds.
+//
+// Anything the invariants cannot see is left to the sanitizer build: with
+// -fsanitize=address,undefined -fno-sanitize-recover=all (first build line
+// above) any OOB access or UB aborts the process, which is exactly the
+// crash this section is hunting for.
+
+namespace hunt
+{
+
+struct Invariants
+{
+  bool ok{};
+  std::string detail;
+};
+
+[[nodiscard]] bool view_in_buf(std::string_view const v,
+  std::string_view const buf) noexcept
+{
+  return (nullptr == v.data() && v.empty()) ||
+    (v.data() >= buf.data() && v.data() + v.size() <= buf.data() + buf.size());
+}
+
+[[nodiscard]] std::string hexdump(std::string_view const s)
+{
+  static char const digits[] = "0123456789abcdef";
+  std::string r;
+  for (unsigned char const c : s)
+  {
+    r += ' ';
+    r += digits[c >> 4];
+    r += digits[c & 0xF];
+  }
+  return r;
+}
+
+// parse buf, exercise the read-only API, verify the core invariants
+[[nodiscard]] Invariants invariants(std::string_view const buf)
+{
+  j50n const doc(buf.data(), buf.size());
+
+  // determinism: an independent parse of the same bytes must agree
+  {
+    j50n const doc2(buf.data(), buf.size());
+    if (doc.get().data() != doc2.get().data() ||
+      doc.get().size() != doc2.get().size())
+      return {false, "two parses of the same bytes disagree"};
+  }
+
+  // size() is stable and equals the total feach() visit count: both modes
+  // run, exactly one of them streams (arrays vs objects), the other returns
+  // early, so size() == element visits + key/value visits
+  std::size_t const s0(doc.size());
+  if (s0 != doc.size()) return {false, "size() is unstable"};
+
+  std::size_t seen{};
+  bool oob{};
+  doc.feach([&](j50n const e) -> bool
+    {
+      if (!view_in_buf(e.get(), buf)) { oob = true; return true; }
+      ++seen;
+      return false;
+    });
+  doc.feach([&](std::string_view const k, j50n const v) -> bool
+    {
+      if (!view_in_buf(k, buf) || !view_in_buf(v.get(), buf))
+        { oob = true; return true; }
+      ++seen;
+      return false;
+    });
+  if (oob) return {false, "feach() visited a view outside the buffer"};
+  if (seen != s0) return {false, "size() != feach() visit count (" +
+    std::to_string(seen) + " vs " + std::to_string(s0) + ")"};
+
+  // keyed and indexed lookups must stay inside the buffer too
+  for (char const* const k : {"a", "k", "", "0", "true"})
+    if (j50n const v(doc[k]); !v.is_empty() && !view_in_buf(v.get(), buf))
+      return {false, std::string("doc[\"") + k +
+        "\"] returned a view outside the buffer"};
+
+  for (std::size_t const i : {std::size_t(0), std::size_t(1), std::size_t(9)})
+    if (j50n const v(doc[i]); !v.is_empty() && !view_in_buf(v.get(), buf))
+      return {false, "doc[" + std::to_string(i) +
+        "] returned a view outside the buffer"};
+
+  // the rest of the read-only surface: nothing may abort, throw or corrupt
+  (void)static_cast<bool>(doc);
+  (void)doc.is_object(); (void)doc.is_array(); (void)doc.is_string();
+  (void)doc.is_bare(); (void)doc.is_number(); (void)doc.is_bool();
+  (void)doc.is_null(); (void)doc.is_true(); (void)doc.is_false();
+  (void)doc.is_empty(); (void)doc.is_empty_string();
+  (void)(doc == nullptr); (void)(doc == 1); (void)(doc == 1.5);
+  (void)(doc == true); (void)(doc == std::string_view("x")); (void)(doc < 1.5);
+  (void)doc.get<int>(); (void)doc.get<double>(); (void)doc.get<bool>();
+  (void)doc.get_or(-1); (void)doc.get_or(true);
+  (void)doc.get_or(std::string_view("D"));
+  (void)doc.view("a", std::size_t(0), "b");
+  (void)doc.view(std::size_t(0), "a");
+  (void)j50n::unescape(doc.get());
+
+  return {true, {}};
+}
+
+// run invariants() on buf and record the outcome; the document itself goes
+// into the failure detail (hex + text), so the name can stay short
+void sweep(char const* const name, std::string_view const buf)
+{
+  auto const r(invariants(buf));
+  t::record(r.ok, std::string(name) + " invariants", __LINE__,
+    r.ok ? std::string{} :
+    "           document:" + hexdump(buf) +
+    "\n           text: " + t::escape(buf) + "\n           " + r.detail + "\n");
+}
+
+} // namespace hunt
+
+static void test_crash_hunt()
+{
+  // ── corpus: hostile documents, built once, reused by every section ───────
+
+  std::vector<std::string> const corpus = {
+    // structural junk, truncations, mismatches
+    "{}", "[]", "", " ", "\t\n\r ", "null", "true", "false", "\"\"",
+    "[", "]", "{", "}", "[[", "]]", "{{", "}}", "[}]", "{]", "[{]}",
+    "[[]", "[[]]", "{}}", "{}}}", "[,]", "[,,]", "{,}", "{:}", "{:1}",
+    "[1,", "[1,2", "[1,2,", "{\"a\"", "{\"a\":", "{\"a\":1", "{\"a\":1,",
+    "{\"a\":1,\"b\":2", "{\"a\":\"x", "{\"a\":\"x\"", "{\"a\":\"\\",
+    "{\"a\":\"\\\\", "{}{\"a\":1}", "{\"a\":1}{\"b\":2}", "{\"a\":1}[2]",
+    "[1][2]", "[1,2]junk", "{\"a\":1}x", "{\"a\":1}}", "[1,2]]",
+    "['a']", "{\"a\":'x'}", "{\"a\":1,\f\"b\":2}",
+    // quote and escape junk
+    "\"", "\\", "\"\\", "\"\\\\", "\"\\\\\\", "\"\\\\\\\\",
+    "\"a", "\"a\\", "\"a\\\\", "\"\\u", "\"\\u0", "\"\\u00", "\"\\u000",
+    "\"\\u0000", "\"\\uZZZZ\"", "\"\\u12g4\"", "\"\\ud800\"", "\"\\udc00\"",
+    R"j("\ud800\udc00")j", R"j("\ud800\ud800")j", R"j("\ud800\u")j",
+    R"j("\ud800\uDC0")j", R"j("\uD800\n")j", R"j("\udbff\udfff")j",
+    R"j({"a":"\x"})j", R"j({"a\\b":1})j", R"j({"a\u0041b":1})j",
+    R"j({"\ud800\udc00":1,"b":2})j",
+    // numeric junk
+    "-", "+", ".", "-.", "0x10", "1e", "1e+", "1e310", "-1e400", "007",
+    "+1", "1.", ".5", "--1", "1-", "1 2", "1e999999999999999999999",
+    R"j({"a":0x10})j", R"j({"a":1e310})j", R"j({"a":-1e400})j",
+    R"j({"a":.5})j", R"j({"a":1.})j", R"j({"a":+1})j", R"j({"a":007})j",
+    R"j({"a":--1})j", R"j({"a":1e})j",
+    // junk tokens and aborted scans
+    "@", "[@]", "[+]", "{-}", "[-]", R"j({"a":@})j",
+    R"j({"a":@,"b":2})j", "{\"a\":x\x7Fy}", "x\x7F", "{'a':1}", "\f42",
+    "42 \f",
+    // raw UTF-8 and raw bytes as whole documents
+    "\xC3\xA9", "\xC3", "\xE2\x82\xAC", "\xE2\x82", "\xF0\x9F\x8C\x8D",
+    "\xF0\x9F\x8C", "\xF0\x9F", "\xF0", "\x80", "\xBF", "\xC0\xAF",
+    "\xC1\xBF", "\xE0\x80\xAF", "\xE0\x9F\xBF", "\xF0\x8F\xBF\xBF",
+    "\xF4\x90\x80\x80", "\xED\xA0\x80", "\xED\x9F\xBF", "\xF5\x80\x80\x80",
+    "\xF7\xBF\xBF\xBF", "\x7F", "\xFF",
+    "\"\xC3\xA9\"", "\"\xC3\"", "\"\xE0\x80\xAF\"", "\"\xF4\x90\x80\x80\"",
+    "{\"k\":\"\xC3\xA9\",\"z\":1}", "{\"k\":\"\xFF\",\"z\":1}",
+    // raw NUL bytes (explicit sizes: string literals stop at a NUL)
+    std::string(1, '\0'), std::string("a\0b", 3),
+    std::string("{\"a\":\"x\0y\"}", 11),
+  };
+
+  // ── adversarial corpus (handcrafted malformed documents) ────────────────
+  {
+    SECTION("crash hunt: adversarial corpus");
+
+    for (std::size_t i = 0; i < corpus.size(); ++i)
+    {
+      std::string const name("corpus[" + std::to_string(i) + "]");
+      hunt::sweep(name.c_str(), corpus[i]);
+
+      // trimming is idempotent: blank padding never changes the content
+      std::string const padded(" \t\n" + corpus[i] + " \r\n");
+      j50n const a(corpus[i]);
+      j50n const b(padded);
+      t::record(a.get() == b.get(), name + " trim invariance", __LINE__,
+        "           document:" + hunt::hexdump(corpus[i]) + "\n");
+    }
+
+    // ── behaviour pins verified while the corpus was built ────────────────
+
+    // an escaped closing quote never terminates the string: the parity of
+    // the backslash run before the final quote decides the token
+    CHECK(j50n(std::string("{\"a\":\"" + std::string(3, '\\') + "\"}"))["a"]
+      .is_empty());
+    {
+      // lifetime: j50n is a non-owning view, so the source string must be
+      // named - binding the constructor parameter to a temporary would leave
+      // the view dangling at the end of the declaration statement
+      std::string const src(std::string("{\"a\":\"") +
+        std::string(4, '\\') + "\"}");
+      j50n const e(src);
+      CHECK_EQ(e["a"].get().size(), 4u);
+      CHECK(e["a"].get() == std::string(4, '\\'));
+      CHECK_EQ(j50n::unescape(e["a"].get()).size(), 2u);
+    }
+
+    // the scan stops when the first root closes: nothing after {} is seen
+    CHECK(!j50n(R"j({}{"a":1})j").contains("a"));
+
+    // escaped surrogate keys match by their raw text (like \u0041 keys);
+    // the other, ordinary key still resolves normally
+    CHECK_EQ(j50n(R"j({"\ud800\udc00":1,"b":2})j")[R"j(\ud800\udc00)j"], "1");
+    CHECK_EQ(j50n(R"j({"\ud800\udc00":1,"b":2})j")["b"], "2");
+  }
+
+  // ── whole-document byte sweeps ──────────────────────────────────────────
+  {
+    SECTION("crash hunt: whole-document byte sweeps");
+
+    // every 1-byte document, bare / quoted / embedded in an object
+    for (int b = 0; b < 256; ++b)
+    {
+      std::string const one(1, char(b));
+      std::string const name("byte " + std::to_string(b));
+      hunt::sweep(name.c_str(), one);
+      hunt::sweep((name + " quoted").c_str(), "\"" + one + "\"");
+      hunt::sweep((name + " embedded").c_str(),
+        "{\"k\":\"" + one + "\",\"z\":1}");
+    }
+
+    // short structural combinations
+    std::string const alpha2("\"\\[]{}:,ud0-x \n");
+    for (char const a : alpha2)
+      for (char const b : alpha2)
+        hunt::sweep("pair", std::string({a, b}));
+
+    std::string const alpha3("\"\\[]{}:u");
+    for (char const a : alpha3)
+      for (char const b : alpha3)
+        for (char const c : alpha3)
+          hunt::sweep("triple", std::string({a, b, c}));
+  }
+
+  // ── truncation sweep (every prefix of every corpus document) ────────────
+  {
+    SECTION("crash hunt: truncation sweep");
+
+    for (std::size_t i = 0; i < corpus.size(); ++i)
+      for (std::size_t len = 0; len <= corpus[i].size(); ++len)
+      {
+        std::string const name("corpus[" + std::to_string(i) + "] prefix " +
+          std::to_string(len));
+        hunt::sweep(name.c_str(), std::string_view(corpus[i]).substr(0, len));
+      }
+  }
+
+  // ── mutation fuzz (fixed seed) ──────────────────────────────────────────
+  {
+    SECTION("crash hunt: mutation fuzz (fixed seed)");
+
+    // Deterministic: mt19937_64 with a fixed seed and constant iteration
+    // counts produces the same mutants on every machine and every run, so
+    // any failure reproduces exactly.
+    std::mt19937_64 rng(0xC0FFEEull);
+
+    auto const rnd = [&rng](std::size_t const n)
+      { return n ? std::size_t(rng() % n) : std::size_t(0); };
+
+    std::string const junk("\"\\[]{}:,ud0 \t\n\rxyz+-.eEaA149\x7F");
+
+    // seed pool: the hostile corpus plus the suite's well-formed fixtures
+    std::vector<std::string> pool(corpus);
+    pool.push_back(std::string(JSON));
+    pool.push_back(std::string(JSON_ESCAPED));
+    pool.push_back(std::string(JSON_NUMBERS));
+    pool.push_back(std::string(JSON_BOOLS));
+
+    constexpr int iterations = 20000;
+
+    for (int it = 0; it < iterations; ++it)
+    {
+      std::string doc(pool[rnd(pool.size())]);
+
+      int const ops(1 + int(rnd(4)));
+      for (int op = 0; op < ops && !doc.empty(); ++op)
+        switch (rnd(6))
+        {
+        case 0: doc[rnd(doc.size())] = junk[rnd(junk.size())]; break;
+        case 1: doc[rnd(doc.size())] = char(rng() & 0xFF); break;
+        case 2: doc.erase(rnd(doc.size()), 1 + rnd(3)); break;
+        case 3: doc.insert(rnd(doc.size()), 1, junk[rnd(junk.size())]); break;
+        case 4:
+          {
+            std::size_t const p(rnd(doc.size()));
+            std::size_t const q(rnd(doc.size()));
+            doc.insert(rnd(doc.size()), doc, p,
+              q < doc.size() - p ? q : doc.size() - p);
+            break;
+          }
+        case 5: doc[rnd(doc.size())] = '"'; break;
+        }
+
+      // every mutant is checked; failures record immediately, passes are
+      // sampled so the check count stays readable
+      auto const r(hunt::invariants(doc));
+      if (!r.ok)
+        t::record(false, "mutation fuzz invariants", __LINE__,
+          "           iteration: " + std::to_string(it) +
+          "\n           document:" + hunt::hexdump(doc) +
+          "\n           text: " + t::escape(doc) +
+          "\n           " + r.detail + "\n");
+      else if (0 == it % 100)
+        t::record(true, "mutation fuzz invariants (sample)", __LINE__);
+
+      // pure random byte soup, every fourth iteration
+      if (0 == it % 4)
+      {
+        std::string soup(std::size_t(1 + rnd(48)), '\0');
+        for (char& c : soup) c = char(rng());
+
+        auto const r2(hunt::invariants(soup));
+        if (!r2.ok)
+          t::record(false, "byte-soup invariants", __LINE__,
+            "           iteration: " + std::to_string(it) +
+            "\n           document:" + hunt::hexdump(soup) +
+            "\n           " + r2.detail + "\n");
+        else if (0 == it % 400)
+          t::record(true, "byte-soup invariants (sample)", __LINE__);
+      }
+      // escape-heavy soup, offset phase
+      else if (1 == it % 4)
+      {
+        std::string const esc_alpha("\\u\"dD8008faAbxnt[]{}:");
+        std::string soup(std::size_t(1 + rnd(48)), '\0');
+        for (char& c : soup) c = esc_alpha[rnd(esc_alpha.size())];
+
+        auto const r2(hunt::invariants(soup));
+        if (!r2.ok)
+          t::record(false, "escape-soup invariants", __LINE__,
+            "           iteration: " + std::to_string(it) +
+            "\n           document:" + hunt::hexdump(soup) +
+            "\n           " + r2.detail + "\n");
+        else if (400 == it % 800)
+          t::record(true, "escape-soup invariants (sample)", __LINE__);
+      }
+    }
+  }
+
+  // ── unescape fuzz (properties) ──────────────────────────────────────────
+  {
+    SECTION("crash hunt: unescape fuzz (properties)");
+
+    // Three properties hold for every input:
+    //   1. determinism - two calls return identical strings;
+    //   2. passthrough - an input without a single backslash comes back
+    //      byte-identical (any bytes, including NUL and 0x80-0xFF);
+    //   3. bounded size - output is never longer than the input: every
+    //      escape consumes at least as many bytes as it can emit
+    //      (\uXXXX -> <= 4 bytes, broken escapes pass through 1:1).
+    std::mt19937_64 rng(0xBADC0DEull);
+
+    auto const rnd = [&rng](std::size_t const n)
+      { return n ? std::size_t(rng() % n) : std::size_t(0); };
+
+    char const esc_alpha[] =
+      "\\u\"dD8008faAbBfFnNrRtTxXgGZz093456789\xC3\xFF ";
+
+    constexpr int iterations = 20000;
+
+    for (int it = 0; it < iterations; ++it)
+    {
+      std::string s;
+      std::size_t const len(std::size_t(1 + rnd(40)));
+      bool backslash{};
+      for (std::size_t i = 0; i < len; ++i)
+      {
+        char const c(esc_alpha[rnd(sizeof esc_alpha - 1)]);
+        backslash = backslash || '\\' == c;
+        s += c;
+      }
+
+      std::string const a(j50n::unescape(s));
+      bool const ok(j50n::unescape(s) == a && a.size() <= s.size() &&
+        (backslash || a == s));
+      if (!ok)
+        t::record(false, "unescape fuzz properties", __LINE__,
+          "           iteration: " + std::to_string(it) +
+          "\n           input:" + hunt::hexdump(s) +
+          "\n           output:" + hunt::hexdump(a) + "\n");
+      else if (0 == it % 100)
+        t::record(true, "unescape fuzz properties (sample)", __LINE__);
+
+      // pure byte soup, every fourth iteration
+      if (0 == it % 4)
+      {
+        std::string soup(std::size_t(1 + rnd(40)), '\0');
+        for (char& c : soup) c = char(rng());
+        std::string const u(j50n::unescape(soup));
+        bool const ok2(j50n::unescape(soup) == u && u.size() <= soup.size());
+        if (!ok2)
+          t::record(false, "unescape soup properties", __LINE__,
+            "           iteration: " + std::to_string(it) +
+            "\n           input:" + hunt::hexdump(soup) +
+            "\n           output:" + hunt::hexdump(u) + "\n");
+        else if (0 == it % 400)
+          t::record(true, "unescape soup properties (sample)", __LINE__);
+      }
+    }
+
+    // ── boundary pins verified during the campaign ────────────────────────
+    // a high surrogate pairs only with a \u low surrogate: \uD800\uD800
+    // leaves the first high alone and pairs the SECOND high with the low
+    CHECK_EQ(j50n::unescape(R"j(\uD800\uD800\uDC00)j"),
+      std::string("\xEF\xBF\xBD\xF0\x90\x80\x80", 7));
+    CHECK_EQ(j50n::unescape(R"j(\uDC00\uD800)j"),
+      std::string("\xEF\xBF\xBD\xEF\xBF\xBD", 6));
+    CHECK_EQ(j50n::unescape(R"j(\uDC00\uDC00)j"),
+      std::string("\xEF\xBF\xBD\xEF\xBF\xBD", 6));
+    // \uDFFE and \uDFFF are LOW surrogates (high is D800-DBFF): no pairing
+    CHECK_EQ(j50n::unescape(R"j(\uDFFE\uDFFF)j"),
+      std::string("\xEF\xBF\xBD\xEF\xBF\xBD", 6));
+    // a high surrogate followed by a plain character does not pair
+    CHECK_EQ(j50n::unescape(R"j(\uD800A)j"),
+      std::string("\xEF\xBF\xBD" "A", 4));
+    // 2-byte boundary: U+0080 encodes as C2 80
+    CHECK_EQ(j50n::unescape(R"j(\u0080)j"), std::string("\xC2\x80", 2));
+  }
+
+  // ── scale and hang probes (bounded) ─────────────────────────────────────
+  {
+    SECTION("crash hunt: scale and hang probes");
+
+    // The scanner must stay linear in the input size: a quadratic
+    // regression turns these probes into timeouts instead of failures.
+    {
+      constexpr int N = 50000;
+      std::string s;
+      for (int i = 0; i < N; ++i) s += "{\"k\":";
+      s += "42";
+      s.append(N, '}');
+      j50n const d(s);
+      CHECK_EQ(d["k"].get().size(), std::size_t(s.size() - 6));
+      CHECK_EQ(d.size(), 1u);
+    }
+    {
+      constexpr int N = 50000;
+      std::string const s("[" + std::string(N, '[') +
+        std::string(N, ']') + "]");
+      j50n const d(s);
+      CHECK_EQ(d.size(), 1u);
+      CHECK_EQ(d[0].size(), 1u);
+      CHECK_EQ(d[0].get().size(), std::size_t(2 * N));   // brackets only
+    }
+    {
+      // deep nesting inside a root-array element
+      constexpr int N = 50000;
+      std::string s("[");
+      s.append(N, '[');
+      s += "1";
+      s.append(N, ']');
+      s += "]";
+      j50n const d(s);
+      CHECK_EQ(d.size(), 1u);
+      CHECK_EQ(d[0].size(), 1u);
+      CHECK_EQ(d[0].get().size(), std::size_t(2 * N + 1));
+      CHECK_EQ(d[0][0].get().size(), std::size_t(2 * N - 1));
+    }
+    {
+      constexpr std::size_t N = 30000;
+      std::string s("[");
+      for (std::size_t i = 0; i < N; ++i) s += "1,";
+      s += "1]";
+      j50n const d(s);
+      CHECK_EQ(d.size(), N + 1);
+      CHECK(d.contains(N));
+      CHECK(!d.contains(N + 1));
+      CHECK_EQ(d[N], "1");
+    }
+    {
+      // a run of commas adds nothing
+      std::string s("[");
+      s.append(10000, ',');
+      s += "1]";
+      j50n const d(s);
+      CHECK_EQ(d.size(), 1u);
+      CHECK_EQ(d[0], "1");
+    }
+    {
+      // 100k digits: from_chars must report a range error, not crash
+      std::string const s(100000, '9');
+      j50n const d(s);
+      CHECK(d.is_bare());
+      CHECK(!d.is_number());
+      CHECK_GET_ERR(d.get<double>());
+      CHECK_GET_ERR(d.get<int>());
+    }
+    {
+      // 100k backslashes inside a string: pair parity decides termination
+      std::string const even(std::string("{\"a\":\"") +
+        std::string(100000, '\\') + "\"}");
+      j50n const e(even);
+      CHECK_EQ(e["a"].get().size(), 100000u);
+      CHECK_EQ(j50n::unescape(e["a"].get()).size(), 50000u);
+
+      std::string const odd(std::string("{\"a\":\"") +
+        std::string(99999, '\\') + "\"}");
+      j50n const o(odd);
+      CHECK(o["a"].is_empty());
+    }
+    {
+      // a bare word that runs to the end of the buffer is complete
+      std::string const s(100000, 'a');
+      j50n const d(s);
+      CHECK(d.is_bare());
+      CHECK_EQ(d.get().size(), 100000u);
+      CHECK_EQ(d.size(), 0u);
+    }
+  }
+}
+
+
 // ── main ────────────────────────────────────────────────────────────────────
 
 int main(int argc, char** argv)
@@ -3558,6 +4099,7 @@ int main(int argc, char** argv)
   test_strings_and_unescape();
   test_scanner();
   test_scale_and_misc();
+  test_crash_hunt();
 
   std::cout << "\n== Summary ==\n"
     << t::g.checks << " checks, " << t::g.failures << " failed";

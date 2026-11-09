@@ -228,7 +228,7 @@ class j50n
             bool const incl) mutable
             noexcept(feach_noexcept<decltype(f)>()) -> bool
             {
-              j50n const item(p, size_type(e - p) + incl);
+              j50n const item({}, p, size_type(e - p) + incl);
               if constexpr(requires{bool(f(item, i));}) return f(item, i++);
               else if constexpr(requires{bool(f(item));})
                 { ++i; return f(item); }
@@ -256,7 +256,7 @@ class j50n
                 return false;
               }
 
-              j50n const val(p, size_type(e - p) + incl);
+              j50n const val({}, p, size_type(e - p) + incl);
 
               if constexpr(requires{bool(f(key, val));}) return f(key, val);
               else { f(key, val); return false; }
@@ -376,12 +376,12 @@ public:
   template <std::size_t N>
   [[nodiscard]] j50n operator[](char const(&a)[N]) const noexcept
   {
-    return j50n(1, S::find(s_, std::string_view(a, N - 1)));
+    return j50n({}, S::find(s_, std::string_view(a, N - 1)));
   }
 
   [[nodiscard]] j50n operator[](auto&& a) const noexcept
   {
-    return j50n(1, S::find(s_, std::forward<decltype(a)>(a)));
+    return j50n({}, S::find(s_, std::forward<decltype(a)>(a)));
   }
 
   //
