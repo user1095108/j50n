@@ -291,7 +291,8 @@ public:
 
   explicit j50n(auto&& ...a)
     noexcept(noexcept(decltype(s_)(std::forward<decltype(a)>(a)...)))
-    requires std::is_constructible_v<decltype(s_), decltype(a)&&...>:
+    requires(std::is_constructible_v<decltype(s_), decltype(a)&&...> &&
+      ((!std::is_same_v<std::remove_cvref_t<decltype(a)>, std::nullptr_t>) && ...)):
     s_(std::forward<decltype(a)>(a)...)
   {
     S::trim(s_);
@@ -310,7 +311,8 @@ public:
   j50n& operator=(auto&& a)
     noexcept(noexcept(
       S::trim(s_ = std::string_view(std::forward<decltype(a)>(a)))))
-    requires std::is_constructible_v<decltype(s_), decltype(a)&&>
+    requires(std::is_constructible_v<decltype(s_), decltype(a)&&> &&
+      !std::is_same_v<std::remove_cvref_t<decltype(a)>, std::nullptr_t>)
   {
     S::trim(s_ = std::string_view(std::forward<decltype(a)>(a)));
 
