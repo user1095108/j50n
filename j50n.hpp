@@ -460,11 +460,8 @@ public:
   {
     if (!is_string()) return s_;
 
-    auto r(s_.substr(1));
-    if (!r.empty() && ('"' == r.back()))
-      r.remove_suffix(1); // drop quotes
-
-    return r;
+    auto const sz(s_.size());
+    return {s_.data() + 1, sz - 1 - (sz >= 2u && '"' == s_.back())};
   }
 
   template <int = 0>
