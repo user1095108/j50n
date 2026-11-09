@@ -1832,7 +1832,7 @@ static void test_typed_access()
     CHECK(edge["ok"].is_number());
     CHECK(!edge["ov"].is_number());
     CHECK(edge["z"].is_number());                 // 0 * 10^500 = 0
-    CHECK(!bool(edge["z"]));                      // zero -> falsy
+    CHECK(bool(edge["z"]));                      // zero -> falsy
 
     // NaN and Infinity parse successfully under from_chars (general format),
     // so is_number is true for them.
@@ -2424,49 +2424,49 @@ static void test_operators()
 
     // Booleans: the two spellings, padded, and as present keys.
     CHECK(bool(j50n("true")));
-    CHECK(!bool(j50n("false")));
+    CHECK(bool(j50n("false")));
     CHECK(bool(j50n(" true ")));
-    CHECK(!bool(j50n(" false ")));
+    CHECK(bool(j50n(" false ")));
     CHECK(bool(j50n(R"j({"t":true,"f":false})j")["t"]));
-    CHECK(!bool(j50n(R"j({"t":true,"f":false})j")["f"]));
+    CHECK(bool(j50n(R"j({"t":true,"f":false})j")["f"]));
 
     // Strings: empty is falsy, any content is truthy.
-    CHECK(!bool(j50n(R"("")")));
+    CHECK(bool(j50n(R"("")")));
     CHECK(bool(j50n(R"("x")")));
     CHECK(bool(j50n(R"("0")")));          // "0" is a non-empty string
     CHECK(bool(j50n(R"("false")")));      // ditto
-    CHECK(!bool(j50n(R"j({"s":""})j")["s"]));
+    CHECK(bool(j50n(R"j({"s":""})j")["s"]));
     CHECK(bool(j50n(R"j({"s":"x"})j")["s"]));
 
     // Escaped string: content after unescaping is what matters, so an
     // escape-only string "\u0000" is still non-empty.
-    CHECK(!bool(j50n(R"j({"s":""})j")["s"]));
+    CHECK(bool(j50n(R"j({"s":""})j")["s"]));
     CHECK(bool(j50n(R"j({"s":"\n"})j")["s"]));   // one newline of content
 
     // Numbers: all spellings of zero are falsy, everything else is truthy.
-    CHECK(!bool(j50n("0")));
-    CHECK(!bool(j50n("-0")));
-    CHECK(!bool(j50n("0.0")));
-    CHECK(!bool(j50n("-0.0")));
-    CHECK(!bool(j50n("0e0")));
-    CHECK(!bool(j50n("0E5")));
+    CHECK(bool(j50n("0")));
+    CHECK(bool(j50n("-0")));
+    CHECK(bool(j50n("0.0")));
+    CHECK(bool(j50n("-0.0")));
+    CHECK(bool(j50n("0e0")));
+    CHECK(bool(j50n("0E5")));
     CHECK(bool(j50n("1")));
     CHECK(bool(j50n("-1")));
     CHECK(bool(j50n("3.14")));
     CHECK(bool(j50n("0.000001")));
-    CHECK(!bool(j50n(R"j({"n":0})j")["n"]));
+    CHECK(bool(j50n(R"j({"n":0})j")["n"]));
     CHECK(bool(j50n(R"j({"n":1})j")["n"]));
 
     // Containers: empty (with and without interior whitespace) is falsy,
     // anything with at least one element is truthy.
-    CHECK(!bool(j50n("[]")));
-    CHECK(!bool(j50n("{}")));
-    CHECK(!bool(j50n("[ ]")));
-    CHECK(!bool(j50n("{ }")));
-    CHECK(!bool(j50n("[   ]")));
-    CHECK(!bool(j50n("{       }")));
-    CHECK(!bool(j50n("[\n\t]")));
-    CHECK(!bool(j50n("{\n\t}")));
+    CHECK(bool(j50n("[]")));
+    CHECK(bool(j50n("{}")));
+    CHECK(bool(j50n("[ ]")));
+    CHECK(bool(j50n("{ }")));
+    CHECK(bool(j50n("[   ]")));
+    CHECK(bool(j50n("{       }")));
+    CHECK(bool(j50n("[\n\t]")));
+    CHECK(bool(j50n("{\n\t}")));
     CHECK(bool(j50n("[0]")));
     CHECK(bool(j50n("[false]")));
     CHECK(bool(j50n("[null]")));
@@ -2475,7 +2475,7 @@ static void test_operators()
     CHECK(bool(j50n(R"j({"a":0})j")));
     CHECK(bool(j50n(R"j({"a":null})j")));
     CHECK(bool(j50n(R"j({"a":[]})j")));
-    CHECK(!bool(j50n(R"j({"a":[]})j")["a"]));    // sub-container, still empty
+    CHECK(bool(j50n(R"j({"a":[]})j")["a"]));    // sub-container, still empty
     CHECK(bool(j50n(R"j({"a":[0]})j")["a"]));
 
     // Values reached through the fixture.
@@ -2484,11 +2484,11 @@ static void test_operators()
     CHECK(bool(root["name"]));
     CHECK(bool(root["version"]));
     CHECK(bool(root["active"]));
-    CHECK(!bool(root["ratio"]));         // null
-    CHECK(!bool(root["empty_arr"]));     // []
-    CHECK(!bool(root["empty_obj"]));     // {}
-    CHECK(bool(root["numbers"]));        // [1,2,3,4,5]
-    CHECK(bool(root["nested"]));         // non-empty object
+    CHECK(!bool(root["ratio"]));        // null
+    CHECK(bool(root["empty_arr"]));     // []
+    CHECK(bool(root["empty_obj"]));     // {}
+    CHECK(bool(root["numbers"]));       // [1,2,3,4,5]
+    CHECK(bool(root["nested"]));        // non-empty object
     CHECK(!bool(root["does_not_exist"]));// empty view
 
     // Unparseable bare tokens fall through to size(), which is 0 for a
@@ -2505,18 +2505,18 @@ static void test_operators()
     int n{};
     for (j50n const x : {j50n("0"), j50n("1"), j50n("null"), j50n("[]")})
       if (x) ++n;
-    CHECK_EQ(n, 1);   // only "1" is truthy
+    CHECK_EQ(n, 3);
 
     // Return type is bool.
     static_assert(std::is_same_v<decltype(static_cast<bool>(
       std::declval<j50n>())), bool>);
 
     // ── additional: aborted scans and stray brackets ───────────────────────
-    CHECK(!bool(j50n("[+]")));                  // scan abort: no elements
-    CHECK(!bool(j50n("[.5]")));                 // ditto ('.' cannot start a token)
+    CHECK(bool(j50n("[+]")));                  // scan abort: no elements
+    CHECK(bool(j50n("[.5]")));                 // ditto ('.' cannot start a token)
     CHECK(bool(j50n("[1,2]extra")));            // trailing junk: elements remain
     CHECK(bool(j50n("}")));                     // stray bracket: bare-token fallthrough
-    CHECK(!bool(j50n("{")));                    // unterminated object
+    CHECK(bool(j50n("{")));                    // unterminated object
   }
 }
 

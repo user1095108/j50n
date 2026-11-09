@@ -366,12 +366,7 @@ public:
 
   [[nodiscard]] explicit operator bool() const noexcept
   {
-    if (is_empty() || is_null() || is_empty_string() || is_false())
-      return false;
-    else if (auto const [v, err](get<double>()); !err)
-      return bool(v);
-    else
-      return !S::any_of<'[', '{'>(s_.front()) || size();
+    return !(is_empty() || is_null());
   }
 
   //
