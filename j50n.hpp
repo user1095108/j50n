@@ -74,7 +74,7 @@ class j50n
     template <typename T>
     static T has_zero(T const v) noexcept
     { // nonzero iff v contains a zero byte;
-      constexpr T ones(~std::uintmax_t{} / 0xFF);  // 0x0101…01
+      constexpr T ones(~std::uintmax_t{} / 0xFFu); // 0x0101…01
       constexpr T highs(ones << 7);                // 0x8080…80
       return (v - ones) & ~v & highs;
     }
