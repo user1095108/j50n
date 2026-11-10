@@ -121,15 +121,15 @@ class j50n
         std::uintmax_t w;
         std::memcpy(&w, i, sizeof(w));
 
-        if constexpr(std::endian::native == std::endian::big)
-          w = byteswap(w);
-
         if (auto const m(has_zero(w ^ splat<std::uintmax_t>(0x22)) | // byte == '"'
           (w & splat<std::uintmax_t>(0x80)) | // byte >= 0x80
           has_zero(w & splat<std::uintmax_t>(0xE0)) | // byte < 0x20
           has_zero(w ^ splat<std::uintmax_t>(0x5C))); m) // byte == '\\'
         {
-          i += unsigned(std::countr_zero(m)) >> 3;
+          if constexpr(std::endian::little == std::endian::native)
+            i += unsigned(std::countr_zero(m)) >> 3;
+          else
+            i += unsigned(std::countl_zero(m)) >> 3;
           break;
         }
       }
@@ -179,9 +179,6 @@ class j50n
         std::uintmax_t w;
         std::memcpy(&w, i, sizeof(w));
 
-        if constexpr(std::endian::native == std::endian::big)
-          w = byteswap(w);
-
         if (auto const m(has_zero(w ^ splat<std::uintmax_t>(':')) |
           has_zero(w ^ splat<std::uintmax_t>(',')) |
           has_zero(w ^ splat<std::uintmax_t>(']')) |
@@ -190,7 +187,10 @@ class j50n
           (w & splat<std::uintmax_t>(0x80)) | // byte >= 0x80
           has_zero(w ^ splat<std::uintmax_t>(0x7F))); m) // byte == 0x7F
         {
-          i += unsigned(std::countr_zero(m)) >> 3;
+          if constexpr(std::endian::little == std::endian::native)
+            i += unsigned(std::countr_zero(m)) >> 3;
+          else
+            i += unsigned(std::countl_zero(m)) >> 3;
           break;
         }
       }
