@@ -110,7 +110,7 @@ class j50n
       }
 
       slow_loop:
-      for (; end != i;)
+      while (end != i)
       {
         if (auto const b((unsigned char)*i); '"' == b)
           return i;
@@ -167,7 +167,7 @@ class j50n
       }
 
       slow_loop:
-      for (; end != i;)
+      while (end != i)
       {
         if (any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*i)) return i;
         else if (!range<32, 126>(*i)) return decltype(i){};
