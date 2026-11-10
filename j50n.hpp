@@ -85,12 +85,6 @@ class j50n
       return T(~T()) / T(0xFF) * T(b);
     }
 
-    template <class T>
-    static bool is_aligned_for(void const* p) noexcept
-    {
-      return !(std::uintptr_t(p) % alignof(T));
-    }
-
     static auto str_end(auto i, decltype(i) const end) noexcept
     {
       fast_loop:
@@ -107,7 +101,6 @@ class j50n
           break;
       }
 
-      slow_loop:
       for (; end != i; ++i)
       {
         if (auto const b((unsigned char)*i); '"' == b)
