@@ -2,6 +2,8 @@
 # define J50N_HPP
 # pragma once
 
+#include <array>
+#include <bit> // std::bit_cast()
 #include <cstddef> // std::size_t
 #include <cstdint> // std::uintmax_t
 #include <cstring> // std::memcpy()
@@ -85,6 +87,31 @@ class j50n
       return T(~T()) / T(0xFF) * T(b);
     }
 
+    template <typename T>
+    static T byteswap(T const value) noexcept
+      requires (std::integral<T> && !std::is_same_v<T, bool>)
+    {
+      if constexpr(1 == sizeof(T))
+        return value;
+#if defined(__GNUC__) || defined(__clang__)
+      else if constexpr(2 == sizeof(T))
+        return T(__builtin_bswap16(static_cast<std::uint16_t>(value)));
+      else if constexpr(4 == sizeof(T))
+        return T(__builtin_bswap32(static_cast<std::uint32_t>(value)));
+      else if constexpr(8 == sizeof(T))
+        return T(__builtin_bswap64(static_cast<std::uint64_t>(value)));
+#endif
+      else
+        return []<auto ...I>(auto const in,
+          std::index_sequence<I...>) noexcept
+          {
+            return std::bit_cast<T>(
+              std::array<std::byte, sizeof(T)>{in[sizeof(T) - 1 - I]...}
+            );
+          }(std::bit_cast<std::array<std::byte, sizeof(T)>>(value),
+            std::make_index_sequence<sizeof(T)>{});
+    }
+
     static auto str_end(auto i, decltype(i) const end) noexcept
     {
       fast_loop:
@@ -94,11 +121,17 @@ class j50n
         std::uintmax_t w;
         std::memcpy(&w, i, sizeof(w));
 
-        if (has_zero(w ^ splat<std::uintmax_t>(0x22)) || // byte == '"'
-          (w & splat<std::uintmax_t>(0x80)) || // byte >= 0x80
-          has_zero(w & splat<std::uintmax_t>(0xE0)) || // byte < 0x20
-          has_zero(w ^ splat<std::uintmax_t>(0x5C))) // byte == '\\'
+        if constexpr(std::endian::native == std::endian::big)
+          w = byteswap(w);
+
+        if (auto const m(has_zero(w ^ splat<std::uintmax_t>(0x22)) | // byte == '"'
+          (w & splat<std::uintmax_t>(0x80)) | // byte >= 0x80
+          has_zero(w & splat<std::uintmax_t>(0xE0)) | // byte < 0x20
+          has_zero(w ^ splat<std::uintmax_t>(0x5C))); m) // byte == '\\'
+        {
+          i += unsigned(std::countr_zero(m)) >> 3;
           break;
+        }
       }
 
       for (; end != i; ++i)
@@ -146,14 +179,20 @@ class j50n
         std::uintmax_t w;
         std::memcpy(&w, i, sizeof(w));
 
-        if (has_zero(w ^ splat<std::uintmax_t>(':')) ||
-          has_zero(w ^ splat<std::uintmax_t>(',')) ||
-          has_zero(w ^ splat<std::uintmax_t>(']')) ||
-          has_zero(w ^ splat<std::uintmax_t>('}')) ||
-          ((w - splat<std::uintmax_t>(33)) & ~w & splat<std::uintmax_t>(0x80)) || // byte < 33
-          (w & splat<std::uintmax_t>(0x80)) || // byte >= 0x80
-          has_zero(w ^ splat<std::uintmax_t>(0x7F))) // byte == 0x7F
-            break;
+        if constexpr(std::endian::native == std::endian::big)
+          w = byteswap(w);
+
+        if (auto const m(has_zero(w ^ splat<std::uintmax_t>(':')) |
+          has_zero(w ^ splat<std::uintmax_t>(',')) |
+          has_zero(w ^ splat<std::uintmax_t>(']')) |
+          has_zero(w ^ splat<std::uintmax_t>('}')) |
+          ((w - splat<std::uintmax_t>(33)) & ~w & splat<std::uintmax_t>(0x80)) | // byte < 33
+          (w & splat<std::uintmax_t>(0x80)) | // byte >= 0x80
+          has_zero(w ^ splat<std::uintmax_t>(0x7F))); m) // byte == 0x7F
+        {
+          i += unsigned(std::countr_zero(m)) >> 3;
+          break;
+        }
       }
 
       for (; end != i; ++i)
