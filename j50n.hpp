@@ -87,31 +87,6 @@ class j50n
       return T(~T()) / T(0xFF) * T(b);
     }
 
-    template <typename T>
-    static T byteswap(T const value) noexcept
-      requires (std::integral<T> && !std::is_same_v<T, bool>)
-    {
-      if constexpr(1 == sizeof(T))
-        return value;
-#if defined(__GNUC__) || defined(__clang__)
-      else if constexpr(2 == sizeof(T))
-        return T(__builtin_bswap16(static_cast<std::uint16_t>(value)));
-      else if constexpr(4 == sizeof(T))
-        return T(__builtin_bswap32(static_cast<std::uint32_t>(value)));
-      else if constexpr(8 == sizeof(T))
-        return T(__builtin_bswap64(static_cast<std::uint64_t>(value)));
-#endif
-      else
-        return []<auto ...I>(auto const in,
-          std::index_sequence<I...>) noexcept
-          {
-            return std::bit_cast<T>(
-              std::array<std::byte, sizeof(T)>{in[sizeof(T) - 1 - I]...}
-            );
-          }(std::bit_cast<std::array<std::byte, sizeof(T)>>(value),
-            std::make_index_sequence<sizeof(T)>{});
-    }
-
     static auto str_end(auto i, decltype(i) const end) noexcept
     {
       fast_loop:
