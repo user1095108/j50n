@@ -3,6 +3,8 @@
 # pragma once
 
 #include <cstddef> // std::size_t
+#include <cstdint> // std::uintmax_t
+#include <cstring> // std::memcpy()
 #include <charconv> // std::from_chars()
 #include <compare> // std::partial_ordering
 #include <ostream> // operator<<()
@@ -69,12 +71,40 @@ class j50n
       return range<'0', '9'>(c) || range<'A', 'F'>(c) || range<'a', 'f'>(c);
     }
 
+    template <typename T>
+    static T has_zero(T const v) noexcept
+    { // nonzero iff v contains a zero byte;
+      constexpr T ones(~std::uintmax_t{} / 0xFF);  // 0x0101…01
+      constexpr T highs(ones << 7);                // 0x8080…80
+      return (v - ones) & ~v & highs;
+    }
+
+    template <typename T> requires std::is_unsigned_v<T>
+    static consteval T splat(std::uint8_t const b) noexcept
+    { // 0xbbbb…bb for byte value b
+      return T(~T()) / T(0xFF) * T(b);
+    }
+
     static auto str_end(auto i, decltype(i) const end) noexcept
     {
+      fast_loop:
+      for (; std::size_t(end - i) >= sizeof(std::uintmax_t);
+        i += sizeof(std::uintmax_t))
+      { // fast-skip
+        std::uintmax_t w;
+        std::memcpy(&w, i, sizeof(w));
+
+        if ((w & splat<std::uintmax_t>(0x80)) || // byte >= 0x80
+          has_zero(w & splat<std::uintmax_t>(0xE0)) || // byte < 0x20
+          has_zero(w ^ splat<std::uintmax_t>(0x5C)) || // byte == '\\'
+          has_zero(w ^ splat<std::uintmax_t>(0x22))) // byte == '"'
+          break;
+      }
+
       for (; end != i; ++i)
-        if (auto const b((unsigned char)*i); '"' == b) [[unlikely]]
+        if (auto const b((unsigned char)*i); '"' == b)
           return i;
-        else if ('\\' == b) [[unlikely]]
+        else if ('\\' == b)
         {
           if (end == ++i ||
             !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i))
@@ -83,6 +113,9 @@ class j50n
           if ('u' == *i && (end - i < 5 || !is_hex(*++i) || !is_hex(*++i) ||
             !is_hex(*++i) || !is_hex(*++i)))
             break;
+
+          ++i;
+          goto fast_loop;
         } // 0x7F (DEL) is allowed unescaped per RFC 8259
         else if (!range<32, 127>(b)) // not printable ASCII (incl. 0x7F)
         {
@@ -97,6 +130,9 @@ class j50n
           if (((b >= 0xE0u) && (end == ++i || (*i & 0xC0) != 0x80)) ||
             ((b >= 0xF0u) && (end == ++i || (*i & 0xC0) != 0x80)))
             break;
+
+          ++i;
+          goto fast_loop;
         }
 
       return decltype(i){};
@@ -104,6 +140,22 @@ class j50n
 
     static auto bare_end(auto i, decltype(i) const end) noexcept
     {
+      for (; std::size_t(end - i) >= sizeof(std::uintmax_t);
+        i += sizeof(std::uintmax_t))
+      { // fast-skip
+        std::uintmax_t w;
+        std::memcpy(&w, i, sizeof(w));
+
+        if (((w - splat<std::uintmax_t>(33)) & ~w & splat<std::uintmax_t>(0x80)) || // byte < 33
+          (w & splat<std::uintmax_t>(0x80)) || // byte >= 0x80
+          has_zero(w ^ splat<std::uintmax_t>(0x7F)) || // byte == 0x7F
+          has_zero(w ^ splat<std::uintmax_t>(':')) ||
+          has_zero(w ^ splat<std::uintmax_t>(',')) ||
+          has_zero(w ^ splat<std::uintmax_t>(']')) ||
+          has_zero(w ^ splat<std::uintmax_t>('}')))
+            break;
+      }
+
       for (; end != i; ++i)
         if (any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*i)) return i;
         else if (!range<32, 126>(*i)) return decltype(i){};
