@@ -85,8 +85,16 @@ class j50n
       return T(~T()) / T(0xFF) * T(b);
     }
 
+    template <class T>
+    static bool is_aligned_for(void const* p) noexcept
+    {
+      return !(std::uintptr_t(p) & (alignof(T) - 1));
+    }
+
     static auto str_end(auto i, decltype(i) const end) noexcept
     {
+      if (!is_aligned_for<std::uintmax_t>(i)) goto slow_loop;
+
       fast_loop:
       for (; std::size_t(end - i) >= sizeof(std::uintmax_t);
         i += sizeof(std::uintmax_t))
@@ -101,7 +109,9 @@ class j50n
           break;
       }
 
-      for (; end != i; ++i)
+      slow_loop:
+      for (; end != i;)
+      {
         if (auto const b((unsigned char)*i); '"' == b)
           return i;
         else if ('\\' == b)
@@ -113,9 +123,6 @@ class j50n
           if ('u' == *i && (end - i < 5 || !is_hex(*++i) || !is_hex(*++i) ||
             !is_hex(*++i) || !is_hex(*++i)))
             break;
-
-          ++i;
-          goto fast_loop;
         } // 0x7F (DEL) is allowed unescaped per RFC 8259
         else if (!range<32, 127>(b)) // not printable ASCII (incl. 0x7F)
         {
@@ -130,16 +137,19 @@ class j50n
           if (((b >= 0xE0u) && (end == ++i || (*i & 0xC0) != 0x80)) ||
             ((b >= 0xF0u) && (end == ++i || (*i & 0xC0) != 0x80)))
             break;
-
-          ++i;
-          goto fast_loop;
         }
+
+        if (is_aligned_for<std::uintmax_t>(++i)) goto fast_loop;
+      }
 
       return decltype(i){};
     }
 
     static auto bare_end(auto i, decltype(i) const end) noexcept
     {
+      if (!is_aligned_for<std::uintmax_t>(i)) goto slow_loop;
+
+      fast_loop:
       for (; std::size_t(end - i) >= sizeof(std::uintmax_t);
         i += sizeof(std::uintmax_t))
       { // fast-skip
@@ -156,9 +166,14 @@ class j50n
             break;
       }
 
-      for (; end != i; ++i)
+      slow_loop:
+      for (; end != i;)
+      {
         if (any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*i)) return i;
         else if (!range<32, 126>(*i)) return decltype(i){};
+
+        if (is_aligned_for<std::uintmax_t>(++i)) goto fast_loop;
+      }
 
       return end;
     }
