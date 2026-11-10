@@ -93,8 +93,6 @@ class j50n
 
     static auto str_end(auto i, decltype(i) const end) noexcept
     {
-      if (!is_aligned_for<std::uintmax_t>(i)) goto slow_loop;
-
       fast_loop:
       for (; std::size_t(end - i) >= sizeof(std::uintmax_t);
         i += sizeof(std::uintmax_t))
@@ -102,15 +100,15 @@ class j50n
         std::uintmax_t w;
         std::memcpy(&w, i, sizeof(w));
 
-        if ((w & splat<std::uintmax_t>(0x80)) || // byte >= 0x80
+        if (has_zero(w ^ splat<std::uintmax_t>(0x22)) || // byte == '"'
+          (w & splat<std::uintmax_t>(0x80)) || // byte >= 0x80
           has_zero(w & splat<std::uintmax_t>(0xE0)) || // byte < 0x20
-          has_zero(w ^ splat<std::uintmax_t>(0x5C)) || // byte == '\\'
-          has_zero(w ^ splat<std::uintmax_t>(0x22))) // byte == '"'
+          has_zero(w ^ splat<std::uintmax_t>(0x5C))) // byte == '\\'
           break;
       }
 
       slow_loop:
-      while (end != i)
+      for (; end != i; ++i)
       {
         if (auto const b((unsigned char)*i); '"' == b)
           return i;
@@ -123,6 +121,8 @@ class j50n
           if ('u' == *i && (end - i < 5 || !is_hex(*++i) || !is_hex(*++i) ||
             !is_hex(*++i) || !is_hex(*++i)))
             break;
+
+          ++i; goto fast_loop;
         } // 0x7F (DEL) is allowed unescaped per RFC 8259
         else if (!range<32, 127>(b)) // not printable ASCII (incl. 0x7F)
         {
@@ -137,9 +137,9 @@ class j50n
           if (((b >= 0xE0u) && (end == ++i || (*i & 0xC0) != 0x80)) ||
             ((b >= 0xF0u) && (end == ++i || (*i & 0xC0) != 0x80)))
             break;
-        }
 
-        if (is_aligned_for<std::uintmax_t>(++i)) goto fast_loop;
+          ++i; goto fast_loop;
+        }
       }
 
       return decltype(i){};
@@ -147,32 +147,26 @@ class j50n
 
     static auto bare_end(auto i, decltype(i) const end) noexcept
     {
-      if (!is_aligned_for<std::uintmax_t>(i)) goto slow_loop;
-
-      fast_loop:
       for (; std::size_t(end - i) >= sizeof(std::uintmax_t);
         i += sizeof(std::uintmax_t))
       { // fast-skip
         std::uintmax_t w;
         std::memcpy(&w, i, sizeof(w));
 
-        if (((w - splat<std::uintmax_t>(33)) & ~w & splat<std::uintmax_t>(0x80)) || // byte < 33
-          (w & splat<std::uintmax_t>(0x80)) || // byte >= 0x80
-          has_zero(w ^ splat<std::uintmax_t>(0x7F)) || // byte == 0x7F
-          has_zero(w ^ splat<std::uintmax_t>(':')) ||
+        if (has_zero(w ^ splat<std::uintmax_t>(':')) ||
           has_zero(w ^ splat<std::uintmax_t>(',')) ||
           has_zero(w ^ splat<std::uintmax_t>(']')) ||
-          has_zero(w ^ splat<std::uintmax_t>('}')))
+          has_zero(w ^ splat<std::uintmax_t>('}')) ||
+          ((w - splat<std::uintmax_t>(33)) & ~w & splat<std::uintmax_t>(0x80)) || // byte < 33
+          (w & splat<std::uintmax_t>(0x80)) || // byte >= 0x80
+          has_zero(w ^ splat<std::uintmax_t>(0x7F))) // byte == 0x7F
             break;
       }
 
-      slow_loop:
-      while (end != i)
+      for (; end != i; ++i)
       {
         if (any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*i)) return i;
         else if (!range<32, 126>(*i)) return decltype(i){};
-
-        if (is_aligned_for<std::uintmax_t>(++i)) goto fast_loop;
       }
 
       return end;
