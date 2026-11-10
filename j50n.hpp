@@ -88,7 +88,7 @@ class j50n
     template <class T>
     static bool is_aligned_for(void const* p) noexcept
     {
-      return !(std::uintptr_t(p) & (alignof(T) - 1));
+      return !(std::uintptr_t(p) % alignof(T));
     }
 
     static auto str_end(auto i, decltype(i) const end) noexcept
