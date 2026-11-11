@@ -272,63 +272,6 @@ class j50n
           std::declval<j50n>()));
     }
 
-    static void feach(std::string_view const s, auto f)
-      noexcept(feach_noexcept<decltype(f)>())
-      requires(
-        requires{f(std::declval<j50n>(), std::declval<std::size_t>());} ||
-        requires{f(std::declval<j50n>());} ||
-        requires{f(std::declval<std::string_view>(), std::declval<j50n>());}
-      )
-    {
-      if (s.empty()) return;
-
-      if constexpr(requires{f(std::declval<j50n>(),
-        std::declval<std::size_t>());} || requires{f(std::declval<j50n>());})
-      { // element-style callable: arrays only
-        if ('[' != s.front()) return;
-
-        each_item(s,
-          [&, i = std::size_t{}](auto const p, auto const e,
-            bool const incl) mutable
-            noexcept(feach_noexcept<decltype(f)>()) -> bool
-            {
-              j50n const item({}, p, size_type(e - p) + incl);
-              if constexpr(requires{bool(f(item, i));}) return f(item, i++);
-              else if constexpr(requires{bool(f(item));})
-                { ++i; return f(item); }
-              else if constexpr(requires{f(item);})
-                { ++i; f(item); return false; }
-              else { f(item, i++); return false; }
-            }
-        );
-      }
-      else if constexpr(requires{f(std::declval<std::string_view>(),
-        std::declval<j50n>());})
-      { // key/value callable: objects only
-        if ('{' != s.front()) return;
-
-        each_item(s,
-          [&, expecting_key = false, key = std::string_view()](
-            auto const p, auto const e, bool const incl) mutable
-            noexcept(feach_noexcept<decltype(f)>()) -> bool
-            {
-              if ((expecting_key = !expecting_key))
-              {
-                bool const quoted('"' == *p);
-                key = {p + quoted, size_type(e - p) - quoted};
-
-                return false;
-              }
-
-              j50n const val({}, p, size_type(e - p) + incl);
-
-              if constexpr(requires{bool(f(key, val));}) return f(key, val);
-              else { f(key, val); return false; }
-            }
-        );
-      }
-    }
-
     static void trim(std::string_view& s) noexcept
     {
       auto const p(s.find_first_not_of(" \t\n\r"));
@@ -657,17 +600,68 @@ public:
   {
     std::size_t sz{};
 
-    S::feach(s_, [&](j50n) noexcept { ++sz; });
-    S::feach(s_, [&](std::string_view, j50n) noexcept { ++sz; });
+    feach([&](j50n) noexcept { ++sz; });
+    feach([&](std::string_view, j50n) noexcept { ++sz; });
 
     return sz;
   }
 
   //
-  void feach(auto&& f) const
-    noexcept(noexcept(S::feach(s_, std::forward<decltype(f)>(f))))
+  void feach(auto f) const
+    noexcept(S::feach_noexcept<decltype(f)>())
+    requires(
+      requires{f(std::declval<j50n>(), std::declval<std::size_t>());} ||
+      requires{f(std::declval<j50n>());} ||
+      requires{f(std::declval<std::string_view>(), std::declval<j50n>());}
+    )
   {
-    S::feach(s_, std::forward<decltype(f)>(f));
+    if (s_.empty()) return;
+
+    if constexpr(requires{f(std::declval<j50n>(),
+      std::declval<std::size_t>());} || requires{f(std::declval<j50n>());})
+    { // element-style callable: arrays only
+      if ('[' != s_.front()) return;
+
+      S::each_item(s_,
+        [&, i = std::size_t{}](auto const p, auto const e,
+          bool const incl) mutable
+          noexcept(S::feach_noexcept<decltype(f)>()) -> bool
+          {
+            j50n const item({}, p, S::size_type(e - p) + incl);
+            if constexpr(requires{bool(f(item, i));}) return f(item, i++);
+            else if constexpr(requires{bool(f(item));})
+              { ++i; return f(item); }
+            else if constexpr(requires{f(item);})
+              { ++i; f(item); return false; }
+            else { f(item, i++); return false; }
+          }
+      );
+    }
+    else if constexpr(requires{f(std::declval<std::string_view>(),
+      std::declval<j50n>());})
+    { // key/value callable: objects only
+      if ('{' != s_.front()) return;
+
+      S::each_item(s_,
+        [&, expecting_key = false, key = std::string_view()](
+          auto const p, auto const e, bool const incl) mutable
+          noexcept(S::feach_noexcept<decltype(f)>()) -> bool
+          {
+            if ((expecting_key = !expecting_key))
+            {
+              bool const quoted('"' == *p);
+              key = {p + quoted, S::size_type(e - p) - quoted};
+
+              return false;
+            }
+
+            j50n const val({}, p, S::size_type(e - p) + incl);
+
+            if constexpr(requires{bool(f(key, val));}) return f(key, val);
+            else { f(key, val); return false; }
+          }
+      );
+    }
   }
 };
 
