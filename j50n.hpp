@@ -2,8 +2,6 @@
 # define J50N_HPP
 # pragma once
 
-#include <array>
-#include <bit> // std::bit_cast()
 #include <cstddef> // std::size_t
 #include <cstdint> // std::uintmax_t
 #include <cstring> // std::memcpy()
@@ -171,10 +169,8 @@ class j50n
       }
 
       for (; end != i; ++i)
-      {
         if (any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*i)) return i;
         else if (!range<32, 126>(*i)) return decltype(i){};
-      }
 
       return end;
     }
