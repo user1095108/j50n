@@ -47,8 +47,7 @@
 // and constant iteration counts, so they reproduce any failure exactly and
 // their check counts never vary between runs.
 
-#include "j50n.hpp"
-
+#include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -61,6 +60,8 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+
+#include "j50n.hpp"
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 

@@ -2,6 +2,7 @@
 # define J50N_HPP
 # pragma once
 
+#include <array>
 #include <cstddef> // std::size_t
 #include <cstdint> // std::uintmax_t
 #include <cstring> // std::memcpy()
@@ -85,72 +86,77 @@ class j50n
       return T(~T()) / T(0xFF) * T(b);
     }
 
-    static auto str_end(auto i, decltype(i) const end) noexcept
+    [[nodiscard]] static auto str_end(auto i, decltype(i) const end) noexcept
     {
-      fast_loop:
-      for (; std::size_t(end - i) >= sizeof(std::uintmax_t);
-        i += sizeof(std::uintmax_t))
-      { // fast-skip
-        std::uintmax_t w;
-        std::memcpy(&w, i, sizeof(w));
+      for (;;)
+      {
+        auto const n((std::size_t(end - i) >= sizeof(std::uintmax_t)) ?
+          sizeof(std::uintmax_t) : std::size_t(end - i));
+        std::uintmax_t w(splat<std::uintmax_t>('!'));
+        std::memcpy(&w, i, n);
 
         if (auto const m(has_zero(w ^ splat<std::uintmax_t>(0x22)) | // byte == '"'
-          (w & splat<std::uintmax_t>(0x80)) | // byte >= 0x80
-          has_zero(w & splat<std::uintmax_t>(0xE0)) | // byte < 0x20
-          has_zero(w ^ splat<std::uintmax_t>(0x5C))); m) // byte == '\\'
+          (w & splat<std::uintmax_t>(0x80)) |                        // byte >= 0x80
+          has_zero(w & splat<std::uintmax_t>(0xE0)) |                // byte < 0x20
+          has_zero(w ^ splat<std::uintmax_t>(0x5C))); m)             // byte == '\\'
         {
           if constexpr(std::endian::little == std::endian::native)
             i += unsigned(std::countr_zero(m)) >> 3;
           else
             i += unsigned(std::countl_zero(m)) >> 3;
-          break;
+
+          switch (auto const b((unsigned char)*i); b)
+          {
+            case '"':
+              return i;
+
+            case '\\':
+              if (end == ++i)
+                return decltype(i){};
+
+              if (!any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i))
+                return decltype(i){};
+
+              if ('u' == *i && (end - i < 5 || !is_hex(*++i) || !is_hex(*++i) ||
+                !is_hex(*++i) || !is_hex(*++i)))
+                return decltype(i){};
+
+              ++i;
+              continue;
+
+            default:
+              // mask only fires on '"', '\\', < 0x20, or >= 0x80 — so b here is
+              // < 0x20 or >= 0x80. 0x7F is in [32,127] and never reaches us.
+              if (!range<0xc2, 0xf4>(b))
+                return decltype(i){};
+
+              if (end == ++i || (unsigned char)*i < (0xE0u == b ? 0xA0u :
+                0xF0u == b ? 0x90u : 0x80u) || (unsigned char)*i >
+                (0xEDu == b ? 0x9Fu : 0xF4u == b ? 0x8Fu : 0xBFu))
+                return decltype(i){};
+
+              if (((b >= 0xE0u) && (end == ++i || (*i & 0xC0) != 0x80)) ||
+                ((b >= 0xF0u) && (end == ++i || (*i & 0xC0) != 0x80)))
+                return decltype(i){};
+
+              ++i;
+              continue;
+          }
         }
+
+        if (end == (i += n))
+          return decltype(i){};
       }
-
-      for (; end != i; ++i)
-      {
-        if (auto const b((unsigned char)*i); '"' == b)
-          return i;
-        else if ('\\' == b)
-        {
-          if (end == ++i ||
-            !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i))
-            break;
-
-          if ('u' == *i && (end - i < 5 || !is_hex(*++i) || !is_hex(*++i) ||
-            !is_hex(*++i) || !is_hex(*++i)))
-            break;
-
-          ++i; goto fast_loop;
-        } // 0x7F (DEL) is allowed unescaped per RFC 8259
-        else if (!range<32, 127>(b)) // not printable ASCII (incl. 0x7F)
-        {
-          if (!range<0xc2, 0xf4>(b))
-            break; // not a UTF-8 lead: invalid
-
-          if (end == ++i || (unsigned char)*i < (0xE0u == b ? 0xA0u :
-            0xF0u == b ? 0x90u : 0x80u) || (unsigned char)*i >
-            (0xEDu == b ? 0x9Fu : 0xF4u == b ? 0x8Fu : 0xBFu))
-            break;
-
-          if (((b >= 0xE0u) && (end == ++i || (*i & 0xC0) != 0x80)) ||
-            ((b >= 0xF0u) && (end == ++i || (*i & 0xC0) != 0x80)))
-            break;
-
-          ++i; goto fast_loop;
-        }
-      }
-
-      return decltype(i){};
     }
 
     static auto bare_end(auto i, decltype(i) const end) noexcept
     {
-      for (; std::size_t(end - i) >= sizeof(std::uintmax_t);
-        i += sizeof(std::uintmax_t))
-      { // fast-skip
-        std::uintmax_t w;
-        std::memcpy(&w, i, sizeof(w));
+      for (;;)
+      {
+        auto const n(std::size_t(end - i) >= sizeof(std::uintmax_t) ?
+          sizeof(std::uintmax_t) : std::size_t(end - i));
+        std::uintmax_t w(S::splat<std::uintmax_t>('!'));
+        std::memcpy(&w, i, n);
 
         if (auto const m(has_zero(w ^ splat<std::uintmax_t>(':')) |
           has_zero(w ^ splat<std::uintmax_t>(',')) |
@@ -164,15 +170,13 @@ class j50n
             i += unsigned(std::countr_zero(m)) >> 3;
           else
             i += unsigned(std::countl_zero(m)) >> 3;
-          break;
+
+          return any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*i) ?
+            i : decltype(i){};
         }
+
+        if (end == (i += n)) return end;
       }
-
-      for (; end != i; ++i)
-        if (any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*i)) return i;
-        else if (!range<32, 126>(*i)) return decltype(i){};
-
-      return end;
     }
 
     static void each_item(std::string_view const s, auto cb) noexcept
@@ -531,21 +535,52 @@ public:
     auto const hex4 = [](auto&& p) noexcept
       {
         unsigned v{};
-
         for (auto const end(p + 4); end != p; ++p)
           if (v <<= 4; S::range<'0', '9'>(*p)) v |= unsigned(*p - '0');
           else if (S::range<'a', 'f'>(*p)) v |= unsigned(*p - 'a' + 10);
           else if (S::range<'A', 'F'>(*p)) v |= unsigned(*p - 'A' + 10);
           else return std::pair(v, false);
-
         return std::pair(v, true);
       };
 
     auto const end(sv.data() + sv.size());
+    auto p(sv.data()), p0(p);
 
-    for (auto p(sv.data()); end != p;)
+    for (;;)
     {
-      if (auto const c(*p++); '\\' != c || end == p) { r += c; continue; }
+      std::uintmax_t w{};
+      auto const n(std::size_t(end - p) >= sizeof w ? sizeof w :
+        std::size_t(end - p));
+      std::memcpy(&w, p, n);
+
+      auto const m(S::has_zero(w ^ S::splat<std::uintmax_t>('\\')));
+
+      if (m)
+      {
+        if constexpr(std::endian::little == std::endian::native)
+          p += unsigned(std::countr_zero(m)) >> 3;
+        else
+          p += unsigned(std::countl_zero(m)) >> 3;
+      }
+      else
+        p += n;
+
+      if (!m)
+        if (end == p)
+        {
+          r.append(p0, std::size_t(p - p0));
+          break;
+        }
+        else continue; // full word, no backslash — keep extending the run
+
+      //assert('\\' == *p);
+      r.append(p0, std::size_t(p - p0));
+
+      if (end == ++p)             // trailing lone backslash
+      {
+        r += '\\';
+        break;
+      }
 
       switch (auto const e(*p++); e)
       {
@@ -560,9 +595,9 @@ public:
         case 'u':
         {
           if (end - p < 4) { r.append({'\\', 'u'}); break; }
-          auto const p0 = p;
+          auto const q0 = p;
           auto const [cp, ok] = hex4(p);
-          if (!ok) { p = p0; r.append({'\\', 'u'}); break; }
+          if (!ok) { p = q0; r.append({'\\', 'u'}); break; }
 
           unsigned u(unsigned(cp - 0xD800) < 0x800 ? 0xFFFD : cp);
 
@@ -574,22 +609,23 @@ public:
 
           if (u < 0x80u) r += char(u);
           else
-            switch (unsigned const n((u >= 0x800u) + (u >= 0x10000u)); n)
+            switch (unsigned const b((u >= 0x800u) + (u >= 0x10000u)); b)
             {
-              char b[4];
-              case 2: b[3] = char(0x80 | (u & 0x3F)), u >>= 6;[[fallthrough]];
-              case 1: b[2] = char(0x80 | (u & 0x3F)), u >>= 6;[[fallthrough]];
-              default: b[1] = char(0x80 | (u & 0x3F));
-                       *b   = char(~0x3Fu >> n | u >> 6);
-                       r.append(b, n + 2u);
+              char buf[4];
+              case 2: buf[3] = char(0x80 | (u & 0x3F)), u >>= 6;[[fallthrough]];
+              case 1: buf[2] = char(0x80 | (u & 0x3F)), u >>= 6;[[fallthrough]];
+              default: buf[1] = char(0x80 | (u & 0x3F));
+                       *buf  = char(~0x3Fu >> b | u >> 6);
+                       r.append(buf, b + 2u);
             }
-
           break;
         }
-
         default:
           r.append({'\\', e});
+          break;
       }
+
+      p0 = p;                   // literal run restarts after the escape
     }
 
     return r;
