@@ -148,7 +148,8 @@ class j50n
           }
         }
 
-        if (end == (i += n)) return decltype(i){};
+        if (end == (i += n))
+          return decltype(i){};
       }
     }
 
@@ -181,7 +182,8 @@ class j50n
             i : decltype(i){};
         }
 
-        if (end == (i += n)) return end;
+        if (end == (i += n))
+          return end;
       }
     }
 
