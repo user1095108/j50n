@@ -98,13 +98,15 @@ class j50n
         if (rem >= sizeof w)
           std::memcpy(&w, i, sizeof w);
         else
-          [&, q = reinterpret_cast<char*>(&w), p = i]<auto... Is>(
+          [&rem, q = reinterpret_cast<char*>(&w), p = i]<auto... Is>(
             std::index_sequence<Is...>) mutable noexcept
           {
             (
               (rem & (std::size_t(1) << Is) ?
                 std::memcpy(q, p, std::size_t(1) << Is),
-                q += std::size_t(1) << Is, p += std::size_t(1) << Is :
+                Is != sizeof...(Is) - 1 ?
+                  q += std::size_t(1) << Is, p += std::size_t(1) << Is :
+                  nullptr :
                nullptr), ...
             );
           }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
@@ -174,13 +176,15 @@ class j50n
         if (rem >= sizeof w)
           std::memcpy(&w, i, sizeof w);
         else
-          [&, q = reinterpret_cast<char*>(&w), p = i]<auto... Is>(
+          [&rem, q = reinterpret_cast<char*>(&w), p = i]<auto... Is>(
             std::index_sequence<Is...>) mutable noexcept
           {
             (
               (rem & (std::size_t(1) << Is) ?
                 std::memcpy(q, p, std::size_t(1) << Is),
-                q += std::size_t(1) << Is, p += std::size_t(1) << Is :
+                Is != sizeof...(Is) - 1 ?
+                  q += std::size_t(1) << Is, p += std::size_t(1) << Is :
+                  nullptr :
                nullptr), ...
             );
           }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
@@ -582,13 +586,15 @@ public:
       if (rem >= sizeof w)
         std::memcpy(&w, p, sizeof w);
       else
-        [&, q = reinterpret_cast<char*>(&w), p]<auto... Is>(
+        [&rem, q = reinterpret_cast<char*>(&w), p]<auto... Is>(
           std::index_sequence<Is...>) mutable noexcept
         {
           (
             (rem & (std::size_t(1) << Is) ?
               std::memcpy(q, p, std::size_t(1) << Is),
-              q += std::size_t(1) << Is, p += std::size_t(1) << Is :
+              Is != sizeof...(Is) - 1 ?
+                q += std::size_t(1) << Is, p += std::size_t(1) << Is :
+                nullptr :
              nullptr), ...
           );
         }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
