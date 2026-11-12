@@ -106,14 +106,12 @@ class j50n
       if constexpr(1 == sizeof(T))
         return value;
       else
-        return std::bit_cast<T>(
-            []<auto ...I>(std::array<std::byte, sizeof(T)> const a,
-              std::index_sequence<I...>) noexcept
-            {
-              return std::array<std::byte, sizeof(T)>{a[sizeof(T) - 1 - I]...};
-            }(std::bit_cast<std::array<std::byte, sizeof(T)>>(value),
-              std::make_index_sequence<sizeof(T)>{})
-          );
+        return []<auto ...I>(auto&& a, std::index_sequence<I...>) noexcept
+          {
+            return std::bit_cast<T>(std::array<std::byte, sizeof(T)>{
+              a[sizeof(T) - 1 - I]...});
+          }(std::bit_cast<std::array<std::byte, sizeof(T)>>(value),
+            std::make_index_sequence<sizeof(T)>{});
 #endif
     }
 
