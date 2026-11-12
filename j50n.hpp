@@ -27,7 +27,8 @@ class j50n
 #if defined(__SIZEOF_INT128__)
     using uintmax_t = std::conditional_t<
         (sizeof(unsigned __int128) > sizeof(std::uintmax_t)),
-        unsigned __int128, std::uintmax_t>;
+        unsigned __int128, std::uintmax_t
+      >;
 #else
     using uintmax_t = std::uintmax_t;
 #endif // __SIZEOF_INT128__
