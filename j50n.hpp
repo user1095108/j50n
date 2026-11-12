@@ -2,7 +2,7 @@
 # define J50N_HPP
 # pragma once
 
-#include <array>
+#include <bit>
 #include <cstddef> // std::size_t
 #include <cstdint> // std::uintmax_t
 #include <cstring> // std::memcpy()
@@ -562,15 +562,15 @@ public:
           p += unsigned(std::countl_zero(m)) >> 3;
       }
       else
-        p += n;
-
-      if (!m)
-        if (end == p)
+      {
+        if (end == (p += n))
         {
           r.append(p0, std::size_t(p - p0));
           break;
         }
-        else continue; // full word, no backslash — keep extending the run
+        else
+          continue; // full word, no backslash — keep extending the run
+      }
 
       //assert('\\' == *p);
       r.append(p0, std::size_t(p - p0));
