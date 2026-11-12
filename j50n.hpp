@@ -2,7 +2,9 @@
 # define J50N_HPP
 # pragma once
 
+#include <algorithm> // std::min()
 #include <bit>
+#include <climits> // CHAR_BIT
 #include <cstddef> // std::size_t
 #include <cstdint> // std::uintmax_t
 #include <cstring> // std::memcpy()
@@ -90,9 +92,13 @@ class j50n
     {
       for (;;)
       {
-        auto const n(std::min(sizeof(std::uintmax_t), std::size_t(end - i)));
-        std::uintmax_t w(splat<std::uintmax_t>('!'));
-        std::memcpy(&w, i, n);
+        auto const rem(std::size_t(end - i));
+        auto const n(std::min(rem, sizeof(std::uintmax_t)));
+        std::uintmax_t w;
+
+        rem < sizeof w ?
+          w = splat<std::uintmax_t>('!'), std::memcpy(&w, i, rem) :
+          std::memcpy(&w, i, sizeof w);
 
         if (auto const m(has_zero(w ^ splat<std::uintmax_t>(0x22)) | // byte == '"'
           (w & splat<std::uintmax_t>(0x80)) |                        // byte >= 0x80
@@ -151,9 +157,13 @@ class j50n
     {
       for (;;)
       {
-        auto const n(std::min(sizeof(std::uintmax_t), std::size_t(end - i)));
-        std::uintmax_t w(S::splat<std::uintmax_t>('!'));
-        std::memcpy(&w, i, n);
+        auto const rem(std::size_t(end - i));
+        auto const n(std::min(rem, sizeof(std::uintmax_t)));
+        std::uintmax_t w;
+
+        rem < sizeof w ?
+          w = splat<std::uintmax_t>('!'), std::memcpy(&w, i, rem) :
+          std::memcpy(&w, i, sizeof w);
 
         if (auto const m(has_zero(w ^ splat<std::uintmax_t>(':')) |
           has_zero(w ^ splat<std::uintmax_t>(',')) |
@@ -544,10 +554,13 @@ public:
 
     for (auto p(sv.data()), p0(p);;)
     {
-      std::uintmax_t w{};
-      auto const n(std::size_t(end - p) >= sizeof w ? sizeof w :
-        std::size_t(end - p));
-      std::memcpy(&w, p, n);
+      auto const rem(std::size_t(end - p));
+      auto const n(std::min(rem, sizeof(std::uintmax_t)));
+      std::uintmax_t w;
+
+      rem < sizeof w ?
+        w = {}, std::memcpy(&w, p, rem) :
+        std::memcpy(&w, p, sizeof w);
 
       if (auto const m(S::has_zero(w ^ S::splat<std::uintmax_t>('\\'))); m)
       {
