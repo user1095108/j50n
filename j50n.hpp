@@ -64,10 +64,10 @@ class j50n
     template <char... Chars>
     [[nodiscard]] static constexpr bool any_of(char const c) noexcept
     {
+      return ((c == Chars) || ...);
+      /*
       constexpr auto N{sizeof...(Chars)};
-
       if constexpr(N < 5 || N > sizeof(std::uintmax_t))
-        return ((c == Chars) || ...);
       else
       {
         using A = std::array<unsigned char, sizeof(std::uintmax_t)>;
@@ -86,7 +86,7 @@ class j50n
           return has_zero(packed ^ splat<std::uintmax_t>(
             static_cast<unsigned char>(c))) & lanes;
         }
-      }
+      } */
     }
 
     template <fixed_string... Strings>
