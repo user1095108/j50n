@@ -113,7 +113,7 @@ class j50n
     { // 0xbbbb…bb for byte value b
       return [&]<auto ...I>(std::index_sequence<I...>) noexcept
         {
-            T v(b); ((v |= v << (CHAR_BIT << I)), ...); return v;
+          T v(b); ((v |= v << (CHAR_BIT << I)), ...); return v;
         }(std::make_index_sequence<std::bit_width(sizeof(T)) - 1>{});
       return T(~T()) / T(0xFF) * T(b);
       return [&]<auto ...I>(std::index_sequence<I...>) noexcept
