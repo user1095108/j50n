@@ -100,9 +100,9 @@ class j50n
     [[nodiscard]] static constexpr T byteswap(T const value) noexcept
       requires(!std::same_as<T, bool>)
     {
-    #if defined(__cpp_lib_byteswap)   // C++23
+#if defined(__cpp_lib_byteswap)   // C++23
       return std::byteswap(value);
-    #else                             // C++20
+#else                             // C++20
       if constexpr(1 == sizeof(T))
         return value;
       else
@@ -114,7 +114,7 @@ class j50n
             }(std::bit_cast<std::array<std::byte, sizeof(T)>>(value),
               std::make_index_sequence<sizeof(T)>{})
           );
-    #endif
+#endif
     }
 
     [[nodiscard]] static auto str_end(auto i, decltype(i) const end) noexcept
@@ -122,7 +122,6 @@ class j50n
       for (;;)
       {
         auto const rem(std::size_t(end - i));
-        auto const n(std::min(rem, sizeof(uintmax_t)));
         uintmax_t w;
 
         if (rem >= sizeof w)
@@ -194,7 +193,7 @@ class j50n
           }
         }
 
-        if (end == (i += n))
+        if (end == (i += std::min(rem, sizeof(uintmax_t))))
           return decltype(i){};
       }
     }
@@ -204,7 +203,6 @@ class j50n
       for (;;)
       {
         auto const rem(std::size_t(end - i));
-        auto const n(std::min(rem, sizeof(uintmax_t)));
         uintmax_t w;
 
         if (rem >= sizeof w)
@@ -241,7 +239,7 @@ class j50n
             i : decltype(i){};
         }
 
-        if (end == (i += n))
+        if (end == (i += std::min(rem, sizeof(uintmax_t))))
           return end;
       }
     }
@@ -615,7 +613,6 @@ public:
     for (auto p(sv.data()), p0(p);;)
     {
       auto const rem(std::size_t(end - p));
-      auto const n(std::min(rem, sizeof(S::uintmax_t)));
       S::uintmax_t w;
 
       if (rem >= sizeof w)
@@ -644,7 +641,7 @@ public:
         p += unsigned(std::countr_zero(m)) >> 3;
       else
       {
-        if (end == (p += n))
+        if (end == (p += std::min(rem, sizeof(S::uintmax_t))))
         {
           r.append(p0, std::size_t(p - p0));
           break;
