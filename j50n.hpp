@@ -3,6 +3,7 @@
 # pragma once
 
 #include <algorithm> // std::min()
+#include <array>
 #include <bit>
 #include <cstddef> // std::size_t
 #include <cstdint> // std::uintmax_t
@@ -87,6 +88,27 @@ class j50n
       return T(~T()) / T(0xFF) * T(b);
     }
 
+    template <typename T>
+    [[nodiscard]] static constexpr T byteswap(T const value) noexcept
+      requires(!std::same_as<T, bool>)
+    {
+    #if defined(__cpp_lib_byteswap)   // C++23
+      return std::byteswap(value);
+    #else                             // C++20
+      if constexpr(1 == sizeof(T))
+        return value;
+      else
+        return std::bit_cast<T>(
+            []<auto ...I>(std::array<std::byte, sizeof(T)> const a,
+              std::index_sequence<I...>) noexcept
+            {
+              return std::array<std::byte, sizeof(T)>{a[sizeof(T) - 1 - I]...};
+            }(std::bit_cast<std::array<std::byte, sizeof(T)>>(value),
+              std::make_index_sequence<sizeof(T)>{})
+          );
+    #endif
+    }
+
     [[nodiscard]] static auto str_end(auto i, decltype(i) const end) noexcept
     {
       for (;;)
@@ -114,16 +136,16 @@ class j50n
           }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
         }
 
+        if constexpr(std::endian::big == std::endian::native)
+          w = byteswap(w);
+
         if (auto const m(
           has_zero(w ^ splat<decltype(w)>(0x22)) |       // byte == '"'
           has_zero(w ^ splat<decltype(w)>(0x5C)) |       // byte == '\\'
           (((w - splat<decltype(w)>(0x20)) & ~w | w) &
           splat<decltype(w)>(0x80))); m)  // byte < 0x20 or >= 0x80 
         {
-          if constexpr(std::endian::little == std::endian::native)
-            i += unsigned(std::countr_zero(m)) >> 3;
-          else
-            i += unsigned(sizeof(w) - 1 - (std::countr_zero(m) >> 3));
+          i += unsigned(std::countr_zero(m)) >> 3;
 
           switch (auto const b((unsigned char)*i); b)
           {
@@ -196,6 +218,9 @@ class j50n
           }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
         }
 
+        if constexpr(std::endian::big == std::endian::native)
+          w = byteswap(w);
+
         if (auto const m(has_zero(w ^ splat<decltype(w)>(':')) |
           has_zero(w ^ splat<decltype(w)>(',')) |
           has_zero(w ^ splat<decltype(w)>(']')) |
@@ -203,10 +228,7 @@ class j50n
           ((w - splat<decltype(w)>(33)) & ~w & splat<decltype(w)>(0x80)) |    // byte < 33
           (((w + splat<decltype(w)>(1)) | w) & splat<decltype(w)>(0x80))); m) // byte > 126
         {
-          if constexpr(std::endian::little == std::endian::native)
-            i += unsigned(std::countr_zero(m)) >> 3;
-          else
-            i += unsigned(sizeof(w) - 1 - (std::countr_zero(m) >> 3));
+          i += unsigned(std::countr_zero(m)) >> 3;
 
           return any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*i) ?
             i : decltype(i){};
@@ -608,13 +630,11 @@ public:
         }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
       }
 
+      if constexpr(std::endian::big == std::endian::native)
+        w = S::byteswap(w);
+
       if (auto const m(S::has_zero(w ^ S::splat<decltype(w)>('\\'))); m)
-      {
-        if constexpr(std::endian::little == std::endian::native)
-          p += unsigned(std::countr_zero(m)) >> 3;
-        else
-          p += unsigned(sizeof(w) - 1 - (std::countr_zero(m) >> 3));
-      }
+        p += unsigned(std::countr_zero(m)) >> 3;
       else
       {
         if (end == (p += n))
