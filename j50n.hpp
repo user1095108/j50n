@@ -89,30 +89,25 @@ class j50n
 
     [[nodiscard]] static auto str_end(auto i, decltype(i) const end) noexcept
     {
-      auto const load_tail = []<typename W>(auto p, std::size_t rem) noexcept
-        {
-          W w(splat<W>('!'));
-          auto q(reinterpret_cast<char*>(&w));
-          [&]<std::size_t... Is>(std::index_sequence<Is...>)
-          {
-            ((rem & (std::size_t(1) << Is) ?
-              (std::memcpy(q, p, std::size_t(1) << Is),
-              q += std::size_t(1) << Is, p += std::size_t(1) << Is) :
-              nullptr), ...);
-          }(std::make_index_sequence<std::bit_width(sizeof(W)) - 1>{});
-          return w;
-        };
-
       for (;;)
       {
         auto const rem(std::size_t(end - i));
         auto const n(std::min(rem, sizeof(std::uintmax_t)));
-        std::uintmax_t w;
+        auto w(splat<std::uintmax_t>('!'));
 
         if (rem >= sizeof w)
           std::memcpy(&w, i, sizeof w);
         else
-          w = load_tail.template operator()<decltype(w)>(i, rem);
+          [&, q = reinterpret_cast<char*>(&w), p = i]<auto... Is>(
+            std::index_sequence<Is...>) mutable noexcept
+          {
+            (
+              (rem & (std::size_t(1) << Is) ?
+                std::memcpy(q, p, std::size_t(1) << Is),
+                q += std::size_t(1) << Is, p += std::size_t(1) << Is :
+               nullptr), ...
+            );
+          }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
 
         if (auto const m(has_zero(w ^ splat<decltype(w)>(0x22)) | // byte == '"'
           (w & splat<decltype(w)>(0x80)) |                        // byte >= 0x80
@@ -170,30 +165,25 @@ class j50n
 
     static auto bare_end(auto i, decltype(i) const end) noexcept
     {
-      auto const load_tail = []<typename W>(auto p, std::size_t rem) noexcept
-        {
-          W w(splat<W>('!'));
-          auto q(reinterpret_cast<char*>(&w));
-          [&]<std::size_t... Is>(std::index_sequence<Is...>)
-          {
-            ((rem & (std::size_t(1) << Is) ?
-              (std::memcpy(q, p, std::size_t(1) << Is),
-              q += std::size_t(1) << Is, p += std::size_t(1) << Is) :
-              nullptr), ...);
-          }(std::make_index_sequence<std::bit_width(sizeof(W)) - 1>{});
-          return w;
-        };
-
       for (;;)
       {
         auto const rem(std::size_t(end - i));
         auto const n(std::min(rem, sizeof(std::uintmax_t)));
-        std::uintmax_t w;
+        auto w(splat<std::uintmax_t>('!'));
 
         if (rem >= sizeof w)
           std::memcpy(&w, i, sizeof w);
         else
-          w = load_tail.template operator()<decltype(w)>(i, rem);
+          [&, q = reinterpret_cast<char*>(&w), p = i]<auto... Is>(
+            std::index_sequence<Is...>) mutable noexcept
+          {
+            (
+              (rem & (std::size_t(1) << Is) ?
+                std::memcpy(q, p, std::size_t(1) << Is),
+                q += std::size_t(1) << Is, p += std::size_t(1) << Is :
+               nullptr), ...
+            );
+          }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
 
         if (auto const m(has_zero(w ^ splat<decltype(w)>(':')) |
           has_zero(w ^ splat<decltype(w)>(',')) |
@@ -581,34 +571,27 @@ public:
         return std::pair(v, true);
       };
 
-    auto const load_tail = []<typename W>(auto p, std::size_t rem) noexcept
-      {
-        W w{};
-        auto q(reinterpret_cast<char*>(&w));
-        [&]<std::size_t... Is>(std::index_sequence<Is...>)
-        {
-          (
-            (rem & (std::size_t(1) << Is) ?
-            std::memcpy(q, p, std::size_t(1) << Is),
-               q += std::size_t(1) << Is, p += std::size_t(1) << Is :
-            nullptr), ...
-          );
-        }(std::make_index_sequence<std::bit_width(sizeof(W)) - 1>{});
-        return w;
-      };
-
     auto const end(sv.data() + sv.size());
 
     for (auto p(sv.data()), p0(p);;)
     {
       auto const rem(std::size_t(end - p));
       auto const n(std::min(rem, sizeof(std::uintmax_t)));
-      std::uintmax_t w;
+      std::uintmax_t w{};
 
       if (rem >= sizeof w)
         std::memcpy(&w, p, sizeof w);
       else
-        w = load_tail.template operator()<decltype(w)>(p, rem);
+        [&, q = reinterpret_cast<char*>(&w), p]<auto... Is>(
+          std::index_sequence<Is...>) mutable noexcept
+        {
+          (
+            (rem & (std::size_t(1) << Is) ?
+              std::memcpy(q, p, std::size_t(1) << Is),
+               q += std::size_t(1) << Is, p += std::size_t(1) << Is :
+             nullptr), ...
+          );
+        }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
 
       if (auto const m(S::has_zero(w ^ S::splat<decltype(w)>('\\'))); m)
       {
