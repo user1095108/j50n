@@ -114,15 +114,16 @@ class j50n
           }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
         }
 
-        if (auto const m(has_zero(w ^ splat<decltype(w)>(0x22)) | // byte == '"'
-          (w & splat<decltype(w)>(0x80)) |                        // byte >= 0x80
-          has_zero(w & splat<decltype(w)>(0xE0)) |                // byte < 0x20
-          has_zero(w ^ splat<decltype(w)>(0x5C))); m)             // byte == '\\'
+        if (auto const m(
+          has_zero(w ^ splat<decltype(w)>(0x22)) |       // byte == '"'
+          has_zero(w ^ splat<decltype(w)>(0x5C)) |       // byte == '\\'
+          (((w - splat<decltype(w)>(0x20)) & ~w | w) &
+          splat<decltype(w)>(0x80))); m)  // byte < 0x20 or >= 0x80 
         {
           if constexpr(std::endian::little == std::endian::native)
             i += unsigned(std::countr_zero(m)) >> 3;
           else
-            i += unsigned(std::countl_zero(m)) >> 3;
+            i += unsigned(sizeof(w) - 1 - (std::countr_zero(m) >> 3));
 
           switch (auto const b((unsigned char)*i); b)
           {
@@ -199,14 +200,13 @@ class j50n
           has_zero(w ^ splat<decltype(w)>(',')) |
           has_zero(w ^ splat<decltype(w)>(']')) |
           has_zero(w ^ splat<decltype(w)>('}')) |
-          ((w - splat<decltype(w)>(33)) & ~w & splat<decltype(w)>(0x80)) | // byte < 33
-          (w & splat<decltype(w)>(0x80)) | // byte >= 0x80
-          has_zero(w ^ splat<decltype(w)>(0x7F))); m) // byte == 0x7F
+          ((w - splat<decltype(w)>(33)) & ~w & splat<decltype(w)>(0x80)) |    // byte < 33
+          (((w + splat<decltype(w)>(1)) | w) & splat<decltype(w)>(0x80))); m) // byte > 126
         {
           if constexpr(std::endian::little == std::endian::native)
             i += unsigned(std::countr_zero(m)) >> 3;
           else
-            i += unsigned(std::countl_zero(m)) >> 3;
+            i += unsigned(sizeof(w) - 1 - (std::countr_zero(m) >> 3));
 
           return any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*i) ?
             i : decltype(i){};
@@ -613,7 +613,7 @@ public:
         if constexpr(std::endian::little == std::endian::native)
           p += unsigned(std::countr_zero(m)) >> 3;
         else
-          p += unsigned(std::countl_zero(m)) >> 3;
+          p += unsigned(sizeof(w) - 1 - (std::countr_zero(m) >> 3));
       }
       else
       {
