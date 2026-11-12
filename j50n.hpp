@@ -107,7 +107,7 @@ class j50n
     {
       return range<'0', '9'>(c) || range<'A', 'F'>(c) || range<'a', 'f'>(c);
     }
-    
+
     template <typename T> requires(!std::is_same_v<T, bool>)
     static constexpr T splat(std::uint8_t const b) noexcept
     { // 0xbbbb…bb for byte value b
