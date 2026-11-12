@@ -76,7 +76,7 @@ class j50n
     template <typename T>
     static T has_zero(T const v) noexcept
     { // nonzero iff v contains a zero byte;
-      constexpr T ones(~std::uintmax_t{} / 0xFFu); // 0x0101…01
+      constexpr T ones(T(~T{}) / 0xFFu); // 0x0101…01
       constexpr T highs(ones << 7);                // 0x8080…80
       return (v - ones) & ~v & highs;
     }
@@ -92,17 +92,25 @@ class j50n
       for (;;)
       {
         auto const rem(std::size_t(end - i));
-        auto const n(std::min(rem, sizeof(std::uintmax_t)));
-        std::uintmax_t w;
+        auto const n(std::min(rem, sizeof(std::uint64_t)));
+        std::uint64_t w;
 
-        rem < sizeof w ?
-          w = splat<std::uintmax_t>('!'), std::memcpy(&w, i, rem) :
+        if (rem >= sizeof w) [[likely]]
           std::memcpy(&w, i, sizeof w);
+        else
+        {
+          w = splat<decltype(w)>('!');
+          auto d{reinterpret_cast<unsigned char*>(&w)};
+          auto s{i};
+          if (rem & 4) { std::memcpy(d, s, 4); d += 4; s += 4; }
+          if (rem & 2) { std::memcpy(d, s, 2); d += 2; s += 2; }
+          if (rem & 1) { std::memcpy(d, s, 1); }
+        }
 
-        if (auto const m(has_zero(w ^ splat<std::uintmax_t>(0x22)) | // byte == '"'
-          (w & splat<std::uintmax_t>(0x80)) |                        // byte >= 0x80
-          has_zero(w & splat<std::uintmax_t>(0xE0)) |                // byte < 0x20
-          has_zero(w ^ splat<std::uintmax_t>(0x5C))); m)             // byte == '\\'
+        if (auto const m(has_zero(w ^ splat<decltype(w)>(0x22)) | // byte == '"'
+          (w & splat<decltype(w)>(0x80)) |                        // byte >= 0x80
+          has_zero(w & splat<decltype(w)>(0xE0)) |                // byte < 0x20
+          has_zero(w ^ splat<decltype(w)>(0x5C))); m)             // byte == '\\'
         {
           if constexpr(std::endian::little == std::endian::native)
             i += unsigned(std::countr_zero(m)) >> 3;
@@ -158,20 +166,28 @@ class j50n
       for (;;)
       {
         auto const rem(std::size_t(end - i));
-        auto const n(std::min(rem, sizeof(std::uintmax_t)));
-        std::uintmax_t w;
+        auto const n(std::min(rem, sizeof(std::uint64_t)));
+        std::uint64_t w;
 
-        rem < sizeof w ?
-          w = splat<std::uintmax_t>('!'), std::memcpy(&w, i, rem) :
+        if (rem >= sizeof w) [[likely]]
           std::memcpy(&w, i, sizeof w);
+        else
+        {
+          w = splat<decltype(w)>('!');
+          auto d{reinterpret_cast<unsigned char*>(&w)};
+          auto s{i};
+          if (rem & 4) { std::memcpy(d, s, 4); d += 4; s += 4; }
+          if (rem & 2) { std::memcpy(d, s, 2); d += 2; s += 2; }
+          if (rem & 1) { std::memcpy(d, s, 1); }
+        }
 
-        if (auto const m(has_zero(w ^ splat<std::uintmax_t>(':')) |
-          has_zero(w ^ splat<std::uintmax_t>(',')) |
-          has_zero(w ^ splat<std::uintmax_t>(']')) |
-          has_zero(w ^ splat<std::uintmax_t>('}')) |
-          ((w - splat<std::uintmax_t>(33)) & ~w & splat<std::uintmax_t>(0x80)) | // byte < 33
-          (w & splat<std::uintmax_t>(0x80)) | // byte >= 0x80
-          has_zero(w ^ splat<std::uintmax_t>(0x7F))); m) // byte == 0x7F
+        if (auto const m(has_zero(w ^ splat<decltype(w)>(':')) |
+          has_zero(w ^ splat<decltype(w)>(',')) |
+          has_zero(w ^ splat<decltype(w)>(']')) |
+          has_zero(w ^ splat<decltype(w)>('}')) |
+          ((w - splat<decltype(w)>(33)) & ~w & splat<decltype(w)>(0x80)) | // byte < 33
+          (w & splat<decltype(w)>(0x80)) | // byte >= 0x80
+          has_zero(w ^ splat<decltype(w)>(0x7F))); m) // byte == 0x7F
         {
           if constexpr(std::endian::little == std::endian::native)
             i += unsigned(std::countr_zero(m)) >> 3;
@@ -556,14 +572,22 @@ public:
     for (auto p(sv.data()), p0(p);;)
     {
       auto const rem(std::size_t(end - p));
-      auto const n(std::min(rem, sizeof(std::uintmax_t)));
-      std::uintmax_t w;
+      auto const n(std::min(rem, sizeof(std::uint64_t)));
+      std::uint64_t w;
 
-      rem < sizeof w ?
-        w = {}, std::memcpy(&w, p, rem) :
+      if (rem >= sizeof w) [[likely]]
         std::memcpy(&w, p, sizeof w);
+      else
+      {
+        w = {};
+        auto d{reinterpret_cast<unsigned char*>(&w)};
+        auto s{p};
+        if (rem & 4) { std::memcpy(d, s, 4); d += 4; s += 4; }
+        if (rem & 2) { std::memcpy(d, s, 2); d += 2; s += 2; }
+        if (rem & 1) { std::memcpy(d, s, 1); }
+      }
 
-      if (auto const m(S::has_zero(w ^ S::splat<std::uintmax_t>('\\'))); m)
+      if (auto const m(S::has_zero(w ^ S::splat<std::uint64_t>('\\'))); m)
       {
         if constexpr(std::endian::little == std::endian::native)
           p += unsigned(std::countr_zero(m)) >> 3;
