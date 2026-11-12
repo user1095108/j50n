@@ -4,7 +4,6 @@
 
 #include <algorithm> // std::min()
 #include <bit>
-#include <climits> // CHAR_BIT
 #include <cstddef> // std::size_t
 #include <cstdint> // std::uintmax_t
 #include <cstring> // std::memcpy()
