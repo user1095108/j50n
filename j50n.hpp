@@ -24,9 +24,10 @@ class j50n
   {
     using size_type = std::string_view::size_type;
 
-#if defined(__SIZEOF_INT128__) && defined(__SIZEOF_LONG_LONG__) &&\
-  (__SIZEOF_INT128__ > __SIZEOF_LONG_LONG__)
-    using uintmax_t = unsigned __int128;
+#if defined(__SIZEOF_INT128__)
+    using uintmax_t = std::conditional_t<
+        (sizeof(unsigned __int128) > sizeof(std::uintmax_t)),
+        unsigned __int128, std::uintmax_t>;
 #else
     using uintmax_t = std::uintmax_t;
 #endif // __SIZEOF_INT128__
@@ -230,8 +231,7 @@ class j50n
 
         if (auto const m(has_zero(w ^ splat<decltype(w)>(':')) |
           has_zero(w ^ splat<decltype(w)>(',')) |
-          has_zero(w ^ splat<decltype(w)>(']')) |
-          has_zero(w ^ splat<decltype(w)>('}')) |
+          has_zero((w ^ splat<decltype(w)>(0x5D)) & splat<decltype(w)>(0xDF))|// byte == ']' or '}'
           ((w - splat<decltype(w)>(33)) & ~w & splat<decltype(w)>(0x80)) |    // byte < 33
           (((w + splat<decltype(w)>(1)) | w) & splat<decltype(w)>(0x80))); m) // byte > 126
         {
