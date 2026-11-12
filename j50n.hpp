@@ -24,6 +24,13 @@ class j50n
   {
     using size_type = std::string_view::size_type;
 
+#if defined(__SIZEOF_INT128__) && defined(__SIZEOF_LONG_LONG__) &&\
+  (__SIZEOF_INT128__ > __SIZEOF_LONG_LONG__)
+    using uintmax_t = unsigned __int128;
+#else
+    using uintmax_t = std::uintmax_t;
+#endif // __SIZEOF_INT128__
+
     template <std::size_t N>
     struct fixed_string
     {
@@ -114,8 +121,8 @@ class j50n
       for (;;)
       {
         auto const rem(std::size_t(end - i));
-        auto const n(std::min(rem, sizeof(std::uintmax_t)));
-        std::uintmax_t w;
+        auto const n(std::min(rem, sizeof(uintmax_t)));
+        uintmax_t w;
 
         if (rem >= sizeof w)
           std::memcpy(&w, i, sizeof w);
@@ -196,8 +203,8 @@ class j50n
       for (;;)
       {
         auto const rem(std::size_t(end - i));
-        auto const n(std::min(rem, sizeof(std::uintmax_t)));
-        std::uintmax_t w;
+        auto const n(std::min(rem, sizeof(uintmax_t)));
+        uintmax_t w;
 
         if (rem >= sizeof w)
           std::memcpy(&w, i, sizeof w);
@@ -608,8 +615,8 @@ public:
     for (auto p(sv.data()), p0(p);;)
     {
       auto const rem(std::size_t(end - p));
-      auto const n(std::min(rem, sizeof(std::uintmax_t)));
-      std::uintmax_t w;
+      auto const n(std::min(rem, sizeof(S::uintmax_t)));
+      S::uintmax_t w;
 
       if (rem >= sizeof w)
         std::memcpy(&w, p, sizeof w);
