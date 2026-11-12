@@ -92,15 +92,14 @@ class j50n
       return (v - ones) & ~v & highs;
     }
 
-    template <typename T> requires std::is_unsigned_v<T>
+    template <typename T> requires(!std::same_as<T, bool>)
     static consteval T splat(std::uint8_t const b) noexcept
     { // 0xbbbb…bb for byte value b
       return T(~T()) / T(0xFF) * T(b);
     }
 
-    template <typename T>
+    template <typename T> requires(!std::same_as<T, bool>)
     [[nodiscard]] static constexpr T byteswap(T const value) noexcept
-      requires(!std::same_as<T, bool>)
     {
 #if defined(__cpp_lib_byteswap)   // C++23
       return std::byteswap(value);
