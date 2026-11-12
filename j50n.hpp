@@ -90,8 +90,7 @@ class j50n
     {
       for (;;)
       {
-        auto const n((std::size_t(end - i) >= sizeof(std::uintmax_t)) ?
-          sizeof(std::uintmax_t) : std::size_t(end - i));
+        auto const n(std::min(sizeof(std::uintmax_t), std::size_t(end - i)));
         std::uintmax_t w(splat<std::uintmax_t>('!'));
         std::memcpy(&w, i, n);
 
@@ -152,8 +151,7 @@ class j50n
     {
       for (;;)
       {
-        auto const n(std::size_t(end - i) >= sizeof(std::uintmax_t) ?
-          sizeof(std::uintmax_t) : std::size_t(end - i));
+        auto const n(std::min(sizeof(std::uintmax_t), std::size_t(end - i)));
         std::uintmax_t w(S::splat<std::uintmax_t>('!'));
         std::memcpy(&w, i, n);
 
@@ -543,18 +541,15 @@ public:
       };
 
     auto const end(sv.data() + sv.size());
-    auto p(sv.data()), p0(p);
 
-    for (;;)
+    for (auto p(sv.data()), p0(p);;)
     {
       std::uintmax_t w{};
       auto const n(std::size_t(end - p) >= sizeof w ? sizeof w :
         std::size_t(end - p));
       std::memcpy(&w, p, n);
 
-      auto const m(S::has_zero(w ^ S::splat<std::uintmax_t>('\\')));
-
-      if (m)
+      if (auto const m(S::has_zero(w ^ S::splat<std::uintmax_t>('\\'))); m)
       {
         if constexpr(std::endian::little == std::endian::native)
           p += unsigned(std::countr_zero(m)) >> 3;
