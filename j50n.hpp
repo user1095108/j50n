@@ -588,7 +588,7 @@ public:
           (
             (rem & (std::size_t(1) << Is) ?
               std::memcpy(q, p, std::size_t(1) << Is),
-               q += std::size_t(1) << Is, p += std::size_t(1) << Is :
+              q += std::size_t(1) << Is, p += std::size_t(1) << Is :
              nullptr), ...
           );
         }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
