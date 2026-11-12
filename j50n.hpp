@@ -89,19 +89,19 @@ class j50n
 
     [[nodiscard]] static auto str_end(auto i, decltype(i) const end) noexcept
     {
-      auto const load_tail = []<typename W>(auto p, std::size_t rem) noexcept -> W
-      {
-        W w(splat<W>('!'));
-        auto q(reinterpret_cast<char*>(&w));
-        [&]<std::size_t... Is>(std::index_sequence<Is...>)
+      auto const load_tail = []<typename W>(auto p, std::size_t rem) noexcept
         {
-          ((rem & (std::size_t(1) << Is) ?
-            (std::memcpy(q, p, std::size_t(1) << Is),
-            q += std::size_t(1) << Is, p += std::size_t(1) << Is) :
-            nullptr), ...);
-        }(std::make_index_sequence<std::bit_width(sizeof(W)) - 1>{});
-        return w;
-      };
+          W w(splat<W>('!'));
+          auto q(reinterpret_cast<char*>(&w));
+          [&]<std::size_t... Is>(std::index_sequence<Is...>)
+          {
+            ((rem & (std::size_t(1) << Is) ?
+              (std::memcpy(q, p, std::size_t(1) << Is),
+              q += std::size_t(1) << Is, p += std::size_t(1) << Is) :
+              nullptr), ...);
+          }(std::make_index_sequence<std::bit_width(sizeof(W)) - 1>{});
+          return w;
+        };
 
       for (;;)
       {
@@ -170,19 +170,19 @@ class j50n
 
     static auto bare_end(auto i, decltype(i) const end) noexcept
     {
-      auto const load_tail = []<typename W>(auto p, std::size_t rem) noexcept -> W
-      {
-        W w(splat<W>('!'));
-        auto q(reinterpret_cast<char*>(&w));
-        [&]<std::size_t... Is>(std::index_sequence<Is...>)
+      auto const load_tail = []<typename W>(auto p, std::size_t rem) noexcept
         {
-          ((rem & (std::size_t(1) << Is) ?
-            (std::memcpy(q, p, std::size_t(1) << Is),
-            q += std::size_t(1) << Is, p += std::size_t(1) << Is) :
-            nullptr), ...);
-        }(std::make_index_sequence<std::bit_width(sizeof(W)) - 1>{});
-        return w;
-      };
+          W w(splat<W>('!'));
+          auto q(reinterpret_cast<char*>(&w));
+          [&]<std::size_t... Is>(std::index_sequence<Is...>)
+          {
+            ((rem & (std::size_t(1) << Is) ?
+              (std::memcpy(q, p, std::size_t(1) << Is),
+              q += std::size_t(1) << Is, p += std::size_t(1) << Is) :
+              nullptr), ...);
+          }(std::make_index_sequence<std::bit_width(sizeof(W)) - 1>{});
+          return w;
+        };
 
       for (;;)
       {
@@ -581,7 +581,7 @@ public:
         return std::pair(v, true);
       };
 
-    auto const load_tail = []<typename W>(auto p, std::size_t rem) noexcept -> W
+    auto const load_tail = []<typename W>(auto p, std::size_t rem) noexcept
       {
         W w{};
         auto q(reinterpret_cast<char*>(&w));
