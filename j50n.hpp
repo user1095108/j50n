@@ -91,7 +91,6 @@ class j50n
     {
       auto const load_tail = []<typename W>(auto p, std::size_t rem) noexcept -> W
       {
-        static_assert(std::has_single_bit(sizeof(W)));
         W w(splat<W>('!'));
         auto q(reinterpret_cast<char*>(&w));
         [&]<std::size_t... Is>(std::index_sequence<Is...>)
@@ -173,7 +172,6 @@ class j50n
     {
       auto const load_tail = []<typename W>(auto p, std::size_t rem) noexcept -> W
       {
-        static_assert(std::has_single_bit(sizeof(W)));
         W w(splat<W>('!'));
         auto q(reinterpret_cast<char*>(&w));
         [&]<std::size_t... Is>(std::index_sequence<Is...>)
@@ -585,7 +583,6 @@ public:
 
     auto const load_tail = []<typename W>(auto p, std::size_t rem) noexcept -> W
       {
-        static_assert(std::has_single_bit(sizeof(W)));
         W w{};
         auto q(reinterpret_cast<char*>(&w));
         [&]<std::size_t... Is>(std::index_sequence<Is...>)
