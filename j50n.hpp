@@ -55,15 +55,38 @@ class j50n
     };
 
     template <fixed_string... Strings>
-    static constexpr bool any_of(std::string_view const sv) noexcept
+    [[nodiscard]] static constexpr bool any_of(
+      std::string_view const sv) noexcept
     {
       return ((sv == Strings) || ...);
     }
 
     template <char... Chars>
-    static constexpr bool any_of(char const c) noexcept
+    [[nodiscard]] static constexpr bool any_of(char const c) noexcept
     {
-      return ((c == Chars) || ...);
+      constexpr auto N{sizeof...(Chars)};
+
+      if constexpr(N < 5 || N > sizeof(std::uintmax_t))
+        return ((c == Chars) || ...);
+      else
+      {
+        using A = std::array<unsigned char, sizeof(std::uintmax_t)>;
+
+        constexpr auto packed(std::bit_cast<std::uintmax_t>(
+          A{static_cast<unsigned char>(Chars)...}));
+
+        if constexpr(sizeof(std::uintmax_t) == N)
+          return has_zero(packed ^ splat<std::uintmax_t>(
+            static_cast<unsigned char>(c)));
+        else
+        {
+          constexpr auto lanes(std::bit_cast<std::uintmax_t>(
+            A{static_cast<unsigned char>(Chars - Chars + 0x80)...}));
+
+          return has_zero(packed ^ splat<std::uintmax_t>(
+            static_cast<unsigned char>(c))) & lanes;
+        }
+      }
     }
 
     template <fixed_string... Strings>
@@ -86,7 +109,7 @@ class j50n
     }
 
     template <typename T>
-    static T has_zero(T const v) noexcept
+    static constexpr T has_zero(T const v) noexcept
     { // nonzero iff v contains a zero byte;
       constexpr T ones(T(~T{}) / 0xFFu); // 0x0101…01
       constexpr T highs(ones << 7);                // 0x8080…80
@@ -94,7 +117,7 @@ class j50n
     }
 
     template <typename T> requires(!std::same_as<T, bool>)
-    static consteval T splat(std::uint8_t const b) noexcept
+    static constexpr T splat(std::uint8_t const b) noexcept
     { // 0xbbbb…bb for byte value b
       return T(~T()) / T(0xFF) * T(b);
     }
