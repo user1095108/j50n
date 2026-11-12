@@ -12,6 +12,7 @@
 #include <charconv> // std::from_chars()
 #include <compare> // std::partial_ordering
 #include <ostream> // operator<<()
+#include <string>
 #include <string_view>
 #include <tuple> // std::ignore
 #include <type_traits>
