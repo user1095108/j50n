@@ -5,6 +5,7 @@
 #include <algorithm> // std::min()
 #include <array>
 #include <bit>
+#include <climits> // CHAR_BIT
 #include <cstddef> // std::size_t
 #include <cstdint> // std::uintmax_t
 #include <cstring> // std::memcpy()
@@ -148,7 +149,7 @@ class j50n
         if (auto const m(
           has_zero(w ^ splat<decltype(w)>(0x22)) |       // byte == '"'
           has_zero(w ^ splat<decltype(w)>(0x5C)) |       // byte == '\\'
-          (((w - splat<decltype(w)>(0x20)) & ~w | w) &
+          ((((w - splat<decltype(w)>(0x20)) & ~w) | w) &
           splat<decltype(w)>(0x80))); m)  // byte < 0x20 or >= 0x80 
         {
           i += unsigned(std::countr_zero(m)) >> 3;
@@ -192,7 +193,7 @@ class j50n
           }
         }
 
-        if (end == (i += std::min(rem, sizeof(uintmax_t))))
+        if (end == (i += std::min(sizeof w, rem)))
           return decltype(i){};
       }
     }
@@ -232,13 +233,14 @@ class j50n
           ((w - splat<decltype(w)>(33)) & ~w & splat<decltype(w)>(0x80)) |    // byte < 33
           (((w + splat<decltype(w)>(1)) | w) & splat<decltype(w)>(0x80))); m) // byte > 126
         {
-          i += unsigned(std::countr_zero(m)) >> 3;
+          auto const lane(unsigned(std::countr_zero(m)) >> 3);
+          unsigned char const b(w >> (CHAR_BIT * lane));
 
-          return any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(*i) ?
-            i : decltype(i){};
+          return any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(b) ?
+            i + lane : decltype(i){};
         }
 
-        if (end == (i += std::min(rem, sizeof(uintmax_t))))
+        if (end == (i += std::min(sizeof w, rem)))
           return end;
       }
     }
