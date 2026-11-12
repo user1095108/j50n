@@ -93,11 +93,13 @@ class j50n
       {
         auto const rem(std::size_t(end - i));
         auto const n(std::min(rem, sizeof(std::uintmax_t)));
-        auto w(splat<std::uintmax_t>('!'));
+        std::uintmax_t w;
 
         if (rem >= sizeof w)
           std::memcpy(&w, i, sizeof w);
         else
+        {
+          w = splat<decltype(w)>('!');
           [&rem, q = reinterpret_cast<char*>(&w), p = i]<auto... Is>(
             std::index_sequence<Is...>) mutable noexcept
           {
@@ -110,6 +112,7 @@ class j50n
                nullptr), ...
             );
           }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
+        }
 
         if (auto const m(has_zero(w ^ splat<decltype(w)>(0x22)) | // byte == '"'
           (w & splat<decltype(w)>(0x80)) |                        // byte >= 0x80
@@ -171,11 +174,13 @@ class j50n
       {
         auto const rem(std::size_t(end - i));
         auto const n(std::min(rem, sizeof(std::uintmax_t)));
-        auto w(splat<std::uintmax_t>('!'));
+        std::uintmax_t w;
 
         if (rem >= sizeof w)
           std::memcpy(&w, i, sizeof w);
         else
+        {
+          w = splat<decltype(w)>('!');
           [&rem, q = reinterpret_cast<char*>(&w), p = i]<auto... Is>(
             std::index_sequence<Is...>) mutable noexcept
           {
@@ -188,6 +193,7 @@ class j50n
                nullptr), ...
             );
           }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
+        }
 
         if (auto const m(has_zero(w ^ splat<decltype(w)>(':')) |
           has_zero(w ^ splat<decltype(w)>(',')) |
@@ -581,11 +587,13 @@ public:
     {
       auto const rem(std::size_t(end - p));
       auto const n(std::min(rem, sizeof(std::uintmax_t)));
-      std::uintmax_t w{};
+      std::uintmax_t w;
 
       if (rem >= sizeof w)
         std::memcpy(&w, p, sizeof w);
       else
+      {
+        w = {};
         [&rem, q = reinterpret_cast<char*>(&w), p]<auto... Is>(
           std::index_sequence<Is...>) mutable noexcept
         {
@@ -598,6 +606,7 @@ public:
              nullptr), ...
           );
         }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
+      }
 
       if (auto const m(S::has_zero(w ^ S::splat<decltype(w)>('\\'))); m)
       {
