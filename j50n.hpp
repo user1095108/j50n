@@ -68,13 +68,13 @@ class j50n
     }
 
     template <auto lo, decltype(lo) hi>
-    static constexpr bool range(auto const c) noexcept
+    [[nodiscard]] static constexpr bool range(auto const c) noexcept
     {
       static_assert(lo <= hi, "range bounds must be ordered");
       return c >= decltype(c)(lo) && c <= decltype(c)(hi);
     }
 
-    static constexpr bool is_hex(char const c) noexcept
+    [[nodiscard]] static constexpr bool is_hex(char const c) noexcept
     {
       return range<'0', '9'>(c) || range<'a', 'f'>(c | 0x20);
     }
@@ -97,16 +97,13 @@ class j50n
 #if defined(__cpp_lib_byteswap)   // C++23
       return std::byteswap(value);
 #else                             // C++20
-      if constexpr(1 == sizeof(T))
-        return value;
-      else
-        return []<auto ...I>(auto&& a, std::index_sequence<I...>) noexcept
-          {
-            return std::bit_cast<T>(std::array<std::byte, sizeof(T)>{
-              a[sizeof(T) - 1 - I]...});
-          }(std::bit_cast<std::array<std::byte, sizeof(T)>>(value),
-            std::make_index_sequence<sizeof(T)>{});
-#endif
+      return []<auto ...I>(auto&& a, std::index_sequence<I...>) noexcept
+        {
+          return std::bit_cast<T>(std::array<std::byte, sizeof(T)>{
+            a[sizeof(T) - 1 - I]...});
+        }(std::bit_cast<std::array<std::byte, sizeof(T)>>(value),
+          std::make_index_sequence<sizeof(T)>{});
+#endif // __cpp_lib_byteswap
     }
 
     [[nodiscard]] static auto str_end(auto i, decltype(i) const end) noexcept
