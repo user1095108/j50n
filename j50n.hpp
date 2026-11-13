@@ -88,7 +88,7 @@ class j50n
     }
 
     template <typename T> requires(!std::is_same_v<T, bool>)
-    static constexpr T splat(std::uint8_t const b) noexcept
+    [[nodiscard]] static constexpr T splat(std::uint8_t const b) noexcept
     { // 0xbbbb…bb for byte value b
       return [&]<auto ...I>(std::index_sequence<I...>) noexcept
         {
@@ -103,7 +103,7 @@ class j50n
     }
 
     template <typename T>
-    static constexpr T has_zero(T const v) noexcept
+    [[nodiscard]] static constexpr T has_zero(T const v) noexcept
     { // nonzero iff v contains a zero byte;
       constexpr T ones(splat<T>(0x01)); // 0x0101…01
       constexpr T highs(splat<T>(0x80)); // 0x8080…80
