@@ -25,15 +25,7 @@ class j50n
   struct S
   {
     using size_type = std::string_view::size_type;
-
-#if defined(__SIZEOF_INT128__)
-    using uintmax_t = std::conditional_t<
-        (sizeof(unsigned __int128) > sizeof(std::uintmax_t)),
-        unsigned __int128, std::uintmax_t
-      >;
-#else
     using uintmax_t = std::uintmax_t;
-#endif // __SIZEOF_INT128__
 
     template <std::size_t N>
     struct fixed_string
@@ -245,7 +237,7 @@ class j50n
           (((w + splat<decltype(w)>(1)) | w) & splat<decltype(w)>(0x80))); m) // byte > 126
         {
           auto const lane(unsigned(std::countr_zero(m)) >> 3);
-          unsigned char const b(w >> (CHAR_BIT * lane));
+          unsigned char const b(w >> (lane << 3));
 
           return any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(b) ?
             i + lane : decltype(i){};
