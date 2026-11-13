@@ -25,7 +25,6 @@ class j50n
   struct S
   {
     using size_type = std::string_view::size_type;
-    using uintmax_t = std::uintmax_t;
 
     template <std::size_t N>
     struct fixed_string
@@ -125,7 +124,7 @@ class j50n
       for (;;)
       {
         auto const rem(std::size_t(end - i));
-        uintmax_t w;
+        std::uintmax_t w;
 
         if (rem >= sizeof w)
           std::memcpy(&w, i, sizeof w);
@@ -206,7 +205,7 @@ class j50n
       for (;;)
       {
         auto const rem(std::size_t(end - i));
-        uintmax_t w;
+        std::uintmax_t w;
 
         if (rem >= sizeof w)
           std::memcpy(&w, i, sizeof w);
@@ -617,7 +616,7 @@ public:
     for (auto p(sv.data()), p0(p);;)
     {
       auto const rem(std::size_t(end - p));
-      S::uintmax_t w;
+      std::uintmax_t w;
 
       if (rem >= sizeof w)
         std::memcpy(&w, p, sizeof w);
@@ -645,7 +644,7 @@ public:
         p += unsigned(std::countr_zero(m)) >> 3;
       else
       {
-        if (end == (p += std::min(rem, sizeof(S::uintmax_t))))
+        if (end == (p += std::min(rem, sizeof w)))
         {
           r.append(p0, std::size_t(p - p0));
           break;
