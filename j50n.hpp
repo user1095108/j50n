@@ -81,24 +81,13 @@ class j50n
     template <typename T> requires(!std::is_same_v<T, bool>)
     [[nodiscard]] static constexpr T splat(std::uint8_t const b) noexcept
     { // 0xbbbb…bb for byte value b
-      return [&]<auto ...I>(std::index_sequence<I...>) noexcept
-        {
-          T v(b); ((v |= v << (CHAR_BIT << I)), ...); return v;
-        }(std::make_index_sequence<std::bit_width(sizeof(T)) - 1>{});
-      return T(~T()) / T(0xFF) * T(b);
-      return [&]<auto ...I>(std::index_sequence<I...>) noexcept
-        {
-          return std::bit_cast<T>(
-            std::array<std::byte, sizeof(T)>{std::byte(I - I + b)...});
-        }(std::make_index_sequence<sizeof(T)>{});
+      return T(~T()) / T(0xFFu) * T(b);
     }
 
     template <typename T>
     [[nodiscard]] static constexpr T has_zero(T const v) noexcept
     { // nonzero iff v contains a zero byte;
-      constexpr T ones(splat<T>(0x01)); // 0x0101…01
-      constexpr T highs(splat<T>(0x80)); // 0x8080…80
-      return (v - ones) & ~v & highs;
+      return (v - splat<T>(0x01)) & ~v & splat<T>(0x80);
     }
 
     template <typename T> requires(!std::same_as<T, bool>)
