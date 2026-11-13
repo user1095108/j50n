@@ -245,26 +245,27 @@ class j50n
       unsigned depth{};
 
       for (auto i(s.data()); end != i; ++i)
-        if (any_of<' ', '\t', '\r', '\n', ':', ','>(*i))
+        if (auto const c{uchar(*i)};
+          any_of<' ', '\t', '\r', '\n', ':', ','>(c))
           continue;
-        else if (any_of<'[', '{'>(*i))
+        else if ((c & 0xDFu) == '[')         // '[' or '{'
         {
           if (2u == ++depth) start = i;
         }
-        else if (any_of<']', '}'>(*i))
+        else if ((c & 0xDFu) == ']')         // ']' or '}'
         {
           if (depth && (1u == --depth))
           {
-            if ((']' == *i? '[': '{') != *start || cb(start, i, true)) return;
+            if ((']' == c ? '[': '{') != *start || cb(start, i, true)) return;
             start = {};
           }
           else if (!depth) break;
         }
         else
         { // delimit token
-          auto const quot('"' == *i);
+          auto const quot('"' == c);
           auto const e(quot ? str_end(i + 1, end) :
-            ('-' == *i || range<'0', '9'>(*i) || range<'a', 'z'>(*i | 0x20) ?
+            ('-' == c || range<'0', '9'>(c) || range<'a', 'z'>(c | 0x20) ?
               bare_end(i, end) : nullptr));
 
           if (!e || (1u == depth && cb(i, e, quot)) || end == e)
@@ -596,9 +597,10 @@ public:
       {
         unsigned v{};
         for (auto const end(p + 4); end != p; ++p)
-          if (v <<= 4; S::range<'0', '9'>(*p)) v |= unsigned(*p - '0');
-          else if (S::range<'a', 'f'>(*p)) v |= unsigned(*p - 'a' + 10);
-          else if (S::range<'A', 'F'>(*p)) v |= unsigned(*p - 'A' + 10);
+          if (v <<= 4; S::range<'0', '9'>(*p))
+            v |= unsigned(*p - '0');
+          else if (S::uchar c(*p | 0x20);
+            S::range<'a', 'f'>(c)) v |= unsigned(c - 'a' + 10);
           else return std::pair(v, false);
         return std::pair(v, true);
       };
