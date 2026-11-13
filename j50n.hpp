@@ -65,32 +65,11 @@ class j50n
     [[nodiscard]] static constexpr bool any_of(char const c) noexcept
     {
       return ((c == Chars) || ...);
-      /*
-      constexpr auto N{sizeof...(Chars)};
-      if constexpr(N < 5 || N > sizeof(std::uintmax_t))
-      else
-      {
-        using A = std::array<unsigned char, sizeof(std::uintmax_t)>;
-
-        constexpr auto packed(std::bit_cast<std::uintmax_t>(
-          A{static_cast<unsigned char>(Chars)...}));
-
-        if constexpr(sizeof(std::uintmax_t) == N)
-          return has_zero(packed ^ splat<std::uintmax_t>(
-            static_cast<unsigned char>(c)));
-        else
-        {
-          constexpr auto lanes(std::bit_cast<std::uintmax_t>(
-            A{static_cast<unsigned char>(Chars - Chars + 0x80)...}));
-
-          return has_zero(packed ^ splat<std::uintmax_t>(
-            static_cast<unsigned char>(c))) & lanes;
-        }
-      } */
     }
 
     template <fixed_string... Strings>
-    static constexpr std::size_t index_of(std::string_view const sv) noexcept
+    [[nodiscard]] static constexpr std::size_t index_of(
+      std::string_view const sv) noexcept
     {
       std::size_t ndx{};
       return std::ignore = ((sv == Strings || !++ndx) || ...), ndx;
