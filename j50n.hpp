@@ -25,6 +25,7 @@ class j50n
   struct S
   {
     using size_type = std::string_view::size_type;
+    using uchar = unsigned char;
 
     template <std::size_t N>
     struct fixed_string
@@ -145,7 +146,7 @@ class j50n
         {
           i += unsigned(std::countr_zero(m)) >> 3;
 
-          switch (auto const b((unsigned char)*i); b)
+          switch (uchar const b(*i); b)
           {
             case '"':
               return i;
@@ -170,8 +171,8 @@ class j50n
               if (!range<0xc2, 0xf4>(b))
                 return decltype(i){};
 
-              if (end == ++i || (unsigned char)*i < (0xE0u == b ? 0xA0u :
-                0xF0u == b ? 0x90u : 0x80u) || (unsigned char)*i >
+              if (end == ++i || uchar(*i) < (0xE0u == b ? 0xA0u :
+                0xF0u == b ? 0x90u : 0x80u) || uchar(*i) >
                 (0xEDu == b ? 0x9Fu : 0xF4u == b ? 0x8Fu : 0xBFu))
                 return decltype(i){};
 
@@ -225,10 +226,9 @@ class j50n
           (((w + splat<decltype(w)>(1)) | w) & splat<decltype(w)>(0x80))); m) // byte > 126
         {
           auto const lane(unsigned(std::countr_zero(m)) >> 3);
-          unsigned char const b(w >> (lane << 3));
 
-          return any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(b) ?
-            i + lane : decltype(i){};
+          return any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(
+            uchar(w >> (lane << 3))) ? i + lane : decltype(i){};
         }
 
         if (end == (i += std::min(sizeof w, rem)))
