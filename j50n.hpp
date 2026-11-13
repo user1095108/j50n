@@ -76,7 +76,7 @@ class j50n
 
     static constexpr bool is_hex(char const c) noexcept
     {
-      return range<'0', '9'>(c) || range<'A', 'F'>(c) || range<'a', 'f'>(c);
+      return range<'0', '9'>(c) || range<'a', 'f'>(c | 0x20);
     }
 
     template <typename T> requires(!std::is_same_v<T, bool>)
@@ -219,16 +219,19 @@ class j50n
         if constexpr(std::endian::big == std::endian::native)
           w = byteswap(w);
 
-        if (auto const m(has_zero(w ^ splat<decltype(w)>(':')) |
+        if (auto const m(
+          has_zero(w ^ splat<decltype(w)>(':')) |
           has_zero(w ^ splat<decltype(w)>(',')) |
-          has_zero((w ^ splat<decltype(w)>(0x5D)) & splat<decltype(w)>(0xDF))|// byte == ']' or '}'
-          ((w - splat<decltype(w)>(33)) & ~w & splat<decltype(w)>(0x80)) |    // byte < 33
+          has_zero((w ^ splat<decltype(w)>(0x5D)) & splat<decltype(w)>(0xDF)) | // byte == ']' or '}'
+          ((w - splat<decltype(w)>(33)) & ~w & splat<decltype(w)>(0x80)) | // byte < 33
           (((w + splat<decltype(w)>(1)) | w) & splat<decltype(w)>(0x80))); m) // byte > 126
         {
           auto const lane(unsigned(std::countr_zero(m)) >> 3);
+          auto const b(uchar(w >> (lane << 3)));
 
-          return any_of<' ', '\t', '\n', '\r', ':', ',', ']', '}'>(
-            uchar(w >> (lane << 3))) ? i + lane : decltype(i){};
+          return ((unsigned(b) - 0x20u <= 0x5Eu) || // b ∈ [0x20, 0x7E]
+            (b < 0x20u && ((1u << b) & 0x2600u))) ? // b < 0x20 and tab / LF / CR (0x09, 0x0A, 0x0D)
+            i + lane : decltype(i){};
         }
 
         if (end == (i += std::min(sizeof w, rem)))
@@ -261,8 +264,8 @@ class j50n
         { // delimit token
           auto const quot('"' == *i);
           auto const e(quot ? str_end(i + 1, end) :
-            ('-' == *i || range<'0', '9'>(*i) || range<'A', 'Z'>(*i) ||
-            range<'a', 'z'>(*i) ? bare_end(i, end) : nullptr));
+            ('-' == *i || range<'0', '9'>(*i) || range<'a', 'z'>(*i | 0x20) ?
+              bare_end(i, end) : nullptr));
 
           if (!e || (1u == depth && cb(i, e, quot)) || end == e)
             break;
