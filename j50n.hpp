@@ -653,12 +653,11 @@ public:
         break;
       }
 
-      switch (auto const e(*p++); e)
+      switch (auto const e(S::uchar(*p++)); e)
       {
-        case '"': case '\\': case '/':
-          r += e; break;
-        case 'b': case 'f': case 'n': case 'r': case 't':
-          r += "\n\t\f\b\r"[e % 5];
+        case '"': case '\\': case '/': case 'b':
+        case 'f': case 'n': case 'r': case 't':
+          r += e < 'a' ? e : 0xD8C9A >> 4 * (e % 5) & 15;
           break;
         case 'u':
         {
