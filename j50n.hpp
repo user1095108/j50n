@@ -657,7 +657,7 @@ public:
       {
         case '"': case '\\': case '/': case 'b':
         case 'f': case 'n': case 'r': case 't':
-          r += e < 'a' ? e : 0xD8C9A >> 4 * (e % 5) & 15;
+          r += e < 'a' ? e : "\n\t\f\b\r"[e % 5];
           break;
         case 'u':
         {
