@@ -655,14 +655,11 @@ public:
 
       switch (auto const e(*p++); e)
       {
-        case '"':  r += '"';  break;
-        case '\\': r += '\\'; break;
-        case '/':  r += '/';  break;
-        case 'b':  r += '\b'; break;
-        case 'f':  r += '\f'; break;
-        case 'n':  r += '\n'; break;
-        case 'r':  r += '\r'; break;
-        case 't':  r += '\t'; break;
+        case '"': case '\\': case '/':
+          r += e; break;
+        case 'b': case 'f': case 'n': case 'r': case 't':
+          r += "\n\t\f\b\r"[e % 5];
+          break;
         case 'u':
         {
           if (end - p < 4) { r.append({'\\', 'u'}); break; }
@@ -692,8 +689,7 @@ public:
           break;
         }
         default:
-          r.append({'\\', e});
-          break;
+          r.append(p - 2, 2);
       }
 
       p0 = p;                   // literal run restarts after the escape
