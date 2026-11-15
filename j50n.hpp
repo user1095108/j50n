@@ -590,7 +590,7 @@ public:
     std::string r;
     r.reserve(sv.size());
 
-    auto const hex4 = [](auto&& p) noexcept
+    auto const hex4 = [](auto p) noexcept
       {
         unsigned v{};
         for (auto const end(p + 4); end != p; ++p)
@@ -634,7 +634,6 @@ public:
       if (auto const m(S::has_zero(w ^ S::splat<decltype(w)>('\\'))); m)
         p += unsigned(std::countr_zero(m)) >> 3;
       else
-      {
         if (end == (p += std::min(rem, sizeof w)))
         {
           r.append(p0, std::size_t(p - p0));
@@ -642,7 +641,6 @@ public:
         }
         else
           continue; // full word, no backslash — keep extending the run
-      }
 
       //assert('\\' == *p);
       r.append(p0, std::size_t(p - p0));
@@ -662,9 +660,9 @@ public:
         case 'u':
         {
           if (end - p < 4) { r.append({'\\', 'u'}); break; }
-          auto const q0 = p;
           auto const [cp, ok] = hex4(p);
-          if (!ok) { p = q0; r.append({'\\', 'u'}); break; }
+          if (!ok) { r.append({'\\', 'u'}); break; }
+          p += 4;
 
           unsigned u(unsigned(cp - 0xD800) < 0x800 ? 0xFFFD : cp);
 
