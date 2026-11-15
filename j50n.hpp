@@ -116,8 +116,7 @@ class j50n
         if (rem >= sizeof w)
           std::memcpy(&w, i, sizeof w);
         else
-        {
-          w = splat<decltype(w)>('!');
+          w = splat<decltype(w)>('!'),
           [&rem, q = reinterpret_cast<char*>(&w), p = i]<auto... Is>(
             std::index_sequence<Is...>) mutable noexcept
           {
@@ -130,7 +129,6 @@ class j50n
                nullptr), ...
             );
           }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
-        }
 
         if constexpr(std::endian::big == std::endian::native)
           w = byteswap(w);
@@ -197,8 +195,7 @@ class j50n
         if (rem >= sizeof w)
           std::memcpy(&w, i, sizeof w);
         else
-        {
-          w = splat<decltype(w)>('!');
+          w = splat<decltype(w)>('!'),
           [&rem, q = reinterpret_cast<char*>(&w), p = i]<auto... Is>(
             std::index_sequence<Is...>) mutable noexcept
           {
@@ -211,7 +208,6 @@ class j50n
                nullptr), ...
             );
           }(std::make_index_sequence<std::bit_width(sizeof(w)) - 1>{});
-        }
 
         if constexpr(std::endian::big == std::endian::native)
           w = byteswap(w);
