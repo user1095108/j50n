@@ -5,12 +5,12 @@
 #include <algorithm> // std::min()
 #include <array>
 #include <bit>
+#include <charconv> // std::from_chars()
 #include <climits> // CHAR_BIT
+#include <compare> // std::partial_ordering
 #include <cstddef> // std::size_t
 #include <cstdint> // std::uintmax_t
 #include <cstring> // std::memcpy()
-#include <charconv> // std::from_chars()
-#include <compare> // std::partial_ordering
 #include <ostream> // operator<<()
 #include <string>
 #include <string_view>
