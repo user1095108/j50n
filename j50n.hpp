@@ -79,16 +79,16 @@ class j50n
       return range<'0', '9'>(c) || range<'a', 'f'>(c | 0x20);
     }
 
-    template <typename T> requires(!std::is_same_v<T, bool>)
-    [[nodiscard]] static constexpr T splat(std::uint8_t const b) noexcept
+    template <typename T> requires((T(-1) > T{}) && !std::is_same_v<T, bool>)
+    [[nodiscard]] static constexpr T splat(uchar const b) noexcept
     { // 0xbbbb…bb for byte value b
-      return T(~T()) / T(0xFFu) * T(b);
+      return T(~T()) / uchar(~uchar()) * T(b);
     }
 
-    template <typename T>
+    template <typename T> requires((T(-1) > T{}) && !std::is_same_v<T, bool>)
     [[nodiscard]] static constexpr T has_zero(T const v) noexcept
     { // nonzero iff v contains a zero byte;
-      return (v - splat<T>(0x01)) & ~v & splat<T>(0x80);
+      return (v - splat<T>(1)) & ~v & splat<T>(uchar(1) << (CHAR_BIT - 1));
     }
 
     template <typename T> requires(!std::same_as<T, bool>)
