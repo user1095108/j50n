@@ -224,8 +224,7 @@ class j50n
             (b < 0x20u && ((1u << b) & 0x2600u))) ? // b < 0x20 and tab / LF / CR (0x09, 0x0A, 0x0D)
             i + lane : decltype(i){};
         }
-
-        if (end == (i += std::min(sizeof w, rem)))
+        else if (end == (i += std::min(sizeof w, rem)))
           return end;
       }
     }
