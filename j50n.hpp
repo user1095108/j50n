@@ -672,9 +672,12 @@ public:
       {
         case '"': case '\\': case '/': case 'b':
         case 'f': case 'n': case 'r': case 't':
-          r += std::array<char const, 8>{'\\', '\"', '\b', '\f',
-            '/', '\n', '\r', '\t'}[(e * 69u >> 8) & 7];
+        {
+          static constexpr std::array lut{
+            '\\', '\"', '\b', '\f', '/', '\n', '\r', '\t'};
+          r += lut[(e * 69u >> 8) & 7];
           break;
+        }
         case 'u':
         {
           if (end - p < 4) { r.append({'\\', 'u'}); break; }
