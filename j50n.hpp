@@ -139,9 +139,10 @@ class j50n
           ((((w - splat<decltype(w)>(0x20)) & ~w) | w) &
           splat<decltype(w)>(0x80))); m)  // byte < 0x20 or >= 0x80 
         {
-          i += unsigned(std::countr_zero(m)) >> 3;
+          auto const lane(unsigned(std::countr_zero(m)) >> 3);
+          i += lane;
 
-          switch (uchar const b(*i); b)
+          switch (auto const b(uchar(w >> (lane << 3))); b)
           {
             case '"':
               return i;
@@ -157,8 +158,7 @@ class j50n
                 !is_hex(*++i) || !is_hex(*++i)))
                 return decltype(i){};
 
-              ++i;
-              continue;
+              break;
 
             default:
               // mask only fires on '"', '\\', < 0x20, or >= 0x80 — so b here is
@@ -174,10 +174,10 @@ class j50n
               if (((b >= 0xE0u) && (end == ++i || (*i & 0xC0) != 0x80)) ||
                 ((b >= 0xF0u) && (end == ++i || (*i & 0xC0) != 0x80)))
                 return decltype(i){};
-
-              ++i;
-              continue;
           }
+
+          ++i;
+          continue;
         }
 
         if (end == (i += std::min(sizeof w, rem)))
