@@ -247,7 +247,7 @@ class j50n
         {
           if (depth && (1u == --depth))
           {
-            if ((']' == c ? '[': '{') != *start || cb(start, i, true)) return;
+            if ((']' == c ? '[': '{') != *start || cb(start, i, true)) break;
             start = {};
           }
           else if (!depth) break;
