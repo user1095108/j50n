@@ -136,8 +136,8 @@ class j50n
         if (auto const m(
           has_zero(w ^ splat<decltype(w)>(0x22)) |       // byte == '"'
           has_zero(w ^ splat<decltype(w)>(0x5C)) |       // byte == '\\'
-          ((((w - splat<decltype(w)>(0x20)) & ~w) | w) &
-          splat<decltype(w)>(0x80))); m)  // byte < 0x20 or >= 0x80 
+          (((w - splat<decltype(w)>(0x20)) | w) & ~splat<decltype(w)>(0x7f)) // byte < 0x20 or >= 0x80 
+          ); m)
         {
           auto const lane(unsigned(std::countr_zero(m) / CHAR_BIT));
           i += lane;
