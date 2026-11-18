@@ -458,9 +458,24 @@ public:
     return S::any_of<"true", "false">(s_);
   }
 
+  [[nodiscard]] bool is_container() const noexcept
+  {
+    return is_array() || is_object();
+  }
+
   [[nodiscard]] bool is_empty() const noexcept
   {
     return s_.empty();
+  }
+
+  [[nodiscard]] bool is_empty_array() const noexcept
+  {
+    return is_array() && !size();
+  }
+
+  [[nodiscard]] bool is_empty_object() const noexcept
+  {
+    return is_object() && !size();
   }
 
   [[nodiscard]] bool is_empty_string() const noexcept
@@ -471,6 +486,16 @@ public:
   [[nodiscard]] bool is_false() const noexcept
   {
     return S::any_of<"false">(s_);
+  }
+
+  [[nodiscard]] bool is_integer() const noexcept
+  {
+    return !get<std::intmax_t>().second;
+  }
+
+  [[nodiscard]] bool is_unsigned() const noexcept
+  {
+    return !get<std::uintmax_t>().second;
   }
 
   [[nodiscard]] bool is_null() const noexcept
