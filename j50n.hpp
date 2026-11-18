@@ -177,7 +177,6 @@ class j50n
           }
 
           ++i;
-          continue;
         }
         else if (end == (i += std::min(sizeof w, rem)))
           return decltype(i){};
