@@ -139,10 +139,10 @@ class j50n
           ((((w - splat<decltype(w)>(0x20)) & ~w) | w) &
           splat<decltype(w)>(0x80))); m)  // byte < 0x20 or >= 0x80 
         {
-          auto const lane(unsigned(std::countr_zero(m)) >> 3);
+          auto const lane(unsigned(std::countr_zero(m) / CHAR_BIT));
           i += lane;
 
-          switch (auto const b(uchar(w >> (lane << 3))); b)
+          switch (auto const b(uchar(w >> (lane * CHAR_BIT))); b)
           {
             case '"':
               return i;
@@ -217,11 +217,11 @@ class j50n
           ((w - splat<decltype(w)>(33)) & ~w & splat<decltype(w)>(0x80)) | // byte < 33
           (((w + splat<decltype(w)>(1)) | w) & splat<decltype(w)>(0x80))); m) // byte > 126
         {
-          auto const lane(unsigned(std::countr_zero(m)) >> 3);
-          auto const b(uchar(w >> (lane << 3)));
+          auto const lane(unsigned(std::countr_zero(m) / CHAR_BIT));
+          auto const b(uchar(w >> (lane * CHAR_BIT)));
 
           return ((unsigned(b) - 0x20u <= 0x5Eu) || // b ∈ [0x20, 0x7E]
-            (b < 0x20u && ((1u << b) & 0x2600u))) ? // b < 0x20 and tab / LF / CR (0x09, 0x0A, 0x0D)
+            (b < 0x20u && ((1ul << b) & 0x2600u))) ? // b < 0x20 and tab / LF / CR (0x09, 0x0A, 0x0D)
             i + lane : decltype(i){};
         }
         else if (end == (i += std::min(sizeof w, rem)))
@@ -649,7 +649,7 @@ public:
         w = S::byteswap(w);
 
       if (auto const m(S::has_zero(w ^ S::splat<decltype(w)>('\\'))); m)
-        p += unsigned(std::countr_zero(m)) >> 3;
+        p += unsigned(std::countr_zero(m) / CHAR_BIT) ;
       else
         if (end == (p += std::min(rem, sizeof w)))
         {
