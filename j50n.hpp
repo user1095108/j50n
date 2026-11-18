@@ -213,9 +213,9 @@ class j50n
         if (auto const m(
           has_zero(w ^ splat<decltype(w)>(':')) |
           has_zero(w ^ splat<decltype(w)>(',')) |
-          has_zero((w ^ splat<decltype(w)>(0x5D)) & splat<decltype(w)>(0xDF)) | // byte == ']' or '}'
-          ((w - splat<decltype(w)>(33)) & ~w & splat<decltype(w)>(0x80)) | // byte < 33
-          (((w + splat<decltype(w)>(1)) | w) & splat<decltype(w)>(0x80))); m) // byte > 126
+          has_zero((w ^ splat<decltype(w)>(0x5D)) & ~splat<decltype(w)>(0x20)) | // byte == ']' or '}'
+          (((w - splat<decltype(w)>(33)) | (w + splat<decltype(w)>(1)) | w) & // byte < 33
+          ~splat<decltype(w)>(0x7F))); m) // byte > 126
         {
           auto const lane(unsigned(std::countr_zero(m) / CHAR_BIT));
           auto const b(uchar(w >> (lane * CHAR_BIT)));
