@@ -239,11 +239,11 @@ class j50n
         if (auto const c{uchar(*i)};
           any_of<' ', '\t', '\r', '\n', ':', ','>(c))
           continue;
-        else if ((c & 0xDFu) == '[')         // '[' or '{'
+        else if (auto const d(c & 0xDFu); d == '[')         // '[' or '{'
         {
           if (2u == ++depth) start = i;
         }
-        else if ((c & 0xDFu) == ']')         // ']' or '}'
+        else if (d == ']')         // ']' or '}'
         {
           if (depth && (1u == --depth))
           {
