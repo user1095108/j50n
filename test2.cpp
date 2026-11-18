@@ -575,7 +575,7 @@ static void test_predicates_and_emptiness()
   // ── type predicates (incl. empty-string detection) ───────────────────────
 
   {
-    SECTION("type predicates (incl. empty-string detection)");
+    SECTION("type predicates (incl. empty-string, container, and integer detection)");
     j50n const j(R"j({"obj":{},"arr":[],"str":"s","num":-1,"flt":1.5,"t":true,"f":false,"nul":null,"emp":""})j");
 
     struct Expect
@@ -687,6 +687,121 @@ static void test_predicates_and_emptiness()
       CHECK(!j50n("}").is_object() && !j50n("]").is_array());
       CHECK(!j50n("]").is_string());
       CHECK_EQ(j50n("]").size(), 0u);
+    }
+
+    // ── is_container: array or object, including the empty ones ───────────
+    {
+      CHECK(j50n("[]").is_container());
+      CHECK(j50n("{}").is_container());
+      CHECK(j50n("[ ]").is_container());       // blank items, still a container
+      CHECK(j50n("{ }").is_container());
+      CHECK(j50n("[1]").is_container());
+      CHECK(j50n(R"j({"a":1})j").is_container());
+
+      // non-containers: scalars, strings, keywords, malformed first bytes
+      CHECK(!j50n("0").is_container());
+      CHECK(!j50n("1.5").is_container());
+      CHECK(!j50n("\"s\"").is_container());
+      CHECK(!j50n("true").is_container());
+      CHECK(!j50n("null").is_container());
+      CHECK(!j50n("").is_container());         // empty view / missing path
+      CHECK(!j50n("]").is_container());        // bare by the first-byte rule
+      CHECK(!j50n("}").is_container());
+
+      // through the document: is_container() == is_array() || is_object()
+      j50n const doc(R"j({"obj":{"k":1},"arr":[1],"str":"s","num":1})j");
+      CHECK(doc["obj"].is_container() && doc["obj"].is_object());
+      CHECK(doc["arr"].is_container() && doc["arr"].is_array());
+      CHECK(!doc["str"].is_container() && !doc["num"].is_container());
+      CHECK(doc.is_container());               // the document root
+      CHECK(!doc["missing"].is_container());
+    }
+
+    // ── is_empty_array / is_empty_object ───────────────────────────────────
+    {
+      CHECK(j50n("[]").is_empty_array());
+      CHECK(j50n("[ ]").is_empty_array());     // blank, zero items
+      CHECK(!j50n("[1]").is_empty_array());
+      CHECK(!j50n("[[ ]]").is_empty_array());  // one (empty) item
+      CHECK(!j50n("{}").is_empty_array());     // wrong container kind
+      CHECK(!j50n("0").is_empty_array());
+      CHECK(!j50n("").is_empty_array());
+      CHECK(!j50n("abc").is_empty_array());
+
+      CHECK(j50n("{}").is_empty_object());
+      CHECK(j50n("{ }").is_empty_object());
+      CHECK(!j50n(R"j({"a":1})j").is_empty_object());
+      CHECK(!j50n("[]").is_empty_object());    // wrong container kind
+      CHECK(!j50n("\"\"").is_empty_object());
+
+      // through the document
+      j50n const doc(
+        R"j({"eobj":{},"earr":[],"neobj":{"k":1},"nearn":[1],"deep":{"in":{}}})j");
+      CHECK(doc["eobj"].is_empty_object() && doc["eobj"].is_container());
+      CHECK(doc["earr"].is_empty_array() && doc["earr"].is_container());
+      CHECK(!doc["neobj"].is_empty_object() && doc["neobj"].is_object());
+      CHECK(!doc["nearn"].is_empty_array() && doc["nearn"].is_array());
+      CHECK(doc["deep"]["in"].is_empty_object());
+      CHECK(!doc["missing"].is_empty_object() &&
+        !doc["missing"].is_empty_array());
+    }
+
+    // ── is_integer / is_unsigned: raw-view from_chars, full-span ──────────
+    // get<intmax_t>() / get<uintmax_t>() run std::from_chars over the RAW
+    // view (not the unquoted string) and demand the whole span be
+    // consumed; .second is the error flag, so is_integer()/is_unsigned()
+    // mean "the raw text fully parses as that integer type".
+    {
+      CHECK(j50n("0").is_integer());
+      CHECK(j50n("42").is_integer());
+      CHECK(j50n("-1").is_integer());
+      CHECK(j50n("-0").is_integer());
+      CHECK(j50n("007").is_integer());         // from_chars takes leading zeros
+      CHECK(j50n("9223372036854775807").is_integer());   // INTMAX_MAX
+      CHECK(j50n("-9223372036854775808").is_integer());  // INTMAX_MIN
+
+      CHECK(!j50n("9223372036854775808").is_integer());  // INTMAX_MAX + 1
+      CHECK(!j50n("18446744073709551615").is_integer()); // UINTMAX_MAX
+      CHECK(!j50n("1.5").is_integer());          // stops at '.'
+      CHECK(!j50n("1e10").is_integer());         // stops at 'e'
+      CHECK(!j50n("0x1F").is_integer());         // stops at 'x'
+      CHECK(!j50n("+5").is_integer());           // from_chars rejects '+'
+      CHECK(!j50n("-").is_integer());
+      CHECK(!j50n("abc").is_integer());
+      CHECK(!j50n("").is_integer());
+      CHECK(!j50n("\"42\"").is_integer());       // raw view starts with '"'
+      CHECK(!j50n("true").is_integer());
+      CHECK(!j50n("null").is_integer());
+
+      CHECK(j50n("0").is_unsigned());
+      CHECK(j50n("42").is_unsigned());
+      CHECK(j50n("18446744073709551615").is_unsigned());   // UINTMAX_MAX
+      CHECK(j50n("9223372036854775808").is_unsigned());    // above INTMAX_MAX
+
+      CHECK(!j50n("-1").is_unsigned());          // from_chars: no '-' for unsigned
+      CHECK(!j50n("-0").is_unsigned());
+      CHECK(!j50n("18446744073709551616").is_unsigned());  // UINTMAX_MAX + 1
+      CHECK(!j50n("1.5").is_unsigned());
+      CHECK(!j50n("\"42\"").is_unsigned());
+      CHECK(!j50n("").is_unsigned());
+
+      // the two ranges overlap on [0, INTMAX_MAX]; each rejects the other's
+      // exclusive part
+      CHECK(j50n("42").is_integer() && j50n("42").is_unsigned());
+      CHECK(!j50n("-1").is_unsigned());
+      CHECK(!j50n("18446744073709551615").is_integer());
+
+      // through the document: quoted numbers are strings, keywords fail
+      j50n const doc(
+        R"j({"i":42,"neg":-7,"big":18446744073709551615,"flt":1.5,"s":"42","t":true,"nul":null})j");
+      CHECK(doc["i"].is_integer() && doc["i"].is_unsigned());
+      CHECK(doc["neg"].is_integer() && !doc["neg"].is_unsigned());
+      CHECK(doc["big"].is_unsigned() && !doc["big"].is_integer());
+      CHECK(!doc["flt"].is_integer() && !doc["flt"].is_unsigned() &&
+        doc["flt"].is_number());
+      CHECK(!doc["s"].is_integer() && !doc["s"].is_unsigned());
+      CHECK(!doc["t"].is_integer() && !doc["nul"].is_unsigned());
+      CHECK(!doc["missing"].is_integer() && !doc["missing"].is_unsigned());
     }
   }
 
