@@ -232,7 +232,7 @@ class j50n
 
     static void each_item(std::string_view const s, auto cb) noexcept
     {
-      char const *start{}, *end(s.data() + s.size());
+      char const *start, *end(s.data() + s.size());
       unsigned depth{};
 
       for (auto i(s.data()); end != i; ++i)
@@ -248,7 +248,6 @@ class j50n
           if (depth && (1u == --depth))
           {
             if ((']' == c ? '[': '{') != *start || cb(start, i, true)) break;
-            start = {};
           }
           else if (!depth) break;
         }
