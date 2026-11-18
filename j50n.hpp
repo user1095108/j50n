@@ -673,9 +673,9 @@ public:
         case '"': case '\\': case '/': case 'b':
         case 'f': case 'n': case 'r': case 't':
         {
-          static constexpr std::array lut{
+          static constexpr std::array unescape_map{
             '\\', '\"', '\b', '\f', '/', '\n', '\r', '\t'};
-          r += lut[(e * 69u >> 8) & 7];
+          r += unescape_map[(e * 69u >> 8) & 7];
           break;
         }
         case 'u':
