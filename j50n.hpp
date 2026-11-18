@@ -672,7 +672,8 @@ public:
       {
         case '"': case '\\': case '/': case 'b':
         case 'f': case 'n': case 'r': case 't':
-          r += "\r\t\"\b/\n\f\\"[((e * 99u) >> 7) & 7];
+          r += std::array<char const, 8>{'\\', '\"', '\b', '\f',
+            '/', '\n', '\r', '\t'}[(e * 69u >> 8) & 7];
           break;
         case 'u':
         {
