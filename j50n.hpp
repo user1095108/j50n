@@ -664,7 +664,7 @@ public:
 
       if (end == ++p)             // trailing lone backslash
       {
-        r += '\\';
+        r.append(p - 1, 1);
         break;
       }
 
