@@ -88,7 +88,7 @@ class j50n
     template <typename T> requires((T(-1) > T{}) && !std::is_same_v<T, bool>)
     [[nodiscard]] static constexpr T has_zero(T const v) noexcept
     { // nonzero iff v contains a zero byte;
-      return (v - splat<T>(1)) & ~v & splat<T>(uchar(1) << (CHAR_BIT - 1));
+      return (v - splat<T>(1)) & T(~v) & T(~splat<T>(uchar(~uchar{}) >> 1));
     }
 
     template <typename T> requires(!std::same_as<T, bool>)
@@ -214,8 +214,8 @@ class j50n
           has_zero(w ^ splat<decltype(w)>(':')) |
           has_zero(w ^ splat<decltype(w)>(',')) |
           has_zero((w ^ splat<decltype(w)>(0x5D)) & ~splat<decltype(w)>(0x20)) | // byte == ']' or '}'
-          (((w - splat<decltype(w)>(33)) | (w + splat<decltype(w)>(1)) | w) & // byte < 33
-          ~splat<decltype(w)>(0x7F))); m) // byte > 126
+          (((w - splat<decltype(w)>(33)) | (w + splat<decltype(w)>(1)) | w) & // byte < 33 && byte > 126
+          ~splat<decltype(w)>(0x7F))); m)
         {
           auto const lane(unsigned(std::countr_zero(m) / CHAR_BIT));
           auto const b(uchar(w >> (lane * CHAR_BIT)));
