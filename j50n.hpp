@@ -662,7 +662,7 @@ public:
       //assert('\\' == *p);
       r.append(p0, std::size_t(p - p0));
 
-      if (end == ++p)             // trailing lone backslash
+      if (end == ++p) [[unlikely]] // trailing lone backslash
       {
         r.append(p - 1, 1);
         break;
