@@ -79,19 +79,19 @@ class j50n
       return range<'0', '9'>(c) || range<'a', 'f'>(c | 0x20);
     }
 
-    template <typename T> requires((T(-1) > T{}) && !std::is_same_v<T, bool>)
+    template <typename T> requires((T(-1) > T{}) && T(2) > T(1))
     [[nodiscard]] static constexpr T splat(uchar const b) noexcept
     { // 0xbbbb…bb for byte value b
       return T(~T()) / uchar(~uchar()) * T(b);
     }
 
-    template <typename T> requires((T(-1) > T{}) && !std::is_same_v<T, bool>)
+    template <typename T> requires((T(-1) > T{}) && T(2) > T(1))
     [[nodiscard]] static constexpr T has_zero(T const v) noexcept
     { // nonzero iff v contains a zero byte;
       return (v - splat<T>(1)) & T(~v) & T(~splat<T>(uchar(~uchar{}) >> 1));
     }
 
-    template <typename T> requires(!std::same_as<T, bool>)
+    template <typename T> requires((T(-1) > T{}) && T(2) > T(1))
     [[nodiscard]] static constexpr T byteswap(T const value) noexcept
     {
 #if defined(__cpp_lib_byteswap)   // C++23
@@ -139,7 +139,7 @@ class j50n
           (((w - splat<decltype(w)>(0x20)) | w) & ~splat<decltype(w)>(0x7f)) // byte < 0x20 or >= 0x80
           ); m)
         {
-          auto const lane(unsigned(std::countr_zero(m) / CHAR_BIT));
+          auto const lane(unsigned(std::countr_zero(m)) / CHAR_BIT);
           i += lane;
 
           switch (auto const b(uchar(w >> (lane * CHAR_BIT))); b)
@@ -217,7 +217,7 @@ class j50n
           (((w - splat<decltype(w)>(33)) | (w + splat<decltype(w)>(1)) | w) & // byte < 33 && byte > 126
           ~splat<decltype(w)>(0x7F))); m)
         {
-          auto const lane(unsigned(std::countr_zero(m) / CHAR_BIT));
+          auto const lane(unsigned(std::countr_zero(m)) / CHAR_BIT);
           auto const b(uchar(w >> (lane * CHAR_BIT)));
 
           return ((unsigned(b) - 0x20u <= 0x5Eu) || // b ∈ [0x20, 0x7E]
@@ -649,7 +649,7 @@ public:
         w = S::byteswap(w);
 
       if (auto const m(S::has_zero(w ^ S::splat<decltype(w)>('\\'))); m)
-        p += unsigned(std::countr_zero(m) / CHAR_BIT) ;
+        p += unsigned(std::countr_zero(m)) / CHAR_BIT ;
       else
         if (end == (p += std::min(rem, sizeof w)))
         {
