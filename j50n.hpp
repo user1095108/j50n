@@ -284,10 +284,7 @@ class j50n
               key_found = true;
           }
           else if (key_found)
-          {
-            val = {p, size_type(e - p) + incl};
-            return true;
-          }
+            return val = {p, size_type(e - p) + incl}, true;
 
           return false;
         }
