@@ -83,19 +83,19 @@ class j50n
       return range<'0', '9'>(c) || range<'a', 'f'>(c | 0x20);
     }
 
-    template <typename T> requires((T(-1) > T{}) && T(2) > T(1))
+    template <typename T> requires(T(-1) > T{} && T(2) > T(1))
     [[nodiscard]] static constexpr T splat(uchar const b) noexcept
     { // 0xbbbb…bb for byte value b
       return T(~T()) / uchar(~uchar()) * T(b);
     }
 
-    template <typename T> requires((T(-1) > T{}) && T(2) > T(1))
+    template <typename T> requires(T(-1) > T{} && T(2) > T(1))
     [[nodiscard]] static constexpr T has_zero(T const v) noexcept
     { // nonzero iff v contains a zero byte;
       return (v - splat<T>(1)) & T(~v) & T(~splat<T>(uchar(~uchar{}) >> 1));
     }
 
-    template <typename T> requires((T(-1) > T{}) && T(2) > T(1))
+    template <typename T> requires(T(-1) > T{} && T(2) > T(1))
     [[nodiscard]] static constexpr T byteswap(T const value) noexcept
     {
 #if defined(__cpp_lib_byteswap)   // C++23
