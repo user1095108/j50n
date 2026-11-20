@@ -18,6 +18,10 @@
 #include <type_traits>
 #include <utility> // std::forward()
 
+static_assert(std::endian::big == std::endian::native ||
+  std::endian::little == std::endian::native,
+  "j50n: mixed-endian targets are not supported");
+
 class j50n
 {
   std::string_view s_;
