@@ -152,10 +152,8 @@ class j50n
               return i;
 
             case '\\':
-              if (end == ++i)
-                return decltype(i){};
-
-              if (!any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i))
+              if (end == ++i ||
+                !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i))
                 return decltype(i){};
 
               if ('u' == *i && (end - i < 5 || !is_hex(*++i) || !is_hex(*++i) ||
