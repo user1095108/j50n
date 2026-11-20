@@ -675,7 +675,7 @@ public:
         {
           static constexpr std::array unescape_map{
             '\\', '\t', '\f', '\n', '/', '"', '\b', '\r'};
-          r += unescape_map[(e + 341u) & ((e + 341u) >> 6)];
+          r += unescape_map[(e + 341u) & (e + 341u) >> 6];
           break;
         }
         case 'u':
