@@ -166,9 +166,7 @@ class j50n
 
               break;
 
-            default:
-              // mask only fires on '"', '\\', < 0x20, or >= 0x80 — so b here is
-              // < 0x20 or >= 0x80. 0x7F is in [32,127] and never reaches us.
+            default: // byte < 0x20 or >= 0x80
               if (!range<0xc2, 0xf4>(b))
                 return decltype(i){};
 
