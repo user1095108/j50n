@@ -152,8 +152,13 @@ class j50n
               return i;
 
             case '\\':
-              if (end == ++i ||
-                !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i))
+              if (end == ++i) [[unlikely]]
+                return decltype(i){};
+
+              // !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i))
+              if (auto const u{unsigned(S::uchar(*i))};
+                (u - 34u >= 14u || !((0x00002001u >> (u - 34u)) & 1u)) &&
+                (u - 92u >= 26u || !((0x03440441u >> (u - 92u)) & 1u)))
                 return decltype(i){};
 
               if ('u' == *i && (end - i < 5 || !is_hex(*++i) || !is_hex(*++i) ||
