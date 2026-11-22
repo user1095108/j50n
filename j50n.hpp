@@ -37,9 +37,9 @@ class j50n
       struct { char const data[N > 1u ? N - 1 : 1]; } const value;
 
       consteval fixed_string(char const(&s)[N]) noexcept :
-        value{[&]<auto ...Is>(std::index_sequence<Is...>) noexcept
+        value{[&]<auto ...I>(std::index_sequence<I...>) noexcept
           {
-            return decltype(value){s[Is]...};
+            return decltype(value){s[I]...};
           }(std::make_index_sequence<N - 1>())}
       {
       }
@@ -95,7 +95,7 @@ class j50n
       return (v - splat<T>(1)) & T(~v) & T(~splat<T>(uchar(~uchar{}) >> 1));
     }
 
-    template <typename T> requires(T(-1) > T{} && T(2) > T(1))
+    template <typename T>
     [[nodiscard]] static constexpr T byteswap(T const value) noexcept
     {
 #if defined(__cpp_lib_byteswap)   // C++23
@@ -121,14 +121,14 @@ class j50n
           std::memcpy(&w, i, sizeof w);
         else
           w = splat<decltype(w)>('!'),
-          [&rem, q = reinterpret_cast<char*>(&w), p = i]<auto... Is>(
-            std::index_sequence<Is...>) mutable noexcept
+          [&rem, q = reinterpret_cast<char*>(&w), p = i]<auto... I>(
+            std::index_sequence<I...>) mutable noexcept
           {
             (
-              (rem & (std::size_t(1) << Is) ?
-                std::memcpy(q, p, std::size_t(1) << Is),
-                Is != sizeof...(Is) - 1 ?
-                  q += std::size_t(1) << Is, p += std::size_t(1) << Is :
+              (rem & (std::size_t(1) << I) ?
+                std::memcpy(q, p, std::size_t(1) << I),
+                I != sizeof...(I) - 1 ?
+                  q += std::size_t(1) << I, p += std::size_t(1) << I :
                   nullptr :
                nullptr), ...
             );
@@ -196,14 +196,14 @@ class j50n
           std::memcpy(&w, i, sizeof w);
         else
           w = splat<decltype(w)>('!'),
-          [&rem, q = reinterpret_cast<char*>(&w), p = i]<auto... Is>(
-            std::index_sequence<Is...>) mutable noexcept
+          [&rem, q = reinterpret_cast<char*>(&w), p = i]<auto... I>(
+            std::index_sequence<I...>) mutable noexcept
           {
             (
-              (rem & (std::size_t(1) << Is) ?
-                std::memcpy(q, p, std::size_t(1) << Is),
-                Is != sizeof...(Is) - 1 ?
-                  q += std::size_t(1) << Is, p += std::size_t(1) << Is :
+              (rem & (std::size_t(1) << I) ?
+                std::memcpy(q, p, std::size_t(1) << I),
+                I != sizeof...(I) - 1 ?
+                  q += std::size_t(1) << I, p += std::size_t(1) << I :
                   nullptr :
                nullptr), ...
             );
@@ -216,14 +216,14 @@ class j50n
           has_zero(w ^ splat<decltype(w)>(':')) |
           has_zero(w ^ splat<decltype(w)>(',')) |
           has_zero((w ^ splat<decltype(w)>(0x5D)) & ~splat<decltype(w)>(0x20)) | // byte == ']' or '}'
-          (((w - splat<decltype(w)>(33)) | (w + splat<decltype(w)>(1)) | w) & // byte < 33 && byte > 126
+          (((w - splat<decltype(w)>(33)) | (w + splat<decltype(w)>(1)) | w) & // byte < 33 || byte > 126
           ~splat<decltype(w)>(0x7F))); m)
         {
           auto const lane(unsigned(std::countr_zero(m)) / CHAR_BIT);
-          auto const b(uchar(w >> (lane * CHAR_BIT)));
+          unsigned const b(uchar(w >> (lane * CHAR_BIT)));
 
-          return ((unsigned(b) - 0x20u <= 0x5Eu) || // b ∈ [0x20, 0x7E]
-            (b < 0x20u && ((1ul << b) & 0x2600u))) ? // b < 0x20 and tab / LF / CR (0x09, 0x0A, 0x0D)
+          return ((b - 0x20u <= 0x5Eu) || // b ∈ [0x20, 0x7E]
+            (b < 0x20u && (0x2600u >> b) & 1u)) ? // b < 0x20 and tab / LF / CR (0x09, 0x0A, 0x0D)
             i + lane : decltype(i){};
         }
         else if (end == (i += std::min(sizeof w, rem)))
@@ -630,14 +630,14 @@ public:
       else
       {
         w = {};
-        [&rem, q = reinterpret_cast<char*>(&w), p]<auto... Is>(
-          std::index_sequence<Is...>) mutable noexcept
+        [&rem, q = reinterpret_cast<char*>(&w), p]<auto... I>(
+          std::index_sequence<I...>) mutable noexcept
         {
           (
-            (rem & (std::size_t(1) << Is) ?
-              std::memcpy(q, p, std::size_t(1) << Is),
-              Is != sizeof...(Is) - 1 ?
-                q += std::size_t(1) << Is, p += std::size_t(1) << Is :
+            (rem & (std::size_t(1) << I) ?
+              std::memcpy(q, p, std::size_t(1) << I),
+              I != sizeof...(I) - 1 ?
+                q += std::size_t(1) << I, p += std::size_t(1) << I :
                 nullptr :
              nullptr), ...
           );
