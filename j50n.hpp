@@ -152,10 +152,10 @@ class j50n
               return i;
 
             case '\\':
-              // !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i))
               if (end == ++i) [[unlikely]]
                 return decltype(i){};
 
+              // !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i))
               if (auto const u{unsigned(uchar(*i))}; u != 34u && u != 47u && // '"'  '/'
                 (u - 92u >= 26u || !((0x03440441u >> (u - 92u)) & 1u))) // '\\' b f n r t u
                 return decltype(i){};
