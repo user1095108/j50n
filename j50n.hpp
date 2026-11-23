@@ -236,7 +236,7 @@ class j50n
           ~splat<decltype(w)>(0x7F))); m)
         {
           auto const lane(unsigned(std::countr_zero(m)) / CHAR_BIT);
-          uchar const b(uchar(w >> (lane * CHAR_BIT)));
+          auto const b(uchar(w >> (lane * CHAR_BIT)));
 
           return ((b - 0x20_uc <= 0x5E_uc) || // b ∈ [0x20, 0x7E]
             (b < 0x20_uc && (0x2600u >> b) & 1u)) ? // b < 0x20 and tab / LF / CR (0x09, 0x0A, 0x0D)
