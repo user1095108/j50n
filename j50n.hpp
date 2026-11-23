@@ -152,12 +152,12 @@ class j50n
               return i;
 
             case '\\':
-              if (end == ++i) [[unlikely]]
-                return decltype(i){};
-
               // !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i))
-              if (auto const u{unsigned(uchar(*i))}; u != 34u && u != 47u && // '"'  '/'
-                (u - 92u >= 26u || !((0x03440441u >> (u - 92u)) & 1u))) // '\\' b f n r t u
+              static constexpr std::uint64_t escape_masks[4]{
+                0x0000800400000000ull, 0x0034404410000000ull, {}, {}};
+
+              if ((end == ++i) ||
+                !((escape_masks[uchar(*i) >> 6] >> (uchar(*i) & 63u)) & 1u))
                 return decltype(i){};
 
               if ('u' == *i && (end - i < 5 || !is_hex(*++i) || !is_hex(*++i) ||
