@@ -22,6 +22,15 @@ static_assert(std::endian::big == std::endian::native ||
   std::endian::little == std::endian::native,
   "j50n: mixed-endian targets are not supported");
 
+namespace j50n_::detail
+{
+  constexpr unsigned char operator""_uc(
+    unsigned long long const c) noexcept
+  {
+    return static_cast<unsigned char>(c);
+  }
+}
+
 class j50n
 {
   std::string_view s_;
@@ -112,6 +121,8 @@ class j50n
 
     [[nodiscard]] static auto str_end(auto i, decltype(i) const end) noexcept
     {
+      using namespace j50n_::detail;
+
       for (;;)
       {
         auto const rem(std::size_t(end - i));
@@ -156,8 +167,8 @@ class j50n
                 return decltype(i){};
 
               // !any_of<'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'>(*i))
-              if (auto const u{uchar(*i)}; u != 34u && u != 47u && // '"'  '/'
-                (u - 92u >= 26u || !((0x03440441u >> (u - 92u)) & 1u))) // '\\' b f n r t u
+              if (auto const u{uchar(*i)}; u != 34_uc && u != 47_uc && // '"'  '/'
+                (u - 92_uc >= 26_uc || !((0x03440441u >> (u - 92_uc)) & 1u))) // '\\' b f n r t u
                 return decltype(i){};
 
               if ('u' == *i && (end - i < 5 || !is_hex(*++i) || !is_hex(*++i) ||
@@ -170,13 +181,14 @@ class j50n
               if (!range<0xc2, 0xf4>(b))
                 return decltype(i){};
 
-              if (end == ++i || uchar(*i) < (0xE0u == b ? 0xA0u :
-                0xF0u == b ? 0x90u : 0x80u) || uchar(*i) >
-                (0xEDu == b ? 0x9Fu : 0xF4u == b ? 0x8Fu : 0xBFu))
+              if (end == ++i || uchar(*i) < (0xE0_uc == b ? 0xA0_uc :
+                0xF0_uc == b ? 0x90_uc : 0x80_uc) || uchar(*i) >
+                (0xED_uc == b ? 0x9F_uc : 0xF4_uc == b ? 0x8F_uc : 0xBF_uc))
                 return decltype(i){};
 
-              if (((b >= 0xE0u) && (end == ++i || (*i & 0xC0) != 0x80)) ||
-                ((b >= 0xF0u) && (end == ++i || (*i & 0xC0) != 0x80)))
+              if (((b >= 0xE0_uc) &&
+                (end == ++i || (*i & 0xC0_uc) != 0x80_uc)) ||
+                ((b >= 0xF0_uc) && (end == ++i || (*i & 0xC0_uc) != 0x80_uc)))
                 return decltype(i){};
           }
 
@@ -189,6 +201,8 @@ class j50n
 
     static auto bare_end(auto i, decltype(i) const end) noexcept
     {
+      using namespace j50n_::detail;
+
       for (;;)
       {
         auto const rem(std::size_t(end - i));
@@ -222,10 +236,10 @@ class j50n
           ~splat<decltype(w)>(0x7F))); m)
         {
           auto const lane(unsigned(std::countr_zero(m)) / CHAR_BIT);
-          unsigned const b(uchar(w >> (lane * CHAR_BIT)));
+          uchar const b(uchar(w >> (lane * CHAR_BIT)));
 
-          return ((b - 0x20u <= 0x5Eu) || // b ∈ [0x20, 0x7E]
-            (b < 0x20u && (0x2600u >> b) & 1u)) ? // b < 0x20 and tab / LF / CR (0x09, 0x0A, 0x0D)
+          return ((b - 0x20_uc <= 0x5E_uc) || // b ∈ [0x20, 0x7E]
+            (b < 0x20_uc && (0x2600u >> b) & 1u)) ? // b < 0x20 and tab / LF / CR (0x09, 0x0A, 0x0D)
             i + lane : decltype(i){};
         }
         else if (end == (i += std::min(sizeof w, rem)))
