@@ -154,7 +154,7 @@ class j50n
           (((w - splat<decltype(w)>(0x20)) | w) & ~splat<decltype(w)>(0x7f)) // byte < 0x20 or >= 0x80
           ); m)
         {
-          auto const lane(unsigned(std::countr_zero(m)) / CHAR_BIT);
+          unsigned const lane(unsigned(std::countr_zero(m)) / CHAR_BIT);
           i += lane;
 
           switch (auto const b(uchar(w >> (lane * CHAR_BIT))); b)
@@ -237,7 +237,7 @@ class j50n
           (((w - splat<decltype(w)>(33)) | (w + splat<decltype(w)>(1)) | w) & // byte < 33 || byte > 126
           ~splat<decltype(w)>(0x7F))); m)
         {
-          auto const lane(unsigned(std::countr_zero(m)) / CHAR_BIT);
+          unsigned const lane(unsigned(std::countr_zero(m)) / CHAR_BIT);
           auto const b(uchar(w >> (lane * CHAR_BIT)));
 
           return ((b - 0x20_uc <= 0x5E_uc) || // b ∈ [0x20, 0x7E]
