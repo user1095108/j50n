@@ -253,6 +253,8 @@ class j50n
 
     static void each_item(std::string_view const s, auto cb) noexcept
     {
+      using namespace j50n_::detail;
+
       char const *start, *end(s.data() + s.size());
       unsigned depth{};
 
@@ -260,11 +262,11 @@ class j50n
         if (auto const c{uchar(*i)};
           any_of<' ', '\t', '\r', '\n', ':', ','>(c))
           continue;
-        else if ('[' == (c & 0xDFu))         // '[' or '{'
+        else if ('[' == (c & 0xDF_uc))         // '[' or '{'
         {
           if (2u == ++depth) start = i;
         }
-        else if (']' == (c & 0xDFu))         // ']' or '}'
+        else if (']' == (c & 0xDF_uc))         // ']' or '}'
         {
           if (depth && (1u == --depth))
           {
