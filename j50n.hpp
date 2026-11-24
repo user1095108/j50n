@@ -625,6 +625,8 @@ public:
 
   [[nodiscard]] static std::string unescape(std::string_view const sv)
   {
+    using namespace j50n_::detail;
+
     std::string r;
     r.reserve(sv.size());
 
@@ -634,7 +636,7 @@ public:
         for (auto const end(p + 4); end != p; ++p)
           if (v <<= 4; S::range<'0', '9'>(*p))
             v |= unsigned(*p - '0');
-          else if (S::uchar c(*p | 0x20);
+          else if (S::uchar c(*p | 0x20_uc);
             S::range<'a', 'f'>(c)) v |= unsigned(c - 'a' + 10);
           else return std::pair(v, false);
         return std::pair(v, true);
@@ -671,14 +673,16 @@ public:
 
       if (auto const m(S::has_zero(w ^ S::splat<decltype(w)>('\\'))); m)
         p += unsigned(std::countr_zero(m)) / CHAR_BIT ;
+      else if (rem >= sizeof w)
+      {
+        p += sizeof w;
+        continue; // full word, no backslash — keep extending the run
+      }
       else
-        if (end == (p += std::min(rem, sizeof w)))
-        {
-          r.append(p0, std::size_t(p - p0));
-          break;
-        }
-        else
-          continue; // full word, no backslash — keep extending the run
+      {
+        r.append(p0, std::size_t(p - p0) + rem);
+        break;
+      }
 
       //assert('\\' == *p);
       r.append(p0, std::size_t(p - p0));
