@@ -125,7 +125,7 @@ class j50n
 
       for (;;)
       {
-        auto const rem(std::size_t(end - i));
+        std::size_t const rem(end - i);
         std::uintmax_t w;
 
         if (rem >= sizeof w)
@@ -194,7 +194,9 @@ class j50n
 
           ++i;
         }
-        else if (end == (i += std::min(sizeof w, rem)))
+        else if (rem >= sizeof w)
+          i += sizeof w;
+        else
           return decltype(i){};
       }
     }
@@ -205,7 +207,7 @@ class j50n
 
       for (;;)
       {
-        auto const rem(std::size_t(end - i));
+        std::size_t const rem(end - i);
         std::uintmax_t w;
 
         if (rem >= sizeof w)
@@ -242,7 +244,9 @@ class j50n
             (b < 0x20_uc && (0x2600u >> b) & 1u)) ? // b < 0x20 and tab / LF / CR (0x09, 0x0A, 0x0D)
             i + lane : decltype(i){};
         }
-        else if (end == (i += std::min(sizeof w, rem)))
+        else if (rem >= sizeof w)
+          i += sizeof w;
+        else
           return end;
       }
     }
@@ -638,7 +642,7 @@ public:
 
     for (auto p(sv.data()), p0(p);;)
     {
-      auto const rem(std::size_t(end - p));
+      std::size_t const rem(end - p);
       std::uintmax_t w;
 
       if (rem >= sizeof w)
