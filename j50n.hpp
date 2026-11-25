@@ -705,9 +705,9 @@ public:
         }
         case 'u':
         {
-          if (end - p < 4) { r.append({'\\', 'u'}); break; }
+          if (end - p < 4) goto default_;
           auto const [cp, ok] = hex4(p);
-          if (!ok) { r.append({'\\', 'u'}); break; }
+          if (!ok) goto default_;
           p += 4;
 
           auto u(cp - 0xD800u < 0x800u ? 0xFFFDu : cp);
@@ -731,7 +731,7 @@ public:
             }
           break;
         }
-        default:
+        default: default_:
           r.append(p - 2, 2);
       }
 
