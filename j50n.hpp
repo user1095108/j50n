@@ -112,9 +112,9 @@ class j50n
 #else                             // C++20
       return []<auto ...I>(auto&& a, std::index_sequence<I...>) noexcept
         {
-          return std::bit_cast<T>(std::array<std::byte, sizeof(T)>{
+          return std::bit_cast<T>(std::array<std::byte const, sizeof(T)>{
             a[sizeof(T) - 1 - I]...});
-        }(std::bit_cast<std::array<std::byte, sizeof(T)>>(value),
+        }(std::bit_cast<std::array<std::byte const, sizeof(T)>>(value),
           std::make_index_sequence<sizeof(T)>{});
 #endif // __cpp_lib_byteswap
     }
