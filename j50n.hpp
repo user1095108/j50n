@@ -697,12 +697,10 @@ public:
       {
         case '"': case '\\': case '/': case 'b':
         case 'f': case 'n': case 'r': case 't':
-        {
           static constexpr std::array unescape_map{
             '\\', '\t', '\f', '\n', '/', '"', '\b', '\r'};
           r += unescape_map[(e + 341u) & (e + 341u) >> 6];
           break;
-        }
         case 'u':
         {
           if (end - p < 4) goto default_;
