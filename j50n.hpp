@@ -278,7 +278,7 @@ class j50n
         { // delimit token
           auto const quot('"' == c);
           auto const e(quot ? str_end(i + 1, end) :
-            ('-' == c || range<'0', '9'>(c) || range<'a', 'z'>(c | 0x20) ?
+            ('-' == c || range<'0', '9'>(c) || range<'a', 'z'>(c | 0x20_uc) ?
               bare_end(i, end) : nullptr));
 
           if (!e || (1u == depth && cb(i, e, quot)) || end == e)
