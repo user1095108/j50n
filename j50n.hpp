@@ -260,7 +260,7 @@ class j50n
 
       for (auto i(s.data()); end != i; ++i)
         if (auto const c{uchar(*i)};
-          any_of<' ', '\t', '\r', '\n', ':', ','>(c))
+          any_of<' ', ':', ',', '\n', '\t', '\r'>(c))
           continue;
         else if ('[' == (c & 0xDF_uc))         // '[' or '{'
         {
