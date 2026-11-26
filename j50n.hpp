@@ -90,7 +90,6 @@ class j50n
     [[nodiscard]] static constexpr bool is_hex(char const c) noexcept
     {
       using namespace j50n_::detail;
-
       return range<'0', '9'>(c) || range<'a', 'f'>(c | 0x20_uc);
     }
 
