@@ -260,8 +260,9 @@ class j50n
       unsigned depth{};
 
       for (auto i(s.data()); end != i; ++i)
+        // any_of<' ', ':', ',', '\n', '\t', '\r'>(c))
         if (auto const c{uchar(*i)};
-          any_of<' ', ':', ',', '\n', '\t', '\r'>(c))
+          c < 64_uc && ((0x0400100100002600ull >> c) & 1ull))
           continue;
         else if ('[' == (c & 0xDF_uc))         // '[' or '{'
         {
