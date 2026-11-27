@@ -83,6 +83,9 @@ class j50n
 
     template <auto lo, decltype(lo) hi>
     [[nodiscard]] static constexpr bool range(auto const c) noexcept
+      requires((std::is_signed_v<decltype(lo)> &&
+        std::is_signed_v<decltype(c)>) || (std::is_unsigned_v<decltype(lo)> &&
+        std::is_unsigned_v<decltype(c)>))
     {
         static_assert(lo <= hi, "range bounds must be ordered");
         return lo <= c && c <= hi;
@@ -180,7 +183,7 @@ class j50n
               break;
 
             default: // byte < 0x20 or >= 0x80
-              if (!range<0xc2, 0xf4>(b))
+              if (!range<0xc2_uc, 0xf4_uc>(b))
                 return decltype(i){};
 
               if (end == ++i || uchar(*i) < (0xE0_uc == b ? 0xA0_uc :
@@ -281,7 +284,8 @@ class j50n
         { // delimit token
           auto const quot('"' == c);
           auto const e(quot ? str_end(i + 1, end) :
-            ('-' == c || range<'0', '9'>(c) || range<'a', 'z'>(c | 0x20_uc) ?
+            ('-' == c || range<uchar('0'), uchar('9')>(c) ||
+            range<uchar('a'), uchar('z')>(uchar(c | 0x20_uc)) ?
               bare_end(i, end) : nullptr));
 
           if (!e || (1u == depth && cb(i, e, quot)) || end == e)
@@ -637,10 +641,9 @@ public:
       {
         unsigned v{};
         for (auto const end(p + 4); end != p; ++p)
-          if (v <<= 4; S::range<'0', '9'>(*p))
-            v |= unsigned(*p - '0');
-          else if (S::uchar c(*p | 0x20_uc);
-            S::range<'a', 'f'>(c)) v |= unsigned(c - 'a' + 10);
+          if (v <<= 4; S::range<'0', '9'>(*p)) v |= *p - '0';
+          else if (S::uchar const c(*p | 0x20_uc);
+            S::range<S::uchar('a'), S::uchar('f')>(c)) v |= c - 'a' + 10;
           else return std::pair(v, false);
         return std::pair(v, true);
       };
