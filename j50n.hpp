@@ -87,8 +87,8 @@ class j50n
         std::is_signed_v<decltype(c)>) || (std::is_unsigned_v<decltype(lo)> &&
         std::is_unsigned_v<decltype(c)>))
     {
-        static_assert(lo <= hi, "range bounds must be ordered");
-        return lo <= c && c <= hi;
+      static_assert(lo <= hi, "range bounds must be ordered");
+      return lo <= c && c <= hi;
     }
 
     [[nodiscard]] static constexpr bool is_hex(char const c) noexcept
