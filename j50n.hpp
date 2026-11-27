@@ -262,7 +262,7 @@ class j50n
       for (auto i(s.data()); end != i; ++i)
         // any_of<' ', ':', ',', '\n', '\t', '\r'>(c))
         if (auto const c{uchar(*i)};
-          c < 64_uc && ((0x0400100100002600ull >> c) & 1ull))
+          c < 59_uc && ((0x0400100100002600ull >> c) & 1ull))
           continue;
         else if ('[' == (c & 0xDF_uc))         // '[' or '{'
         {
