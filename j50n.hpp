@@ -66,8 +66,9 @@ class j50n
       return ((Strings == sv) || ...);
     }
 
-    template <auto... Vals>
-    [[nodiscard]] static constexpr bool any_of(auto const v) noexcept
+    template <auto... Vals, typename T>
+      requires((std::is_same_v<decltype(Vals), T>) && ...)
+    [[nodiscard]] static constexpr bool any_of(T const v) noexcept
     {
       return ((Vals == v) || ...);
     }
