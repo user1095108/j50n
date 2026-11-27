@@ -641,9 +641,9 @@ public:
       {
         unsigned v{};
         for (auto const end(p + 4); end != p; ++p)
-          if (v <<= 4; S::range<'0', '9'>(*p)) v |= *p - '0';
-          else if (S::uchar const c(*p | 0x20_uc);
-            S::range<S::uchar('a'), S::uchar('f')>(c)) v |= c - 'a' + 10;
+          if (S::range<'0', '9'>(*p)) v = v << 4 | (*p - '0');
+          else if (char const c(*p | 0x20_uc);
+            S::range<'a', 'f'>(c)) v = v << 4 | (c - 'a' + 10);
           else return std::pair(v, false);
         return std::pair(v, true);
       };
