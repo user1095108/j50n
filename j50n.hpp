@@ -63,13 +63,13 @@ class j50n
     [[nodiscard]] static constexpr bool any_of(
       std::string_view const sv) noexcept
     {
-      return ((sv == Strings) || ...);
+      return ((Strings == sv) || ...);
     }
 
-    template <char... Chars>
-    [[nodiscard]] static constexpr bool any_of(char const c) noexcept
+    template <auto... Vals>
+    [[nodiscard]] static constexpr bool any_of(auto const v) noexcept
     {
-      return ((c == Chars) || ...);
+      return ((Vals == v) || ...);
     }
 
     template <fixed_string... Strings>
