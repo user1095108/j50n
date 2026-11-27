@@ -24,11 +24,13 @@ static_assert(std::endian::big == std::endian::native ||
 
 namespace j50n_::detail
 {
-  [[nodiscard]] constexpr unsigned char operator""_uc(
-    unsigned long long const c) noexcept
-  {
-    return static_cast<unsigned char>(c);
-  }
+
+[[nodiscard]] constexpr unsigned char operator""_uc(
+  unsigned long long const c) noexcept
+{
+  return static_cast<unsigned char>(c);
+}
+
 }
 
 class j50n
