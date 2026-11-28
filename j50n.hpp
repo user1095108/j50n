@@ -310,7 +310,7 @@ class j50n
         {
           if ((expecting_key = !expecting_key))
           {
-            if (bool const quoted('"' == *p); expecting_key &&
+            if (auto const quoted('"' == *p); expecting_key &&
               std::string_view(p + quoted, size_type(e - p) - quoted) == key)
               key_found = true;
           }
