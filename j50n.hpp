@@ -111,7 +111,7 @@ class j50n
       return (v - splat<T>(1)) & T(~v) & T(~splat<T>(uchar(~uchar{}) >> 1));
     }
 
-    template <typename T>
+    template <typename T> requires std::is_trivially_copyable_v<T>
     [[nodiscard]] static constexpr T byteswap(T const value) noexcept
     {
 #if defined(__cpp_lib_byteswap)   // C++23
