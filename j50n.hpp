@@ -114,15 +114,11 @@ class j50n
     template <typename T> requires std::is_trivially_copyable_v<T>
     [[nodiscard]] static constexpr T byteswap(T const value) noexcept
     {
-#if defined(__cpp_lib_byteswap)   // C++23
-      return std::byteswap(value);
-#else                             // C++20
       return []<auto ...I>(auto&& a, std::index_sequence<I...>) noexcept
         {
           return std::bit_cast<T>(std::array{a[sizeof(T) - 1 - I]...});
         }(std::bit_cast<std::array<std::byte const, sizeof(T)>>(value),
           std::make_index_sequence<sizeof(T)>{});
-#endif // __cpp_lib_byteswap
     }
 
     [[nodiscard]] static auto str_end(auto i, decltype(i) const end) noexcept
